@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # Database
+  mysql:
+    image: mysql:8.0
+    container_name: file-transfer-mysql
+    environment:
+      MYSQL_DATABASE: filetransfer
+      MYSQL_USER: filetransfer
+      MYSQL_PASSWORD: filetransfer123
+      MYSQL_ROOT_PASSWORD: root123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Spring Boot Batch Application
+  file-transfer-batch:
+    build: ./file-transfer-batch
+    container_name: file-transfer-batch
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/filetransfer
+      SPRING_DATASOURCE_USERNAME: filetransfer
+      SPRING_DATASOURCE_PASSWORD: filetransfer123
+    ports:
+      - "8081:8081"
+    volumes:
+      - file_transfer_data:/app/data
+      - file_transfer_logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Spring Boot Web Application
+  file-transfer-web:
+    build: ./file-transfer-web
+    container_name: file-transfer-web
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/filetransfer
+      SPRING_DATASOURCE_USERNAME: filetransfer
+      SPRING_DATASOURCE_PASSWORD: filetransfer123
+    ports:
+      - "8080:8080"
+    volumes:
+      - file_transfer_logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # React Frontend
+  file-transfer-frontend:
+    build: ./file-transfer-frontend
+    container_name: file-transfer-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - file-transfer-web
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  file_transfer_data:
+  file_transfer_logs:

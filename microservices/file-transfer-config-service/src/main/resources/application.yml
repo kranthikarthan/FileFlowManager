@@ -1,0 +1,200 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: file-transfer-config-service
+  
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  
+  # Azure SQL Managed Instance Configuration
+  datasource:
+    url: jdbc:sqlserver://${AZURE_SQL_MI_SERVER:localhost}:${AZURE_SQL_MI_PORT:1433};database=${AZURE_SQL_MI_DATABASE:filetransfer};encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30;
+    username: ${AZURE_SQL_MI_USERNAME:filetransfer}
+    password: ${AZURE_SQL_MI_PASSWORD:Password123}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      connection-timeout: 20000
+      leak-detection-threshold: 60000
+  
+  jpa:
+    database-platform: org.hibernate.dialect.SQLServerDialect
+    hibernate:
+      ddl-auto: ${DDL_AUTO:validate}
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        jdbc:
+          batch_size: 20
+        cache:
+          use_second_level_cache: false
+  
+  # Azure Key Vault integration
+  cloud:
+    azure:
+      keyvault:
+        secret:
+          endpoint: ${AZURE_KEYVAULT_URI:https://ft-keyvault.vault.azure.net/}
+          property-sources:
+            - endpoint: ${AZURE_KEYVAULT_URI:https://ft-keyvault.vault.azure.net/}
+              name: filetransfer-secrets
+      
+      # Azure Service Principal Configuration
+      profile:
+        tenant-id: ${AZURE_TENANT_ID:}
+      credentials:
+        client-id: ${AZURE_CLIENT_ID:}
+        client-secret: ${AZURE_CLIENT_SECRET:}
+
+  # Security Configuration
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8080}
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8080/.well-known/jwks.json}
+
+# Eureka Configuration for Service Discovery
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL:http://localhost:8761/eureka}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,env
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      service: ${spring.application.name}
+      version: ${BUILD_VERSION:1.0.0}
+
+# Logging Configuration
+logging:
+  level:
+    com.filetransfer: ${LOG_LEVEL:INFO}
+    org.springframework.security: DEBUG
+    org.springframework.cloud: INFO
+    org.hibernate.SQL: ${SQL_LOG_LEVEL:WARN}
+    org.hibernate.type.descriptor.sql.BasicBinder: ${SQL_LOG_LEVEL:WARN}
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
+
+# Distributed Tracing
+spring.sleuth:
+  zipkin:
+    base-url: ${ZIPKIN_URL:http://localhost:9411}
+  sampler:
+    probability: ${TRACE_SAMPLE_RATE:0.1}
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:mySecretKey}
+  expiration: ${JWT_EXPIRATION:86400000} # 24 hours
+  
+# Application Configuration
+file-transfer:
+  config:
+    cache-ttl: 300 # 5 minutes
+    max-services: 100
+    validation:
+      enabled: true
+      max-regex-length: 1000
+
+---
+# Local Development Profile
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: jdbc:sqlserver://localhost:1433;database=filetransfer;encrypt=false;trustServerCertificate=true
+    username: sa
+    password: Password123
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  cloud:
+    azure:
+      keyvault:
+        secret:
+          enabled: false
+
+eureka:
+  client:
+    enabled: false
+
+logging:
+  level:
+    com.filetransfer: DEBUG
+    org.hibernate.SQL: DEBUG
+
+---
+# Azure AKS Profile
+spring:
+  config:
+    activate:
+      on-profile: aks
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  cloud:
+    azure:
+      keyvault:
+        secret:
+          enabled: true
+
+# Resource limits for Kubernetes
+kubernetes:
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+---
+# Production Profile
+spring:
+  config:
+    activate:
+      on-profile: prod
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  cloud:
+    azure:
+      keyvault:
+        secret:
+          enabled: true
+
+logging:
+  level:
+    com.filetransfer: WARN
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN

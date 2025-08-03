@@ -1,0 +1,210 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-service-config
+  namespace: file-transfer
+  labels:
+    app: config-service
+    component: config
+data:
+  SPRING_PROFILES_ACTIVE: "aks"
+  EUREKA_CLIENT_SERVICE_URL: "http://eureka-service:8761/eureka"
+  ZIPKIN_URL: "http://zipkin-service:9411"
+  LOG_LEVEL: "INFO"
+  TRACE_SAMPLE_RATE: "0.1"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: config-service-secrets
+  namespace: file-transfer
+  labels:
+    app: config-service
+    component: secrets
+type: Opaque
+stringData:
+  AZURE_SQL_MI_SERVER: "your-sql-mi-server.database.windows.net"
+  AZURE_SQL_MI_DATABASE: "filetransfer"
+  AZURE_SQL_MI_USERNAME: "filetransfer"
+  AZURE_SQL_MI_PASSWORD: "YourSecurePassword123!"
+  AZURE_KEYVAULT_URI: "https://your-keyvault.vault.azure.net/"
+  AZURE_TENANT_ID: "your-tenant-id"
+  AZURE_CLIENT_ID: "your-client-id"
+  AZURE_CLIENT_SECRET: "your-client-secret"
+  JWT_SECRET: "your-jwt-secret-key-change-in-production"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-service
+  namespace: file-transfer
+  labels:
+    app: config-service
+    component: microservice
+    app.kubernetes.io/name: config-service
+    app.kubernetes.io/component: configuration
+    app.kubernetes.io/part-of: file-transfer-system
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: config-service
+  template:
+    metadata:
+      labels:
+        app: config-service
+        component: microservice
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      serviceAccountName: file-transfer-sa
+      containers:
+      - name: config-service
+        image: filetransfer/config-service:1.0.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          valueFrom:
+            configMapKeyRef:
+              name: config-service-config
+              key: SPRING_PROFILES_ACTIVE
+        - name: EUREKA_CLIENT_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: config-service-config
+              key: EUREKA_CLIENT_SERVICE_URL
+        - name: ZIPKIN_URL
+          valueFrom:
+            configMapKeyRef:
+              name: config-service-config
+              key: ZIPKIN_URL
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: config-service-config
+              key: LOG_LEVEL
+        - name: TRACE_SAMPLE_RATE
+          valueFrom:
+            configMapKeyRef:
+              name: config-service-config
+              key: TRACE_SAMPLE_RATE
+        # Secrets
+        - name: AZURE_SQL_MI_SERVER
+          valueFrom:
+            secretKeyRef:
+              name: config-service-secrets
+              key: AZURE_SQL_MI_SERVER
+        - name: AZURE_SQL_MI_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: config-service-secrets
+              key: AZURE_SQL_MI_DATABASE
+        - name: AZURE_SQL_MI_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: config-service-secrets
+              key: AZURE_SQL_MI_USERNAME
+        - name: AZURE_SQL_MI_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: config-service-secrets
+              key: AZURE_SQL_MI_PASSWORD
+        - name: AZURE_KEYVAULT_URI
+          valueFrom:
+            secretKeyRef:
+              name: config-service-secrets
+              key: AZURE_KEYVAULT_URI
+        - name: AZURE_TENANT_ID
+          valueFrom:
+            secretKeyRef:
+              name: config-service-secrets
+              key: AZURE_TENANT_ID
+        - name: AZURE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: config-service-secrets
+              key: AZURE_CLIENT_ID
+        - name: AZURE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: config-service-secrets
+              key: AZURE_CLIENT_SECRET
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: config-service-secrets
+              key: JWT_SECRET
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+          requests:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 10001
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: tmp-volume
+          mountPath: /tmp
+      volumes:
+      - name: tmp-volume
+        emptyDir: {}
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: config-service
+  namespace: file-transfer
+  labels:
+    app: config-service
+    component: service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: config-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: config-service-pdb
+  namespace: file-transfer
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: config-service
