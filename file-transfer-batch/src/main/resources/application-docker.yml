@@ -1,0 +1,64 @@
+spring:
+  application:
+    name: file-transfer-batch
+  datasource:
+    url: jdbc:mysql://mysql:3306/filetransfer
+    username: filetransfer
+    password: filetransfer123
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: never
+
+file-transfer:
+  enabled: true
+  poll-interval-seconds: 30
+  services:
+    service1:
+      inbound-path: /app/data/inbound/service1
+      outbound-path: /app/data/outbound/service1
+      start-marker-prefix: SOT_
+      end-marker-prefix: EOT_
+      data-file-pattern: "*.dat"
+      enabled: true
+      max-retries: 3
+    service2:
+      inbound-path: /app/data/inbound/service2
+      outbound-path: /app/data/outbound/service2
+      start-marker-prefix: START_
+      end-marker-prefix: END_
+      data-file-pattern: "*.xml"
+      enabled: true
+      max-retries: 3
+
+logging:
+  level:
+    com.filetransfer: INFO
+    org.springframework.batch: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: /app/logs/file-transfer-batch.log
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+server:
+  port: 8081
