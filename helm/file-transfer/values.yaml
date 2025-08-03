@@ -1,0 +1,301 @@
+# Global configuration
+global:
+  imageRegistry: "filetransferacr.azurecr.io"
+  imagePullSecrets:
+    - name: acr-secret
+  storageClass: "managed-premium"
+
+# Common configuration for all services
+common:
+  labels:
+    app.kubernetes.io/part-of: file-transfer-system
+    app.kubernetes.io/managed-by: helm
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/actuator/prometheus"
+  
+  image:
+    pullPolicy: Always
+    
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+      
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 10001
+    capabilities:
+      drop:
+        - ALL
+
+# Service Discovery (Eureka)
+eureka:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: springcloud/eureka
+    tag: latest
+  service:
+    type: ClusterIP
+    port: 8761
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+# Configuration Service
+configService:
+  enabled: true
+  name: config-service
+  replicaCount: 2
+  image:
+    repository: filetransfer/config-service
+    tag: "1.0.0"
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+  env:
+    SPRING_PROFILES_ACTIVE: "aks"
+    LOG_LEVEL: "INFO"
+  secrets:
+    AZURE_SQL_MI_SERVER: ""
+    AZURE_SQL_MI_DATABASE: "filetransfer"
+    AZURE_SQL_MI_USERNAME: ""
+    AZURE_SQL_MI_PASSWORD: ""
+    AZURE_KEYVAULT_URI: ""
+    AZURE_TENANT_ID: ""
+    AZURE_CLIENT_ID: ""
+    AZURE_CLIENT_SECRET: ""
+    JWT_SECRET: ""
+
+# Processing Service
+processingService:
+  enabled: true
+  name: processing-service
+  replicaCount: 3
+  image:
+    repository: filetransfer/processing-service
+    tag: "1.0.0"
+  service:
+    type: ClusterIP
+    port: 8081
+    targetPort: 8081
+  env:
+    SPRING_PROFILES_ACTIVE: "aks"
+    LOG_LEVEL: "INFO"
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: "managed-premium"
+    accessModes:
+      - ReadWriteOnce
+
+# Authentication Service
+authService:
+  enabled: true
+  name: auth-service
+  replicaCount: 2
+  image:
+    repository: filetransfer/auth-service
+    tag: "1.0.0"
+  service:
+    type: ClusterIP
+    port: 8082
+    targetPort: 8082
+  env:
+    SPRING_PROFILES_ACTIVE: "aks"
+    LOG_LEVEL: "INFO"
+
+# Notification Service
+notificationService:
+  enabled: true
+  name: notification-service
+  replicaCount: 2
+  image:
+    repository: filetransfer/notification-service
+    tag: "1.0.0"
+  service:
+    type: ClusterIP
+    port: 8083
+    targetPort: 8083
+  env:
+    SPRING_PROFILES_ACTIVE: "aks"
+    LOG_LEVEL: "INFO"
+
+# Frontend Service
+frontend:
+  enabled: true
+  name: frontend
+  replicaCount: 2
+  image:
+    repository: filetransfer/frontend
+    tag: "1.0.0"
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+
+# API Gateway
+gateway:
+  enabled: true
+  name: api-gateway
+  replicaCount: 2
+  image:
+    repository: filetransfer/api-gateway
+    tag: "1.0.0"
+  service:
+    type: LoadBalancer
+    port: 80
+    targetPort: 8080
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: /
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    hosts:
+      - host: filetransfer.yourcompany.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: filetransfer-tls
+        hosts:
+          - filetransfer.yourcompany.com
+
+# Database Configuration (Azure SQL MI)
+database:
+  external: true
+  host: "your-sql-mi-server.database.windows.net"
+  port: 1433
+  name: "filetransfer"
+  
+# PostgreSQL (for local testing)
+postgresql:
+  enabled: false
+  auth:
+    postgresPassword: "password123"
+    database: "filetransfer"
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+
+# Message Queue (RabbitMQ)
+rabbitmq:
+  enabled: true
+  auth:
+    username: filetransfer
+    password: "password123"
+  persistence:
+    enabled: true
+    size: 8Gi
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+# Cache (Redis)
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    password: "password123"
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+# Monitoring
+monitoring:
+  prometheus:
+    enabled: true
+  grafana:
+    enabled: true
+  zipkin:
+    enabled: true
+    image:
+      repository: openzipkin/zipkin
+      tag: latest
+    service:
+      type: ClusterIP
+      port: 9411
+
+# Auto-scaling
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Pod Disruption Budgets
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Network Policies
+networkPolicy:
+  enabled: true
+  ingress:
+    enabled: true
+  egress:
+    enabled: true
+
+# Service Account
+serviceAccount:
+  create: true
+  name: "file-transfer-sa"
+  annotations:
+    azure.workload.identity/client-id: "your-managed-identity-client-id"
+
+# RBAC
+rbac:
+  create: true
+
+# Pod Security Policy
+podSecurityPolicy:
+  enabled: true
+
+# Azure Configuration
+azure:
+  workloadIdentity:
+    enabled: true
+    clientId: "your-managed-identity-client-id"
+  keyVault:
+    name: "your-keyvault-name"
+    resourceGroup: "your-resource-group"
+    subscriptionId: "your-subscription-id"
+  storage:
+    accountName: "yourstorageaccount"
+    containerName: "filetransfer"
+
+# Backup Configuration
+backup:
+  enabled: true
+  schedule: "0 2 * * *"
+  retention: "30d"
+  storage:
+    type: "azure-blob"
+    account: "yourstorageaccount"
+    container: "backups"

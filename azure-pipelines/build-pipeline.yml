@@ -1,0 +1,393 @@
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+      - feature/*
+      - hotfix/*
+  paths:
+    include:
+      - microservices/
+      - k8s/
+      - helm/
+    exclude:
+      - docs/
+      - README.md
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - microservices/
+      - k8s/
+      - helm/
+
+variables:
+  - group: file-transfer-variables # Variable group containing sensitive data
+  - name: vmImageName
+    value: 'ubuntu-latest'
+  - name: buildConfiguration
+    value: 'Release'
+  - name: mavenGoals
+    value: 'clean compile test package'
+  - name: sonarProjectKey
+    value: 'filetransfer-microservices'
+  - name: dockerRegistryServiceConnection
+    value: 'azure-container-registry'
+  - name: imageRepository
+    value: 'filetransfer'
+  - name: containerRegistry
+    value: 'filetransferacr.azurecr.io'
+  - name: dockerfilePath
+    value: '**/Dockerfile'
+  - name: tag
+    value: '$(Build.BuildId)'
+
+pool:
+  vmImage: $(vmImageName)
+
+stages:
+- stage: Build
+  displayName: Build and Test
+  jobs:
+  - job: BuildServices
+    displayName: Build Microservices
+    strategy:
+      matrix:
+        ConfigService:
+          serviceName: 'config-service'
+          serviceDirectory: 'microservices/file-transfer-config-service'
+        ProcessingService:
+          serviceName: 'processing-service'
+          serviceDirectory: 'microservices/file-transfer-processing-service'
+        AuthService:
+          serviceName: 'auth-service'
+          serviceDirectory: 'microservices/file-transfer-auth-service'
+        NotificationService:
+          serviceName: 'notification-service'
+          serviceDirectory: 'microservices/file-transfer-notification-service'
+    steps:
+    - checkout: self
+      fetchDepth: 0  # Shallow clones should be disabled for SonarCloud analysis
+
+    - task: JavaToolInstaller@0
+      displayName: 'Use Java 17'
+      inputs:
+        versionSpec: '17'
+        jdkArchitectureOption: 'x64'
+        jdkSourceOption: 'PreInstalled'
+
+    - task: Cache@2
+      displayName: 'Cache Maven dependencies'
+      inputs:
+        key: 'maven | "$(Agent.OS)" | $(serviceDirectory)/pom.xml'
+        restoreKeys: |
+          maven | "$(Agent.OS)"
+          maven
+        path: $(HOME)/.m2/repository
+
+    - task: SonarCloudPrepare@1
+      displayName: 'Prepare SonarCloud analysis'
+      inputs:
+        SonarCloud: '$(sonarCloudServiceConnection)'
+        organization: '$(sonarOrganization)'
+        scannerMode: 'Other'
+        extraProperties: |
+          sonar.projectKey=$(sonarProjectKey)-$(serviceName)
+          sonar.projectName=File Transfer $(serviceName)
+          sonar.projectVersion=$(Build.BuildNumber)
+          sonar.sources=src/main/java
+          sonar.tests=src/test/java
+          sonar.java.binaries=target/classes
+          sonar.java.test.binaries=target/test-classes
+          sonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+          sonar.junit.reportPaths=target/surefire-reports
+          sonar.java.checkstyle.reportPaths=target/checkstyle-result.xml
+          sonar.java.pmd.reportPaths=target/pmd.xml
+          sonar.java.spotbugs.reportPaths=target/spotbugsXml.xml
+
+    - task: Maven@3
+      displayName: 'Maven build and test'
+      inputs:
+        mavenPomFile: '$(serviceDirectory)/pom.xml'
+        goals: '$(mavenGoals)'
+        options: '-B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn'
+        publishJUnitResults: true
+        testResultsFiles: '**/target/surefire-reports/TEST-*.xml'
+        codeCoverageToolOption: 'JaCoCo'
+        javaHomeOption: 'JDKVersion'
+        mavenVersionOption: 'Default'
+        mavenAuthenticateFeed: false
+        effectivePomSkip: false
+        sonarQubeRunAnalysis: false
+
+    - task: Maven@3
+      displayName: 'Run SpotBugs analysis'
+      inputs:
+        mavenPomFile: '$(serviceDirectory)/pom.xml'
+        goals: 'spotbugs:spotbugs'
+        options: '-B'
+        javaHomeOption: 'JDKVersion'
+        mavenVersionOption: 'Default'
+      continueOnError: true
+
+    - task: Maven@3
+      displayName: 'Run PMD analysis'
+      inputs:
+        mavenPomFile: '$(serviceDirectory)/pom.xml'
+        goals: 'pmd:pmd'
+        options: '-B'
+        javaHomeOption: 'JDKVersion'
+        mavenVersionOption: 'Default'
+      continueOnError: true
+
+    - task: Maven@3
+      displayName: 'Run Checkstyle analysis'
+      inputs:
+        mavenPomFile: '$(serviceDirectory)/pom.xml'
+        goals: 'checkstyle:checkstyle'
+        options: '-B'
+        javaHomeOption: 'JDKVersion'
+        mavenVersionOption: 'Default'
+      continueOnError: true
+
+    - task: SonarCloudAnalyze@1
+      displayName: 'Run SonarCloud analysis'
+
+    - task: SonarCloudPublish@1
+      displayName: 'Publish SonarCloud results'
+      inputs:
+        pollingTimeoutSec: '300'
+
+    - task: PublishTestResults@2
+      displayName: 'Publish test results'
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/target/surefire-reports/*.xml'
+        testRunTitle: '$(serviceName) Unit Tests'
+        mergeTestResults: true
+        failTaskOnFailedTests: true
+      condition: succeededOrFailed()
+
+    - task: PublishCodeCoverageResults@1
+      displayName: 'Publish code coverage'
+      inputs:
+        codeCoverageTool: 'JaCoCo'
+        summaryFileLocation: '$(serviceDirectory)/target/site/jacoco/jacoco.xml'
+        reportDirectory: '$(serviceDirectory)/target/site/jacoco'
+        failIfCoverageEmpty: false
+      condition: succeededOrFailed()
+
+    - task: CopyFiles@2
+      displayName: 'Copy build artifacts'
+      inputs:
+        sourceFolder: '$(serviceDirectory)/target'
+        contents: |
+          *.jar
+          !*-sources.jar
+          !*-javadoc.jar
+        targetFolder: '$(Build.ArtifactStagingDirectory)/$(serviceName)'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish build artifacts'
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)/$(serviceName)'
+        artifactName: '$(serviceName)-artifacts'
+        publishLocation: 'Container'
+
+- stage: SecurityScan
+  displayName: Security Scanning
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - job: SecurityScan
+    displayName: Run Security Scans
+    steps:
+    - checkout: self
+      fetchDepth: 1
+
+    - task: CredScan@3
+      displayName: 'Run Credential Scanner'
+      inputs:
+        outputFormat: 'sarif'
+        debugMode: false
+
+    - task: SdtReport@2
+      displayName: 'Create Security Analysis Report'
+      inputs:
+        GdnExportAllTools: true
+        GdnExportGdnToolSdtReport: true
+
+    - task: PublishSecurityAnalysisLogs@3
+      displayName: 'Publish Security Analysis Logs'
+      inputs:
+        ArtifactName: 'SecurityLogs'
+        ArtifactType: 'Container'
+
+- stage: BuildImages
+  displayName: Build Docker Images
+  dependsOn: Build
+  condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.SourceBranch'], 'refs/heads/develop')))
+  jobs:
+  - job: BuildDockerImages
+    displayName: Build and Push Docker Images
+    strategy:
+      matrix:
+        ConfigService:
+          serviceName: 'config-service'
+          serviceDirectory: 'microservices/file-transfer-config-service'
+        ProcessingService:
+          serviceName: 'processing-service'
+          serviceDirectory: 'microservices/file-transfer-processing-service'
+        AuthService:
+          serviceName: 'auth-service'
+          serviceDirectory: 'microservices/file-transfer-auth-service'
+        NotificationService:
+          serviceName: 'notification-service'
+          serviceDirectory: 'microservices/file-transfer-notification-service'
+    steps:
+    - checkout: self
+
+    - task: DownloadBuildArtifacts@0
+      displayName: 'Download build artifacts'
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: '$(serviceName)-artifacts'
+        downloadPath: '$(System.ArtifactsDirectory)'
+
+    - task: Docker@2
+      displayName: 'Build Docker image'
+      inputs:
+        containerRegistry: '$(dockerRegistryServiceConnection)'
+        repository: '$(imageRepository)/$(serviceName)'
+        command: 'build'
+        Dockerfile: '$(serviceDirectory)/Dockerfile'
+        buildContext: '$(serviceDirectory)'
+        tags: |
+          $(tag)
+          latest
+
+    - task: Docker@2
+      displayName: 'Scan Docker image for vulnerabilities'
+      inputs:
+        containerRegistry: '$(dockerRegistryServiceConnection)'
+        repository: '$(imageRepository)/$(serviceName)'
+        command: 'scan'
+        tags: '$(tag)'
+      continueOnError: true
+
+    - task: Docker@2
+      displayName: 'Push Docker image'
+      inputs:
+        containerRegistry: '$(dockerRegistryServiceConnection)'
+        repository: '$(imageRepository)/$(serviceName)'
+        command: 'push'
+        tags: |
+          $(tag)
+          latest
+
+- stage: QualityGate
+  displayName: Quality Gate
+  dependsOn: 
+    - Build
+    - SecurityScan
+  condition: succeeded()
+  jobs:
+  - job: QualityGateCheck
+    displayName: Quality Gate Check
+    pool: server
+    steps:
+    - task: sonarcloud-quality-gate@0
+      displayName: 'SonarCloud Quality Gate'
+      inputs:
+        SonarCloud: '$(sonarCloudServiceConnection)'
+        organization: '$(sonarOrganization)'
+
+- stage: Integration
+  displayName: Integration Tests
+  dependsOn: BuildImages
+  condition: succeeded()
+  jobs:
+  - job: IntegrationTests
+    displayName: Run Integration Tests
+    steps:
+    - checkout: self
+
+    - task: DockerCompose@0
+      displayName: 'Start test environment'
+      inputs:
+        containerregistrytype: 'Azure Container Registry'
+        azureSubscription: '$(azureServiceConnection)'
+        azureContainerRegistry: '$(containerRegistry)'
+        dockerComposeFile: 'docker-compose.test.yml'
+        action: 'Run a Docker Compose command'
+        dockerComposeCommand: 'up -d'
+
+    - task: Maven@3
+      displayName: 'Run integration tests'
+      inputs:
+        mavenPomFile: 'integration-tests/pom.xml'
+        goals: 'test'
+        options: '-Dtest.environment=docker -Dcontainer.registry=$(containerRegistry) -Dimage.tag=$(tag)'
+        publishJUnitResults: true
+        testResultsFiles: '**/target/surefire-reports/TEST-*.xml'
+        javaHomeOption: 'JDKVersion'
+
+    - task: DockerCompose@0
+      displayName: 'Cleanup test environment'
+      inputs:
+        containerregistrytype: 'Azure Container Registry'
+        azureSubscription: '$(azureServiceConnection)'
+        azureContainerRegistry: '$(containerRegistry)'
+        dockerComposeFile: 'docker-compose.test.yml'
+        action: 'Run a Docker Compose command'
+        dockerComposeCommand: 'down -v'
+      condition: always()
+
+- stage: PublishArtifacts
+  displayName: Publish Deployment Artifacts
+  dependsOn: Integration
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  - job: PublishArtifacts
+    displayName: Publish Kubernetes and Helm Artifacts
+    steps:
+    - checkout: self
+
+    - task: HelmInstaller@1
+      displayName: 'Install Helm'
+      inputs:
+        helmVersionToInstall: 'latest'
+
+    - task: HelmDeploy@0
+      displayName: 'Package Helm chart'
+      inputs:
+        command: 'package'
+        chartPath: 'helm/file-transfer'
+        chartVersion: '$(Build.BuildNumber)'
+        destination: '$(Build.ArtifactStagingDirectory)/helm'
+
+    - task: CopyFiles@2
+      displayName: 'Copy Kubernetes manifests'
+      inputs:
+        sourceFolder: 'k8s'
+        contents: '**/*.yml'
+        targetFolder: '$(Build.ArtifactStagingDirectory)/k8s'
+
+    - task: CopyFiles@2
+      displayName: 'Copy deployment scripts'
+      inputs:
+        sourceFolder: 'scripts'
+        contents: '**/*'
+        targetFolder: '$(Build.ArtifactStagingDirectory)/scripts'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish deployment artifacts'
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)'
+        artifactName: 'deployment-artifacts'
+        publishLocation: 'Container'
