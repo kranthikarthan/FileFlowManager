@@ -75,7 +75,7 @@ The system consists of three main components:
 - **User Authentication**: Secure access with SSO or local authentication
 
 ### Technical Features
-- **Containerized Deployment**: Full Docker support with Docker Compose
+- **Kubernetes Deployment**: Production-grade deployment using Kubernetes manifests
 - **Database Integration**: MySQL for persistent storage with dynamic schema
 - **RESTful API**: Comprehensive REST endpoints for all operations
 - **Modern UI**: React with Material-UI components
@@ -85,7 +85,9 @@ The system consists of three main components:
 ## Quick Start
 
 ### Prerequisites
-- Docker and Docker Compose
+- Kubernetes cluster (v1.20+)
+- kubectl configured
+- Persistent Volume support
 - Git
 
 ### Installation
@@ -96,17 +98,18 @@ The system consists of three main components:
    cd file-transfer-system
    ```
 
-2. **Start the application**
+2. **Deploy to Kubernetes**
+   - Apply the provided Kubernetes manifests in the `k8s/` directory:
    ```bash
-   chmod +x scripts/start.sh
-   ./scripts/start.sh
+   kubectl apply -f k8s/
    ```
+   - This will deploy MySQL, backend services, and the frontend to your cluster.
 
 3. **Access the application**
-   - Frontend: http://localhost:3000
-   - Web API: http://localhost:8080
-   - Batch App: http://localhost:8081
-   - Database: localhost:3306
+   - Frontend: http://<your-k8s-ingress-or-service>
+   - Web API: http://<your-k8s-ingress-or-service>/api
+   - Batch App: http://<your-k8s-ingress-or-service>:8081
+   - Database: <your-mysql-service>:3306
 
 4. **Default Login**
    - **SSO**: Demo Organization (demo-org) with Azure AD provider
@@ -114,8 +117,7 @@ The system consists of three main components:
 
 ### Stopping the Application
 ```bash
-chmod +x scripts/stop.sh
-./scripts/stop.sh
+kubectl delete -f k8s/
 ```
 
 ## Application Components
@@ -346,23 +348,46 @@ Sample data is automatically inserted during database initialization for testing
 
 ## Production Deployment
 
+### Kubernetes Deployment
+
+1. **Edit the manifests in `k8s/` as needed for your environment (e.g., image tags, resource requests, ingress settings).**
+2. **Apply the manifests:**
+   ```bash
+   kubectl apply -f k8s/
+   ```
+3. **Monitor the pods and services:**
+   ```bash
+   kubectl get pods -n file-transfer
+   kubectl get svc -n file-transfer
+   ```
+4. **Access the application via your configured ingress or service endpoint.**
+
 ### Environment Variables
 
-```bash
-# Database Configuration
-SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/filetransfer_prod
-SPRING_DATASOURCE_USERNAME=filetransfer
-SPRING_DATASOURCE_PASSWORD=secure_password
+Set environment variables in your Kubernetes manifests or use ConfigMaps/Secrets for sensitive data:
 
-# Security Configuration
-JWT_SECRET=your-jwt-secret-key
-CORS_ALLOWED_ORIGINS=https://yourdomain.com
-
-# SSO Configuration
-SSO_ENCRYPTION_KEY=your-encryption-key
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: file-transfer-config
+  namespace: file-transfer
+data:
+  database-url: "jdbc:mysql://mysql:3306/filetransfer"
+  database-username: "filetransfer"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: file-transfer-secret
+  namespace: file-transfer
+type: Opaque
+data:
+  database-password: <base64-encoded-password>
+  mysql-root-password: <base64-encoded-root-password>
 ```
 
-### Production Security Considerations
+### Security Considerations
 
 1. **Change Default Credentials**: Update all default passwords and secrets
 2. **Enable HTTPS**: Use SSL/TLS for all communications

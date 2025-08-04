@@ -1,195 +1,44 @@
 # Deployment Guide
 
-This guide covers different deployment scenarios for the File Transfer Management System.
+This guide covers Kubernetes-based deployment for the File Transfer Management System.
 
-## Docker Compose Deployment (Recommended)
+## Kubernetes Deployment (Recommended)
 
 ### Prerequisites
-- Docker 20.10+
-- Docker Compose 2.0+
+- Kubernetes cluster 1.20+
+- kubectl configured
+- Persistent Volume support
 - 4GB RAM minimum
 - 2GB free disk space
 
 ### Quick Start
 ```bash
 # Clone repository
-git clone <repository-url>
-cd file-transfer-system
+ git clone <repository-url>
+ cd file-transfer-system
 
-# Start application
-chmod +x scripts/start.sh
-./scripts/start.sh
+# Deploy all components to Kubernetes
+kubectl apply -f k8s/
 ```
 
-### Manual Docker Compose
+### Monitoring
 ```bash
-# Build and start services
-docker-compose up --build -d
+kubectl get pods -n file-transfer
+kubectl get svc -n file-transfer
+```
 
-# Check status
-docker-compose ps
-
-# View logs
-docker-compose logs -f [service-name]
-
-# Stop services
-docker-compose down
+### Stopping the Application
+```bash
+kubectl delete -f k8s/
 ```
 
 ## Production Deployment
 
 ### Environment Configuration
 
-Create production environment files:
+Set environment variables in your Kubernetes manifests or use ConfigMaps/Secrets for sensitive data:
 
-**`.env.prod`**:
-```env
-# Database
-MYSQL_ROOT_PASSWORD=secure_root_password
-MYSQL_PASSWORD=secure_password
-MYSQL_DATABASE=filetransfer_prod
-
-# Application
-SPRING_PROFILES_ACTIVE=production
-SERVER_PORT=8080
-BATCH_SERVER_PORT=8081
-
-# Security
-JWT_SECRET=your_jwt_secret_here
-CORS_ALLOWED_ORIGINS=https://yourdomain.com
-```
-
-### Production Docker Compose
-
-**`docker-compose.prod.yml`**:
-```yaml
-version: '3.8'
-
-services:
-  mysql:
-    image: mysql:8.0
-    environment:
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: filetransfer
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-    volumes:
-      - mysql_prod_data:/var/lib/mysql
-      - ./backups:/backup
-    restart: always
-    command: --default-authentication-plugin=mysql_native_password
-
-  file-transfer-batch:
-    build: ./file-transfer-batch
-    environment:
-      SPRING_PROFILES_ACTIVE: production
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
-    volumes:
-      - prod_transfer_data:/app/data
-      - prod_logs:/app/logs
-    restart: always
-    depends_on:
-      - mysql
-
-  file-transfer-web:
-    build: ./file-transfer-web
-    environment:
-      SPRING_PROFILES_ACTIVE: production
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
-    volumes:
-      - prod_logs:/app/logs
-    restart: always
-    depends_on:
-      - mysql
-
-  file-transfer-frontend:
-    build: 
-      context: ./file-transfer-frontend
-      args:
-        REACT_APP_API_URL: https://api.yourdomain.com
-    restart: always
-    depends_on:
-      - file-transfer-web
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/prod.conf:/etc/nginx/nginx.conf
-      - ./ssl:/etc/nginx/ssl
-    depends_on:
-      - file-transfer-frontend
-    restart: always
-
-volumes:
-  mysql_prod_data:
-  prod_transfer_data:
-  prod_logs:
-```
-
-### SSL Configuration
-
-**`nginx/prod.conf`**:
-```nginx
-events {
-    worker_connections 1024;
-}
-
-http {
-    upstream backend {
-        server file-transfer-web:8080;
-    }
-
-    server {
-        listen 80;
-        server_name yourdomain.com;
-        return 301 https://$server_name$request_uri;
-    }
-
-    server {
-        listen 443 ssl;
-        server_name yourdomain.com;
-
-        ssl_certificate /etc/nginx/ssl/cert.pem;
-        ssl_certificate_key /etc/nginx/ssl/key.pem;
-
-        location / {
-            proxy_pass http://file-transfer-frontend;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-        }
-
-        location /api/ {
-            proxy_pass http://backend;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-    }
-}
-```
-
-## Kubernetes Deployment
-
-### Prerequisites
-- Kubernetes cluster 1.20+
-- kubectl configured
-- Persistent Volume support
-
-### Namespace
-```yaml
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: file-transfer
-```
-
-### ConfigMap
+**`ConfigMap`**:
 ```yaml
 apiVersion: v1
 kind: ConfigMap
@@ -201,7 +50,7 @@ data:
   database-username: "filetransfer"
 ```
 
-### Secret
+**`Secret`**:
 ```yaml
 apiVersion: v1
 kind: Secret
@@ -311,82 +160,8 @@ spec:
           periodSeconds: 10
 ```
 
-## Cloud Deployment
-
-### AWS ECS with Fargate
-
-**`task-definition.json`**:
-```json
-{
-  "family": "file-transfer-system",
-  "networkMode": "awsvpc",
-  "requiresCompatibilities": ["FARGATE"],
-  "cpu": "1024",
-  "memory": "2048",
-  "executionRoleArn": "arn:aws:iam::account:role/ecsTaskExecutionRole",
-  "containerDefinitions": [
-    {
-      "name": "file-transfer-web",
-      "image": "your-ecr-repo/file-transfer-web:latest",
-      "portMappings": [
-        {
-          "containerPort": 8080,
-          "protocol": "tcp"
-        }
-      ],
-      "environment": [
-        {
-          "name": "SPRING_PROFILES_ACTIVE",
-          "value": "aws"
-        }
-      ],
-      "secrets": [
-        {
-          "name": "SPRING_DATASOURCE_PASSWORD",
-          "valueFrom": "arn:aws:secretsmanager:region:account:secret:db-password"
-        }
-      ],
-      "logConfiguration": {
-        "logDriver": "awslogs",
-        "options": {
-          "awslogs-group": "/ecs/file-transfer",
-          "awslogs-region": "us-east-1",
-          "awslogs-stream-prefix": "ecs"
-        }
-      }
-    }
-  ]
-}
-```
-
-### Azure Container Instances
-
-**`deploy-azure.sh`**:
-```bash
-#!/bin/bash
-
-# Create resource group
-az group create --name file-transfer-rg --location eastus
-
-# Create container registry
-az acr create --resource-group file-transfer-rg \
-              --name filetransferregistry \
-              --sku Basic
-
-# Build and push images
-az acr build --registry filetransferregistry \
-             --image file-transfer-web:latest \
-             ./file-transfer-web
-
-# Deploy container group
-az container create --resource-group file-transfer-rg \
-                    --name file-transfer-system \
-                    --image filetransferregistry.azurecr.io/file-transfer-web:latest \
-                    --cpu 1 \
-                    --memory 2 \
-                    --ports 8080 \
-                    --environment-variables SPRING_PROFILES_ACTIVE=azure
-```
+### Ingress and Service
+- Configure your ingress and service manifests as needed for your environment.
 
 ## Monitoring and Logging
 
@@ -406,56 +181,12 @@ scrape_configs:
 Import dashboard configuration from `monitoring/grafana-dashboard.json`
 
 ### Log Aggregation
-```yaml
-# Filebeat configuration
-filebeat.inputs:
-- type: container
-  paths:
-    - '/var/lib/docker/containers/*/*.log'
-  processors:
-    - add_docker_metadata: ~
-
-output.elasticsearch:
-  hosts: ["elasticsearch:9200"]
-```
+- Use your preferred log aggregation solution (e.g., EFK, Loki, etc.)
 
 ## Backup and Recovery
 
 ### Database Backup
-```bash
-#!/bin/bash
-# backup-db.sh
-
-CONTAINER_NAME="file-transfer-mysql"
-BACKUP_DIR="/backups"
-DATE=$(date +%Y%m%d_%H%M%S)
-
-docker exec $CONTAINER_NAME mysqldump \
-  -u root -p$MYSQL_ROOT_PASSWORD \
-  --all-databases > $BACKUP_DIR/backup_$DATE.sql
-
-# Compress backup
-gzip $BACKUP_DIR/backup_$DATE.sql
-
-# Keep only last 7 days of backups
-find $BACKUP_DIR -name "backup_*.sql.gz" -mtime +7 -delete
-```
-
-### Data Volume Backup
-```bash
-#!/bin/bash
-# backup-volumes.sh
-
-docker run --rm \
-  -v file-transfer_mysql_data:/data \
-  -v $(pwd)/backups:/backup \
-  alpine tar czf /backup/mysql_data_$(date +%Y%m%d).tar.gz -C /data .
-
-docker run --rm \
-  -v file-transfer_file_transfer_data:/data \
-  -v $(pwd)/backups:/backup \
-  alpine tar czf /backup/transfer_data_$(date +%Y%m%d).tar.gz -C /data .
-```
+- Use Kubernetes CronJobs or external backup tools to back up MySQL persistent volumes.
 
 ## Security Considerations
 
@@ -479,10 +210,11 @@ docker run --rm \
 ## Performance Tuning
 
 ### JVM Tuning
-```dockerfile
-# Add to Dockerfile
-ENV JAVA_OPTS="-Xms512m -Xmx2g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
-CMD ["java", $JAVA_OPTS, "-jar", "app.jar"]
+Add to your deployment manifest:
+```yaml
+env:
+  - name: JAVA_OPTS
+    value: "-Xms512m -Xmx2g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
 ```
 
 ### Database Tuning
@@ -509,49 +241,46 @@ spring:
 
 ### Common Issues
 
-1. **Container startup failures**
+1. **Pod startup failures**
    ```bash
    # Check logs
-   docker-compose logs [service-name]
+   kubectl logs <pod-name> -n file-transfer
    
    # Check resource usage
-   docker stats
+   kubectl top pods -n file-transfer
    ```
 
 2. **Database connection issues**
    ```bash
    # Test database connectivity
-   docker exec -it mysql mysql -u root -p
+   kubectl exec -it <mysql-pod> -n file-transfer -- mysql -u root -p
    
    # Check network
-   docker network ls
-   docker network inspect bridge
+   kubectl get svc -n file-transfer
+   kubectl get pods -o wide -n file-transfer
    ```
 
 3. **File permission issues**
    ```bash
    # Fix volume permissions
-   docker-compose exec file-transfer-batch chown -R app:app /app/data
+   kubectl exec -it <batch-pod> -n file-transfer -- chown -R app:app /app/data
    ```
 
 ### Health Checks
 ```bash
 # Check application health
-curl http://localhost:8080/actuator/health
-curl http://localhost:8081/actuator/health
+kubectl exec -it <web-pod> -n file-transfer -- curl http://localhost:8080/actuator/health
+kubectl exec -it <batch-pod> -n file-transfer -- curl http://localhost:8081/actuator/health
 
 # Check database
-docker exec mysql mysqladmin ping -u root -p
+kubectl exec -it <mysql-pod> -n file-transfer -- mysqladmin ping -u root -p
 ```
 
 ### Log Analysis
 ```bash
 # Follow application logs
-docker-compose logs -f file-transfer-web
+kubectl logs -f <web-pod> -n file-transfer
 
 # Search for errors
-docker-compose logs file-transfer-batch | grep ERROR
-
-# Check specific time range
-docker-compose logs --since="2023-12-07T10:00:00" file-transfer-web
+kubectl logs <batch-pod> -n file-transfer | grep ERROR
 ```
