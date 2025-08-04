@@ -2,17 +2,17 @@ spring:
   application:
     name: file-transfer-batch
   datasource:
-    url: jdbc:mysql://mysql:3306/filetransfer
-    username: filetransfer
-    password: filetransfer123
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:sqlserver://${AZURE_SQL_MI_SERVER:localhost}:${AZURE_SQL_MI_PORT:1433};database=${AZURE_SQL_MI_DATABASE:filetransfer};encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30;
+    username: ${AZURE_SQL_MI_USERNAME:filetransfer}
+    password: ${AZURE_SQL_MI_PASSWORD:Password123}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
   jpa:
     hibernate:
       ddl-auto: validate
+    database-platform: org.hibernate.dialect.SQLServerDialect
     show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQL8Dialect
         format_sql: true
   batch:
     job:

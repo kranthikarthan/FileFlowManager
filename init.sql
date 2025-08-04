@@ -1,58 +1,152 @@
--- Initialize database for file transfer application
-CREATE DATABASE IF NOT EXISTS filetransfer;
-USE filetransfer;
+-- Azure SQL MI compatible schema
 
--- Create file_transfer_records table
-CREATE TABLE IF NOT EXISTS file_transfer_records (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+CREATE DATABASE filetransfer;
+GO
+USE filetransfer;
+GO
+
+-- Tenants table
+CREATE TABLE tenants (
+    id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    tenant_id VARCHAR(100) NOT NULL UNIQUE,
+    tenant_name VARCHAR(255) NOT NULL,
+    timezone VARCHAR(50) NOT NULL DEFAULT 'UTC',
+    enabled BIT NOT NULL DEFAULT 1,
+    created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+    updated_at DATETIME2 NULL,
+    created_by VARCHAR(100),
+    updated_by VARCHAR(100)
+);
+GO
+
+-- File transfer records
+CREATE TABLE file_transfer_records (
+    id BIGINT IDENTITY(1,1) PRIMARY KEY,
     file_name VARCHAR(255) NOT NULL,
     service_type VARCHAR(100) NOT NULL,
+    sub_service_type VARCHAR(100) NULL,
+    tenant_id VARCHAR(100) NOT NULL,
     source_path VARCHAR(500) NOT NULL,
     target_path VARCHAR(500) NOT NULL,
-    status ENUM('PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED', 'CANCELLED', 'WAITING_FOR_END_MARKER') NOT NULL,
-    direction ENUM('INBOUND', 'OUTBOUND') NOT NULL,
-    error_message TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    processed_at TIMESTAMP NULL,
+    status VARCHAR(32) NOT NULL CHECK (status IN ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED', 'CANCELLED', 'WAITING_FOR_END_MARKER')),
+    direction VARCHAR(16) NOT NULL CHECK (direction IN ('INBOUND', 'OUTBOUND')),
+    error_message NVARCHAR(MAX),
+    created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+    processed_at DATETIME2 NULL,
     file_size BIGINT,
     checksum VARCHAR(255),
     batch_job_execution_id VARCHAR(255),
     INDEX idx_service_type (service_type),
+    INDEX idx_sub_service_type (sub_service_type),
+    INDEX idx_tenant_id (tenant_id),
     INDEX idx_status (status),
     INDEX idx_direction (direction),
-    INDEX idx_created_at (created_at)
+    INDEX idx_created_at (created_at),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id)
 );
+GO
 
--- Create service_configurations table
-CREATE TABLE IF NOT EXISTS service_configurations (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    service_name VARCHAR(100) NOT NULL UNIQUE,
+-- Service configurations
+CREATE TABLE service_configurations (
+    id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    service_name VARCHAR(100) NOT NULL,
+    sub_service_name VARCHAR(100) NULL,
+    tenant_id VARCHAR(100) NOT NULL,
     inbound_path VARCHAR(500) NOT NULL,
     outbound_path VARCHAR(500) NOT NULL,
     start_marker_prefix VARCHAR(50) NOT NULL DEFAULT 'SOT_',
     end_marker_prefix VARCHAR(50) NOT NULL DEFAULT 'EOT_',
     data_file_pattern VARCHAR(100) NOT NULL DEFAULT '*.*',
-    enabled BOOLEAN NOT NULL DEFAULT TRUE,
-    max_retries INTEGER NOT NULL DEFAULT 3,
-    poll_interval_seconds INTEGER NOT NULL DEFAULT 30,
+    enabled BIT NOT NULL DEFAULT 1,
+    max_retries INT NOT NULL DEFAULT 3,
+    poll_interval_seconds INT NOT NULL DEFAULT 30,
+    cut_off_time TIME NOT NULL DEFAULT '23:59:59',
     sot_file_validation_regex VARCHAR(1000),
     eot_file_validation_regex VARCHAR(1000),
     data_file_validation_regex VARCHAR(1000),
-    description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+    description NVARCHAR(MAX),
+    created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+    updated_at DATETIME2 NULL,
     created_by VARCHAR(100),
     updated_by VARCHAR(100),
+    CONSTRAINT uk_service_subservice_tenant UNIQUE (service_name, sub_service_name, tenant_id),
     INDEX idx_service_name (service_name),
-    INDEX idx_enabled (enabled)
+    INDEX idx_sub_service_name (sub_service_name),
+    INDEX idx_tenant_id (tenant_id),
+    INDEX idx_enabled (enabled),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id)
 );
+GO
 
--- Create sso_configurations table
-CREATE TABLE IF NOT EXISTS sso_configurations (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+-- Holidays
+CREATE TABLE holidays (
+    id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    tenant_id VARCHAR(100) NOT NULL,
+    holiday_date DATE NOT NULL,
+    holiday_name VARCHAR(255) NOT NULL,
+    description NVARCHAR(MAX),
+    created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+    updated_at DATETIME2 NULL,
+    created_by VARCHAR(100),
+    updated_by VARCHAR(100),
+    CONSTRAINT uk_tenant_holiday_date UNIQUE (tenant_id, holiday_date),
+    INDEX idx_tenant_id (tenant_id),
+    INDEX idx_holiday_date (holiday_date),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id)
+);
+GO
+
+-- Alert configurations
+CREATE TABLE alert_configurations (
+    id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    tenant_id VARCHAR(100) NOT NULL,
+    service_name VARCHAR(100) NULL,
+    sub_service_name VARCHAR(100) NULL,
+    alert_type VARCHAR(32) NOT NULL CHECK (alert_type IN ('CUT_OFF_MISSED', 'EOT_NOT_RECEIVED', 'PROCESSING_FAILED')),
+    alert_duration_minutes INT NOT NULL DEFAULT 60,
+    enabled BIT NOT NULL DEFAULT 1,
+    email_recipients NVARCHAR(MAX),
+    notification_channels NVARCHAR(MAX),
+    created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+    updated_at DATETIME2 NULL,
+    created_by VARCHAR(100),
+    updated_by VARCHAR(100),
+    INDEX idx_tenant_id (tenant_id),
+    INDEX idx_service_name (service_name),
+    INDEX idx_sub_service_name (sub_service_name),
+    INDEX idx_alert_type (alert_type),
+    INDEX idx_enabled (enabled),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id)
+);
+GO
+
+-- Alert history
+CREATE TABLE alert_history (
+    id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    tenant_id VARCHAR(100) NOT NULL,
+    service_name VARCHAR(100) NULL,
+    sub_service_name VARCHAR(100) NULL,
+    alert_type VARCHAR(32) NOT NULL CHECK (alert_type IN ('CUT_OFF_MISSED', 'EOT_NOT_RECEIVED', 'PROCESSING_FAILED')),
+    alert_message NVARCHAR(MAX) NOT NULL,
+    alert_level VARCHAR(16) NOT NULL CHECK (alert_level IN ('INFO', 'WARNING', 'ERROR', 'CRITICAL')) DEFAULT 'WARNING',
+    sent_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+    acknowledged_at DATETIME2 NULL,
+    acknowledged_by VARCHAR(100),
+    INDEX idx_tenant_id (tenant_id),
+    INDEX idx_service_name (service_name),
+    INDEX idx_sub_service_name (sub_service_name),
+    INDEX idx_alert_type (alert_type),
+    INDEX idx_sent_at (sent_at),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id)
+);
+GO
+
+-- SSO configurations
+CREATE TABLE sso_configurations (
+    id BIGINT IDENTITY(1,1) PRIMARY KEY,
     organization_id VARCHAR(100) NOT NULL UNIQUE,
     organization_name VARCHAR(255) NOT NULL,
-    provider ENUM('AZURE_AD', 'GOOGLE', 'OKTA', 'KEYCLOAK', 'CUSTOM_OIDC', 'SAML2') NOT NULL,
+    provider VARCHAR(32) NOT NULL CHECK (provider IN ('AZURE_AD', 'GOOGLE', 'OKTA', 'KEYCLOAK', 'CUSTOM_OIDC', 'SAML2')),
     client_id VARCHAR(255) NOT NULL,
     client_secret VARCHAR(255) NOT NULL,
     issuer_uri VARCHAR(500),
@@ -62,54 +156,22 @@ CREATE TABLE IF NOT EXISTS sso_configurations (
     jwk_set_uri VARCHAR(500),
     redirect_uri VARCHAR(2000),
     scopes VARCHAR(1000) DEFAULT 'openid,profile,email',
-    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    enabled BIT NOT NULL DEFAULT 1,
     logo_url VARCHAR(500),
-    description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+    description NVARCHAR(MAX),
+    created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+    updated_at DATETIME2 NULL,
     created_by VARCHAR(100),
-    updated_by VARCHAR(100),
-    INDEX idx_organization_id (organization_id),
-    INDEX idx_provider (provider),
-    INDEX idx_enabled (enabled)
+    updated_by VARCHAR(100)
 );
+GO
 
--- Create sso_attributes_mapping table
-CREATE TABLE IF NOT EXISTS sso_attributes_mapping (
+-- SSO attributes mapping
+CREATE TABLE sso_attributes_mapping (
     sso_config_id BIGINT NOT NULL,
     attribute_name VARCHAR(100) NOT NULL,
     mapped_field VARCHAR(100) NOT NULL,
     PRIMARY KEY (sso_config_id, attribute_name),
-    FOREIGN KEY (sso_config_id) REFERENCES sso_configurations(id) ON DELETE CASCADE
+    FOREIGN KEY (sso_config_id) REFERENCES sso_configurations(id)
 );
-
--- Insert sample service configurations
-INSERT INTO service_configurations 
-(service_name, inbound_path, outbound_path, start_marker_prefix, end_marker_prefix, data_file_pattern, description, created_by) 
-VALUES 
-('service1', '/app/data/inbound/service1', '/app/data/outbound/service1', 'SOT_', 'EOT_', '*.dat', 'Primary data service for DAT files', 'system'),
-('service2', '/app/data/inbound/service2', '/app/data/outbound/service2', 'START_', 'END_', '*.xml', 'XML configuration service', 'system');
-
--- Insert sample data for testing
-INSERT INTO file_transfer_records 
-(file_name, service_type, source_path, target_path, status, direction, file_size, created_at, processed_at) 
-VALUES 
-('test_data_001.dat', 'service1', '/app/data/inbound/service1/test_data_001.dat', '/app/data/outbound/service1/test_data_001.dat', 'COMPLETED', 'INBOUND', 1024, NOW() - INTERVAL 2 DAY, NOW() - INTERVAL 2 DAY),
-('test_data_002.dat', 'service1', '/app/data/inbound/service1/test_data_002.dat', '/app/data/outbound/service1/test_data_002.dat', 'COMPLETED', 'INBOUND', 2048, NOW() - INTERVAL 1 DAY, NOW() - INTERVAL 1 DAY),
-('test_config.xml', 'service2', '/app/data/inbound/service2/test_config.xml', '/app/data/outbound/service2/test_config.xml', 'PENDING', 'INBOUND', 512, NOW() - INTERVAL 4 HOUR, NULL),
-('failed_transfer.dat', 'service1', '/app/data/inbound/service1/failed_transfer.dat', '/app/data/outbound/service1/failed_transfer.dat', 'FAILED', 'INBOUND', 4096, NOW() - INTERVAL 6 HOUR, NOW() - INTERVAL 6 HOUR),
-('large_file.xml', 'service2', '/app/data/inbound/service2/large_file.xml', '/app/data/outbound/service2/large_file.xml', 'IN_PROGRESS', 'INBOUND', 1048576, NOW() - INTERVAL 1 HOUR, NULL);
-
--- Insert sample SSO configuration
-INSERT INTO sso_configurations 
-(organization_id, organization_name, provider, client_id, client_secret, issuer_uri, scopes, description, created_by)
-VALUES 
-('demo-org', 'Demo Organization', 'AZURE_AD', 'demo-client-id', 'demo-client-secret', 'https://login.microsoftonline.com/demo-tenant-id/v2.0', 'openid,profile,email', 'Demo Azure AD configuration', 'system');
-
--- Insert sample attribute mapping
-INSERT INTO sso_attributes_mapping (sso_config_id, attribute_name, mapped_field)
-VALUES 
-(1, 'email', 'email'),
-(1, 'name', 'name'),
-(1, 'firstName', 'given_name'),
-(1, 'lastName', 'family_name');
+GO

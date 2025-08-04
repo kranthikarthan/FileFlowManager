@@ -13,9 +13,16 @@ public class ServiceConfiguration {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false)
     @NotBlank(message = "Service name is required")
     private String serviceName;
+    
+    @Column
+    private String subServiceName;
+    
+    @Column(nullable = false)
+    @NotBlank(message = "Tenant ID is required")
+    private String tenantId;
     
     @Column(nullable = false)
     @NotBlank(message = "Inbound path is required")
@@ -43,6 +50,9 @@ public class ServiceConfiguration {
     
     @Column(nullable = false)
     private Integer pollIntervalSeconds = 30;
+    
+    @Column(nullable = false)
+    private String cutOffTime = "23:59:59";
     
     // Validation regex patterns
     @Column(length = 1000)
@@ -74,9 +84,11 @@ public class ServiceConfiguration {
         this.createdAt = LocalDateTime.now();
     }
     
-    public ServiceConfiguration(String serviceName, String inboundPath, String outboundPath) {
+    public ServiceConfiguration(String serviceName, String subServiceName, String tenantId, String inboundPath, String outboundPath) {
         this();
         this.serviceName = serviceName;
+        this.subServiceName = subServiceName;
+        this.tenantId = tenantId;
         this.inboundPath = inboundPath;
         this.outboundPath = outboundPath;
     }
@@ -92,6 +104,12 @@ public class ServiceConfiguration {
     
     public String getServiceName() { return serviceName; }
     public void setServiceName(String serviceName) { this.serviceName = serviceName; }
+    
+    public String getSubServiceName() { return subServiceName; }
+    public void setSubServiceName(String subServiceName) { this.subServiceName = subServiceName; }
+    
+    public String getTenantId() { return tenantId; }
+    public void setTenantId(String tenantId) { this.tenantId = tenantId; }
     
     public String getInboundPath() { return inboundPath; }
     public void setInboundPath(String inboundPath) { this.inboundPath = inboundPath; }
@@ -116,6 +134,9 @@ public class ServiceConfiguration {
     
     public Integer getPollIntervalSeconds() { return pollIntervalSeconds; }
     public void setPollIntervalSeconds(Integer pollIntervalSeconds) { this.pollIntervalSeconds = pollIntervalSeconds; }
+    
+    public String getCutOffTime() { return cutOffTime; }
+    public void setCutOffTime(String cutOffTime) { this.cutOffTime = cutOffTime; }
     
     public String getSotFileValidationRegex() { return sotFileValidationRegex; }
     public void setSotFileValidationRegex(String sotFileValidationRegex) { this.sotFileValidationRegex = sotFileValidationRegex; }

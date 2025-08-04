@@ -14,27 +14,36 @@ import java.util.List;
 @Repository
 public interface FileTransferRecordRepository extends JpaRepository<FileTransferRecord, Long> {
     
-    List<FileTransferRecord> findByServiceType(String serviceType);
+    List<FileTransferRecord> findByTenantId(String tenantId);
     
-    List<FileTransferRecord> findByStatus(TransferStatus status);
+    List<FileTransferRecord> findByTenantIdAndServiceType(String tenantId, String serviceType);
     
-    List<FileTransferRecord> findByDirection(TransferDirection direction);
+    List<FileTransferRecord> findByTenantIdAndServiceTypeAndSubServiceType(String tenantId, String serviceType, String subServiceType);
     
-    List<FileTransferRecord> findByServiceTypeAndStatus(String serviceType, TransferStatus status);
+    List<FileTransferRecord> findByTenantIdAndStatus(String tenantId, TransferStatus status);
     
-    List<FileTransferRecord> findByServiceTypeAndDirection(String serviceType, TransferDirection direction);
+    List<FileTransferRecord> findByTenantIdAndDirection(String tenantId, TransferDirection direction);
     
-    @Query("SELECT f FROM FileTransferRecord f WHERE f.createdAt BETWEEN :startDate AND :endDate")
-    List<FileTransferRecord> findByDateRange(@Param("startDate") LocalDateTime startDate, 
-                                           @Param("endDate") LocalDateTime endDate);
+    List<FileTransferRecord> findByTenantIdAndServiceTypeAndStatus(String tenantId, String serviceType, TransferStatus status);
     
-    @Query("SELECT f FROM FileTransferRecord f WHERE f.serviceType = :serviceType AND f.createdAt BETWEEN :startDate AND :endDate")
-    List<FileTransferRecord> findByServiceTypeAndDateRange(@Param("serviceType") String serviceType,
-                                                         @Param("startDate") LocalDateTime startDate,
-                                                         @Param("endDate") LocalDateTime endDate);
+    List<FileTransferRecord> findByTenantIdAndServiceTypeAndDirection(String tenantId, String serviceType, TransferDirection direction);
     
-    List<FileTransferRecord> findByFileName(String fileName);
+    @Query("SELECT f FROM FileTransferRecord f WHERE f.tenantId = :tenantId AND f.createdAt BETWEEN :startDate AND :endDate")
+    List<FileTransferRecord> findByTenantIdAndDateRange(@Param("tenantId") String tenantId,
+                                                       @Param("startDate") LocalDateTime startDate, 
+                                                       @Param("endDate") LocalDateTime endDate);
     
-    @Query("SELECT DISTINCT f.serviceType FROM FileTransferRecord f")
-    List<String> findDistinctServiceTypes();
+    @Query("SELECT f FROM FileTransferRecord f WHERE f.tenantId = :tenantId AND f.serviceType = :serviceType AND f.createdAt BETWEEN :startDate AND :endDate")
+    List<FileTransferRecord> findByTenantIdAndServiceTypeAndDateRange(@Param("tenantId") String tenantId,
+                                                                    @Param("serviceType") String serviceType,
+                                                                    @Param("startDate") LocalDateTime startDate,
+                                                                    @Param("endDate") LocalDateTime endDate);
+    
+    List<FileTransferRecord> findByTenantIdAndFileName(String tenantId, String fileName);
+    
+    @Query("SELECT DISTINCT f.serviceType FROM FileTransferRecord f WHERE f.tenantId = :tenantId")
+    List<String> findDistinctServiceTypesForTenant(@Param("tenantId") String tenantId);
+    
+    @Query("SELECT DISTINCT f.subServiceType FROM FileTransferRecord f WHERE f.tenantId = :tenantId AND f.serviceType = :serviceType AND f.subServiceType IS NOT NULL")
+    List<String> findDistinctSubServiceTypesForService(@Param("tenantId") String tenantId, @Param("serviceType") String serviceType);
 }

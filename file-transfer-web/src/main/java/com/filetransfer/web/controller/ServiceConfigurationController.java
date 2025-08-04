@@ -19,14 +19,28 @@ public class ServiceConfigurationController {
     @Autowired
     private ServiceConfigurationService serviceConfigService;
     
-    @GetMapping
-    public ResponseEntity<List<ServiceConfiguration>> getAllServices() {
-        return ResponseEntity.ok(serviceConfigService.getAllServices());
+    @GetMapping("/tenant/{tenantId}")
+    public ResponseEntity<List<ServiceConfiguration>> getServicesForTenant(@PathVariable String tenantId) {
+        return ResponseEntity.ok(serviceConfigService.getServicesForTenant(tenantId));
     }
     
-    @GetMapping("/enabled")
-    public ResponseEntity<List<ServiceConfiguration>> getEnabledServices() {
-        return ResponseEntity.ok(serviceConfigService.getEnabledServices());
+    @GetMapping("/tenant/{tenantId}/enabled")
+    public ResponseEntity<List<ServiceConfiguration>> getEnabledServicesForTenant(@PathVariable String tenantId) {
+        return ResponseEntity.ok(serviceConfigService.getEnabledServicesForTenant(tenantId));
+    }
+    
+    @GetMapping("/tenant/{tenantId}/service/{serviceName}")
+    public ResponseEntity<List<ServiceConfiguration>> getServicesByNameForTenant(
+            @PathVariable String tenantId, 
+            @PathVariable String serviceName) {
+        return ResponseEntity.ok(serviceConfigService.getServicesByNameForTenant(tenantId, serviceName));
+    }
+    
+    @GetMapping("/tenant/{tenantId}/service/{serviceName}/subservices")
+    public ResponseEntity<List<String>> getSubServicesForService(
+            @PathVariable String tenantId, 
+            @PathVariable String serviceName) {
+        return ResponseEntity.ok(serviceConfigService.getSubServicesForService(tenantId, serviceName));
     }
     
     @GetMapping("/{id}")
@@ -108,15 +122,16 @@ public class ServiceConfigurationController {
         }
     }
     
-    @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getServiceStats() {
-        long enabledCount = serviceConfigService.getEnabledServicesCount();
-        long totalCount = serviceConfigService.getAllServices().size();
+    @GetMapping("/tenant/{tenantId}/stats")
+    public ResponseEntity<Map<String, Object>> getServiceStatsForTenant(@PathVariable String tenantId) {
+        long enabledCount = serviceConfigService.getEnabledServicesCountForTenant(tenantId);
+        long totalCount = serviceConfigService.getServicesForTenant(tenantId).size();
         
         return ResponseEntity.ok(Map.of(
             "totalServices", totalCount,
             "enabledServices", enabledCount,
-            "disabledServices", totalCount - enabledCount
+            "disabledServices", totalCount - enabledCount,
+            "tenantId", tenantId
         ));
     }
 }

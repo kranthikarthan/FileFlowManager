@@ -18,12 +18,20 @@ public class ServiceConfigurationService {
     @Autowired
     private ServiceConfigurationRepository serviceConfigRepository;
     
-    public List<ServiceConfiguration> getAllServices() {
-        return serviceConfigRepository.findAll();
+    public List<ServiceConfiguration> getServicesForTenant(String tenantId) {
+        return serviceConfigRepository.findByTenantId(tenantId);
     }
     
-    public List<ServiceConfiguration> getEnabledServices() {
-        return serviceConfigRepository.findAllEnabledServices();
+    public List<ServiceConfiguration> getEnabledServicesForTenant(String tenantId) {
+        return serviceConfigRepository.findAllEnabledServicesForTenant(tenantId);
+    }
+    
+    public List<ServiceConfiguration> getServicesByNameForTenant(String tenantId, String serviceName) {
+        return serviceConfigRepository.findByTenantIdAndServiceName(tenantId, serviceName);
+    }
+    
+    public List<String> getSubServicesForService(String tenantId, String serviceName) {
+        return serviceConfigRepository.findSubServicesForService(tenantId, serviceName);
     }
     
     public Optional<ServiceConfiguration> getServiceById(Long id) {
@@ -37,8 +45,11 @@ public class ServiceConfigurationService {
     public ServiceConfiguration createService(ServiceConfiguration serviceConfig) {
         validateServiceConfiguration(serviceConfig);
         
-        if (serviceConfigRepository.existsByServiceName(serviceConfig.getServiceName())) {
-            throw new RuntimeException("Service with name '" + serviceConfig.getServiceName() + "' already exists");
+        if (serviceConfigRepository.existsByServiceNameAndSubServiceNameAndTenantId(
+                serviceConfig.getServiceName(), serviceConfig.getSubServiceName(), serviceConfig.getTenantId())) {
+            throw new RuntimeException("Service with name '" + serviceConfig.getServiceName() + 
+                                     "' and sub-service '" + serviceConfig.getSubServiceName() + 
+                                     "' already exists for tenant '" + serviceConfig.getTenantId() + "'");
         }
         
         return serviceConfigRepository.save(serviceConfig);
@@ -48,10 +59,15 @@ public class ServiceConfigurationService {
         ServiceConfiguration existingService = serviceConfigRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Service not found with id: " + id));
         
-        // Check if name is being changed and if new name already exists
-        if (!existingService.getServiceName().equals(serviceConfig.getServiceName())) {
-            if (serviceConfigRepository.existsByServiceName(serviceConfig.getServiceName())) {
-                throw new RuntimeException("Service with name '" + serviceConfig.getServiceName() + "' already exists");
+        // Check if service/sub-service combination is being changed and if new combination already exists
+        if (!existingService.getServiceName().equals(serviceConfig.getServiceName()) || 
+            !java.util.Objects.equals(existingService.getSubServiceName(), serviceConfig.getSubServiceName()) ||
+            !existingService.getTenantId().equals(serviceConfig.getTenantId())) {
+            if (serviceConfigRepository.existsByServiceNameAndSubServiceNameAndTenantId(
+                    serviceConfig.getServiceName(), serviceConfig.getSubServiceName(), serviceConfig.getTenantId())) {
+                throw new RuntimeException("Service with name '" + serviceConfig.getServiceName() + 
+                                         "' and sub-service '" + serviceConfig.getSubServiceName() + 
+                                         "' already exists for tenant '" + serviceConfig.getTenantId() + "'");
             }
         }
         
@@ -59,11 +75,14 @@ public class ServiceConfigurationService {
         
         // Update fields
         existingService.setServiceName(serviceConfig.getServiceName());
+        existingService.setSubServiceName(serviceConfig.getSubServiceName());
+        existingService.setTenantId(serviceConfig.getTenantId());
         existingService.setInboundPath(serviceConfig.getInboundPath());
         existingService.setOutboundPath(serviceConfig.getOutboundPath());
         existingService.setStartMarkerPrefix(serviceConfig.getStartMarkerPrefix());
         existingService.setEndMarkerPrefix(serviceConfig.getEndMarkerPrefix());
         existingService.setDataFilePattern(serviceConfig.getDataFilePattern());
+        existingService.setCutOffTime(serviceConfig.getCutOffTime());
         existingService.setEnabled(serviceConfig.getEnabled());
         existingService.setMaxRetries(serviceConfig.getMaxRetries());
         existingService.setPollIntervalSeconds(serviceConfig.getPollIntervalSeconds());
@@ -163,7 +182,7 @@ public class ServiceConfigurationService {
         }
     }
     
-    public long getEnabledServicesCount() {
-        return serviceConfigRepository.countEnabledServices();
+    public long getEnabledServicesCountForTenant(String tenantId) {
+        return serviceConfigRepository.countEnabledServicesForTenant(tenantId);
     }
 }
