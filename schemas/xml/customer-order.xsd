@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://example.com/fileflow/customer-order"
+           xmlns:co="http://example.com/fileflow/customer-order"
+           elementFormDefault="qualified">
+
+  <!-- Root element for customer order -->
+  <xs:element name="customerOrder" type="co:CustomerOrderType"/>
+
+  <!-- Customer Order Type -->
+  <xs:complexType name="CustomerOrderType">
+    <xs:sequence>
+      <xs:element name="header" type="co:HeaderType"/>
+      <xs:element name="customer" type="co:CustomerType"/>
+      <xs:element name="orderItems" type="co:OrderItemsType"/>
+      <xs:element name="totals" type="co:TotalsType"/>
+    </xs:sequence>
+    <xs:attribute name="orderId" type="xs:string" use="required"/>
+    <xs:attribute name="orderDate" type="xs:date" use="required"/>
+  </xs:complexType>
+
+  <!-- Header Type -->
+  <xs:complexType name="HeaderType">
+    <xs:sequence>
+      <xs:element name="batchId" type="xs:string"/>
+      <xs:element name="transmissionDate" type="xs:dateTime"/>
+      <xs:element name="sourceSystem" type="xs:string"/>
+      <xs:element name="recordCount" type="xs:int"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Customer Type -->
+  <xs:complexType name="CustomerType">
+    <xs:sequence>
+      <xs:element name="customerId" type="xs:string"/>
+      <xs:element name="name" type="xs:string"/>
+      <xs:element name="email" type="co:EmailType"/>
+      <xs:element name="address" type="co:AddressType"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Address Type -->
+  <xs:complexType name="AddressType">
+    <xs:sequence>
+      <xs:element name="street" type="xs:string"/>
+      <xs:element name="city" type="xs:string"/>
+      <xs:element name="state" type="xs:string"/>
+      <xs:element name="zipCode" type="co:ZipCodeType"/>
+      <xs:element name="country" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Order Items Type -->
+  <xs:complexType name="OrderItemsType">
+    <xs:sequence>
+      <xs:element name="item" type="co:ItemType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Item Type -->
+  <xs:complexType name="ItemType">
+    <xs:sequence>
+      <xs:element name="itemId" type="xs:string"/>
+      <xs:element name="description" type="xs:string"/>
+      <xs:element name="quantity" type="xs:int"/>
+      <xs:element name="unitPrice" type="co:MoneyType"/>
+      <xs:element name="totalPrice" type="co:MoneyType"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Totals Type -->
+  <xs:complexType name="TotalsType">
+    <xs:sequence>
+      <xs:element name="subtotal" type="co:MoneyType"/>
+      <xs:element name="tax" type="co:MoneyType"/>
+      <xs:element name="shipping" type="co:MoneyType"/>
+      <xs:element name="total" type="co:MoneyType"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Simple Types -->
+  <xs:simpleType name="EmailType">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[^@]+@[^@]+\.[^@]+"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ZipCodeType">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="\d{5}(-\d{4})?"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="MoneyType">
+    <xs:restriction base="xs:decimal">
+      <xs:fractionDigits value="2"/>
+      <xs:minInclusive value="0"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+</xs:schema>

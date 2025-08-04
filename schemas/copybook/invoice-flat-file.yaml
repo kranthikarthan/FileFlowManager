@@ -1,0 +1,233 @@
+# Flat File Schema for Invoice Processing
+# Format: Fixed-width flat file with header, data records, and trailer
+
+name: "Invoice Flat File Schema"
+description: "Schema for validating invoice flat files with fixed-width format"
+version: "1.0"
+minLines: 3  # At least header + 1 data record + trailer
+
+# Header record (Line 1)
+header:
+  length: 100
+  pattern: "^HDR.*"
+  fields:
+    - name: "recordType"
+      start: 0
+      length: 3
+      type: "string"
+      required: true
+      pattern: "HDR"
+      description: "Record type identifier"
+    
+    - name: "batchId"
+      start: 3
+      length: 20
+      type: "string"
+      required: true
+      pattern: "^BATCH_[0-9]{8}_[0-9]{6}$"
+      description: "Batch identifier"
+    
+    - name: "processingDate"
+      start: 23
+      length: 8
+      type: "date"
+      required: true
+      pattern: "^[0-9]{8}$"
+      description: "Processing date (YYYYMMDD)"
+    
+    - name: "totalRecords"
+      start: 31
+      length: 10
+      type: "integer"
+      required: true
+      description: "Total number of data records"
+    
+    - name: "totalAmount"
+      start: 41
+      length: 15
+      type: "decimal"
+      required: true
+      description: "Total invoice amount (with 2 decimal places, no decimal point)"
+    
+    - name: "fileSequence"
+      start: 56
+      length: 6
+      type: "integer"
+      required: true
+      description: "File sequence number"
+    
+    - name: "filler"
+      start: 62
+      length: 38
+      type: "string"
+      required: false
+      description: "Reserved space"
+
+# Data records (Lines 2 to N-1)
+data:
+  length: 200
+  pattern: "^DTL.*"
+  fields:
+    - name: "recordType"
+      start: 0
+      length: 3
+      type: "string"
+      required: true
+      pattern: "DTL"
+      description: "Record type identifier"
+    
+    - name: "invoiceNumber"
+      start: 3
+      length: 20
+      type: "string"
+      required: true
+      pattern: "^INV[0-9]{12}$"
+      description: "Invoice number"
+    
+    - name: "customerId"
+      start: 23
+      length: 15
+      type: "string"
+      required: true
+      pattern: "^CUST[0-9]{10}$"
+      description: "Customer identifier"
+    
+    - name: "customerName"
+      start: 38
+      length: 50
+      type: "string"
+      required: true
+      description: "Customer name"
+    
+    - name: "invoiceDate"
+      start: 88
+      length: 8
+      type: "date"
+      required: true
+      pattern: "^[0-9]{8}$"
+      description: "Invoice date (YYYYMMDD)"
+    
+    - name: "dueDate"
+      start: 96
+      length: 8
+      type: "date"
+      required: true
+      pattern: "^[0-9]{8}$"
+      description: "Due date (YYYYMMDD)"
+    
+    - name: "invoiceAmount"
+      start: 104
+      length: 15
+      type: "decimal"
+      required: true
+      description: "Invoice amount (with 2 decimal places, no decimal point)"
+    
+    - name: "taxAmount"
+      start: 119
+      length: 15
+      type: "decimal"
+      required: true
+      description: "Tax amount (with 2 decimal places, no decimal point)"
+    
+    - name: "currency"
+      start: 134
+      length: 3
+      type: "string"
+      required: true
+      pattern: "^(USD|EUR|GBP|CAD|AUD)$"
+      description: "Currency code"
+    
+    - name: "paymentTerms"
+      start: 137
+      length: 10
+      type: "string"
+      required: false
+      description: "Payment terms"
+    
+    - name: "status"
+      start: 147
+      length: 10
+      type: "string"
+      required: true
+      pattern: "^(PENDING|SENT|PAID|OVERDUE|CANCELLED)$"
+      description: "Invoice status"
+    
+    - name: "description"
+      start: 157
+      length: 40
+      type: "string"
+      required: false
+      description: "Invoice description"
+    
+    - name: "filler"
+      start: 197
+      length: 3
+      type: "string"
+      required: false
+      description: "Reserved space"
+
+# Trailer record (Last line)
+trailer:
+  length: 80
+  pattern: "^TRL.*"
+  fields:
+    - name: "recordType"
+      start: 0
+      length: 3
+      type: "string"
+      required: true
+      pattern: "TRL"
+      description: "Record type identifier"
+    
+    - name: "recordCount"
+      start: 3
+      length: 10
+      type: "integer"
+      required: true
+      description: "Count of data records"
+    
+    - name: "totalAmount"
+      start: 13
+      length: 15
+      type: "decimal"
+      required: true
+      description: "Total amount of all invoices"
+    
+    - name: "totalTax"
+      start: 28
+      length: 15
+      type: "decimal"
+      required: true
+      description: "Total tax amount"
+    
+    - name: "checksum"
+      start: 43
+      length: 32
+      type: "string"
+      required: false
+      pattern: "^[A-F0-9]{32}$"
+      description: "MD5 checksum of data records"
+    
+    - name: "filler"
+      start: 75
+      length: 5
+      type: "string"
+      required: false
+      description: "Reserved space"
+
+# Business validation rules
+businessRules:
+  - name: "Invoice amount must be positive"
+    description: "Invoice amount should be greater than 0"
+    field: "invoiceAmount"
+    rule: "value > 0"
+  
+  - name: "Due date after invoice date"
+    description: "Due date must be on or after invoice date"
+    fields: ["invoiceDate", "dueDate"]
+    rule: "dueDate >= invoiceDate"
+  
+  - name: "Tax calculation"
+    description: "Tax amount should be consistent with invoice amount"
+    fields: ["invoiceAmount", "taxAmount"]
+    rule: "taxAmount >= 0 AND taxAmount <= invoiceAmount * 0.5"

@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fileflow-web-api
+  namespace: fileflow
+  labels:
+    app: fileflow-web-api
+    version: v1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: fileflow-web-api
+  template:
+    metadata:
+      labels:
+        app: fileflow-web-api
+        version: v1
+    spec:
+      containers:
+      - name: web-api
+        image: fileflowregistry.azurecr.io/fileflow-web-api:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "kubernetes"
+        envFrom:
+        - configMapRef:
+            name: fileflow-config
+        - secretRef:
+            name: fileflow-secrets
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/actuator/health
+            port: 8080
+          initialDelaySeconds: 90
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/actuator/health/readiness
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+      imagePullSecrets:
+      - name: acr-secret
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fileflow-web-api
+  namespace: fileflow
+  labels:
+    app: fileflow-web-api
+spec:
+  selector:
+    app: fileflow-web-api
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP

@@ -1,0 +1,178 @@
+version: '3.8'
+
+services:
+  # SQL Server for database
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: fileflow-sqlserver
+    environment:
+      ACCEPT_EULA: Y
+      SA_PASSWORD: Password123!
+      MSSQL_PID: Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P Password123! -Q 'SELECT 1'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Azurite for Azure Storage emulation
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: fileflow-azurite
+    command: "azurite --blobHost 0.0.0.0 --blobPort 10000 --queueHost 0.0.0.0 --queuePort 10001 --tableHost 0.0.0.0 --tablePort 10002 --location /data --debug /data/debug.log"
+    ports:
+      - "10000:10000"  # Blob service
+      - "10001:10001"  # Queue service  
+      - "10002:10002"  # Table service
+    volumes:
+      - azurite_data:/data
+
+  # Batch Service
+  batch-service:
+    build:
+      context: ./backend/batch-service
+      dockerfile: Dockerfile
+    container_name: fileflow-batch-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: sqlserver
+      DB_PORT: 1433
+      DB_NAME: fileflow
+      DB_USERNAME: sa
+      DB_PASSWORD: Password123!
+      AZURE_STORAGE_CONNECTION_STRING: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
+      AZURE_STORAGE_CONTAINER: fileflow-staging
+      SCHEMA_BASE_PATH: /app/schemas
+      TEMP_DIRECTORY: /tmp/fileflow
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./schemas:/app/schemas:ro
+      - ./input-files:/input-files
+      - ./output-files:/output-files
+      - batch_temp:/tmp/fileflow
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      azurite:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/batch-api/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Web API Service
+  web-api-service:
+    build:
+      context: ./backend/web-api-service
+      dockerfile: Dockerfile
+    container_name: fileflow-web-api
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: sqlserver
+      DB_PORT: 1433
+      DB_NAME: fileflow
+      DB_USERNAME: sa
+      DB_PASSWORD: Password123!
+      AZURE_STORAGE_CONNECTION_STRING: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
+      AZURE_STORAGE_CONTAINER: fileflow-schemas
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:3001
+    ports:
+      - "8080:8080"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      azurite:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Frontend (React)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: fileflow-frontend
+    environment:
+      REACT_APP_API_BASE_URL: http://localhost:8080/api
+      REACT_APP_CLIENT_ID: your-azure-ad-client-id
+      REACT_APP_AUTHORITY: https://login.microsoftonline.com/your-tenant-id
+      REACT_APP_REDIRECT_URI: http://localhost:3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      - web-api-service
+    stdin_open: true
+    tty: true
+
+  # Prometheus for monitoring (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: fileflow-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infrastructure/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - batch-service
+      - web-api-service
+    profiles:
+      - monitoring
+
+  # Grafana for monitoring dashboards (optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: fileflow-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infrastructure/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./infrastructure/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+    depends_on:
+      - prometheus
+    profiles:
+      - monitoring
+
+volumes:
+  sqlserver_data:
+    driver: local
+  azurite_data:
+    driver: local
+  batch_temp:
+    driver: local
+  frontend_node_modules:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  default:
+    name: fileflow-network

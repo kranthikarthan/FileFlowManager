@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fileflow-batch-service
+  namespace: fileflow
+  labels:
+    app: fileflow-batch-service
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fileflow-batch-service
+  template:
+    metadata:
+      labels:
+        app: fileflow-batch-service
+        version: v1
+    spec:
+      containers:
+      - name: batch-service
+        image: fileflowregistry.azurecr.io/fileflow-batch-service:latest
+        ports:
+        - containerPort: 8081
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "kubernetes"
+        envFrom:
+        - configMapRef:
+            name: fileflow-config
+        - secretRef:
+            name: fileflow-secrets
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /batch-api/actuator/health
+            port: 8081
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /batch-api/actuator/health/readiness
+            port: 8081
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+        volumeMounts:
+        - name: temp-storage
+          mountPath: /tmp/fileflow
+        - name: schema-storage
+          mountPath: /app/schemas
+      volumes:
+      - name: temp-storage
+        emptyDir: {}
+      - name: schema-storage
+        persistentVolumeClaim:
+          claimName: fileflow-schema-pvc
+      imagePullSecrets:
+      - name: acr-secret
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fileflow-batch-service
+  namespace: fileflow
+  labels:
+    app: fileflow-batch-service
+spec:
+  selector:
+    app: fileflow-batch-service
+  ports:
+  - name: http
+    port: 8081
+    targetPort: 8081
+  type: ClusterIP

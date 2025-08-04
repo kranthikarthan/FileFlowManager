@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fileflow-ingress
+  namespace: fileflow
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+spec:
+  tls:
+  - hosts:
+    - fileflow.yourdomain.com
+    - fileflow-api.yourdomain.com
+    secretName: fileflow-tls
+  rules:
+  - host: fileflow.yourdomain.com
+    http:
+      paths:
+      - path: /()(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: fileflow-frontend
+            port:
+              number: 80
+  - host: fileflow-api.yourdomain.com
+    http:
+      paths:
+      - path: /api(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: fileflow-web-api
+            port:
+              number: 8080
+      - path: /batch-api(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: fileflow-batch-service
+            port:
+              number: 8081
