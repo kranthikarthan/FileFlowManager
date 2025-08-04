@@ -6,6 +6,9 @@ import TransferWithinAStationIcon from '@mui/icons-material/TransferWithinAStati
 import SettingsIcon from '@mui/icons-material/Settings';
 import BuildIcon from '@mui/icons-material/Build';
 import SecurityIcon from '@mui/icons-material/Security';
+import BusinessIcon from '@mui/icons-material/Business';
+import EventIcon from '@mui/icons-material/Event';
+import NotificationsIcon from '@mui/icons-material/Notifications';
 
 export const Navigation = () => {
   const navigate = useNavigate();
@@ -47,6 +50,24 @@ export const Navigation = () => {
           iconPosition="start" 
           label="Service Management" 
           value="/services" 
+        />
+        <Tab 
+          icon={<BusinessIcon />} 
+          iconPosition="start" 
+          label="Tenants" 
+          value="/tenants" 
+        />
+        <Tab 
+          icon={<EventIcon />} 
+          iconPosition="start" 
+          label="Holidays" 
+          value="/holidays" 
+        />
+        <Tab 
+          icon={<NotificationsIcon />} 
+          iconPosition="start" 
+          label="Alerts" 
+          value="/alerts" 
         />
       </Tabs>
     </Box>

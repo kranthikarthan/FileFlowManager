@@ -13,13 +13,26 @@ public interface ServiceConfigurationRepository extends JpaRepository<ServiceCon
     
     Optional<ServiceConfiguration> findByServiceName(String serviceName);
     
-    List<ServiceConfiguration> findByEnabled(Boolean enabled);
+    List<ServiceConfiguration> findByTenantId(String tenantId);
     
-    @Query("SELECT s FROM ServiceConfiguration s WHERE s.enabled = true ORDER BY s.serviceName")
-    List<ServiceConfiguration> findAllEnabledServices();
+    List<ServiceConfiguration> findByTenantIdAndEnabled(String tenantId, Boolean enabled);
     
-    @Query("SELECT COUNT(s) FROM ServiceConfiguration s WHERE s.enabled = true")
-    long countEnabledServices();
+    List<ServiceConfiguration> findByTenantIdAndServiceName(String tenantId, String serviceName);
     
-    boolean existsByServiceName(String serviceName);
+    List<ServiceConfiguration> findByTenantIdAndServiceNameAndSubServiceName(String tenantId, String serviceName, String subServiceName);
+    
+    @Query("SELECT s FROM ServiceConfiguration s WHERE s.tenantId = :tenantId AND s.enabled = true ORDER BY s.serviceName, s.subServiceName")
+    List<ServiceConfiguration> findAllEnabledServicesForTenant(@org.springframework.data.repository.query.Param("tenantId") String tenantId);
+    
+    @Query("SELECT COUNT(s) FROM ServiceConfiguration s WHERE s.tenantId = :tenantId AND s.enabled = true")
+    long countEnabledServicesForTenant(@org.springframework.data.repository.query.Param("tenantId") String tenantId);
+    
+    @Query("SELECT DISTINCT s.serviceName FROM ServiceConfiguration s WHERE s.tenantId = :tenantId AND s.enabled = true")
+    List<String> findDistinctServiceNamesForTenant(@org.springframework.data.repository.query.Param("tenantId") String tenantId);
+    
+    @Query("SELECT DISTINCT s.subServiceName FROM ServiceConfiguration s WHERE s.tenantId = :tenantId AND s.serviceName = :serviceName AND s.enabled = true AND s.subServiceName IS NOT NULL")
+    List<String> findSubServicesForService(@org.springframework.data.repository.query.Param("tenantId") String tenantId, 
+                                          @org.springframework.data.repository.query.Param("serviceName") String serviceName);
+    
+    boolean existsByServiceNameAndSubServiceNameAndTenantId(String serviceName, String subServiceName, String tenantId);
 }

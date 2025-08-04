@@ -9,6 +9,9 @@ import { ServiceConfiguration } from './components/ServiceConfiguration';
 import { SsoConfiguration } from './components/SsoConfiguration';
 import { Dashboard } from './components/Dashboard';
 import { Login } from './components/Login';
+import TenantManagement from './components/TenantManagement';
+import HolidayManagement from './components/HolidayManagement';
+import AlertManagement from './components/AlertManagement';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -100,6 +103,9 @@ function App() {
           <Route path="/service-config" element={<ServiceConfiguration />} />
           <Route path="/sso-config" element={<SsoConfiguration />} />
           <Route path="/services" element={<ServiceManagement />} />
+          <Route path="/tenants" element={<TenantManagement />} />
+          <Route path="/holidays" element={<HolidayManagement />} />
+          <Route path="/alerts" element={<AlertManagement />} />
         </Routes>
       </Container>
     </Box>

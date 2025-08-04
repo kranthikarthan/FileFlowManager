@@ -10,6 +10,8 @@ public class FileTransferRecordDto {
     private Long id;
     private String fileName;
     private String serviceType;
+    private String subServiceType;
+    private String tenantId;
     private String sourcePath;
     private String targetPath;
     private TransferStatus status;
@@ -33,6 +35,12 @@ public class FileTransferRecordDto {
     
     public String getServiceType() { return serviceType; }
     public void setServiceType(String serviceType) { this.serviceType = serviceType; }
+    
+    public String getSubServiceType() { return subServiceType; }
+    public void setSubServiceType(String subServiceType) { this.subServiceType = subServiceType; }
+    
+    public String getTenantId() { return tenantId; }
+    public void setTenantId(String tenantId) { this.tenantId = tenantId; }
     
     public String getSourcePath() { return sourcePath; }
     public void setSourcePath(String sourcePath) { this.sourcePath = sourcePath; }

@@ -17,6 +17,12 @@ public class FileTransferRecord {
     @Column(nullable = false)
     private String serviceType;
     
+    @Column
+    private String subServiceType;
+    
+    @Column(nullable = false)
+    private String tenantId;
+    
     @Column(nullable = false)
     private String sourcePath;
     
@@ -55,11 +61,13 @@ public class FileTransferRecord {
         this.status = TransferStatus.PENDING;
     }
     
-    public FileTransferRecord(String fileName, String serviceType, String sourcePath, 
-                            String targetPath, TransferDirection direction) {
+    public FileTransferRecord(String fileName, String serviceType, String subServiceType, String tenantId, 
+                            String sourcePath, String targetPath, TransferDirection direction) {
         this();
         this.fileName = fileName;
         this.serviceType = serviceType;
+        this.subServiceType = subServiceType;
+        this.tenantId = tenantId;
         this.sourcePath = sourcePath;
         this.targetPath = targetPath;
         this.direction = direction;
@@ -74,6 +82,12 @@ public class FileTransferRecord {
     
     public String getServiceType() { return serviceType; }
     public void setServiceType(String serviceType) { this.serviceType = serviceType; }
+    
+    public String getSubServiceType() { return subServiceType; }
+    public void setSubServiceType(String subServiceType) { this.subServiceType = subServiceType; }
+    
+    public String getTenantId() { return tenantId; }
+    public void setTenantId(String tenantId) { this.tenantId = tenantId; }
     
     public String getSourcePath() { return sourcePath; }
     public void setSourcePath(String sourcePath) { this.sourcePath = sourcePath; }
