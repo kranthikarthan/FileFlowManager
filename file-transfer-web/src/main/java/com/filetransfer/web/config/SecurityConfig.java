@@ -43,7 +43,7 @@ public class SecurityConfig {
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> jwt.jwkSetUri("http://localhost:8080/oauth2/jwks"))
             )
-            .headers(headers -> headers.frameOptions().disable()); // For H2 console
+            .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.disable())); // For H2 console
         
         return http.build();
     }
