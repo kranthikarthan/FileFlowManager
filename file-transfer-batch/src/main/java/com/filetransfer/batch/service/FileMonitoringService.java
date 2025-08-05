@@ -201,6 +201,14 @@ public class FileMonitoringService {
                 fileTransferRepository.save(record);
                 logger.info("File {} ready for transfer after end marker (service: {}, tenant: {})", 
                            record.getFileName(), config.getServiceName(), config.getTenantId());
+                
+                // Trigger immediate file transfer processing
+                try {
+                    fileTransferService.processFileTransfer(record);
+                } catch (Exception e) {
+                    logger.error("Error processing file transfer for record {}: {}", 
+                               record.getId(), e.getMessage());
+                }
             });
     }
     
