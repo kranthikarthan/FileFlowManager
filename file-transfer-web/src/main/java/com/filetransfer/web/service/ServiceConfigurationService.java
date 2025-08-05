@@ -43,8 +43,8 @@ public class ServiceConfigurationService {
         return serviceConfigRepository.findById(id);
     }
     
-    public Optional<ServiceConfiguration> getServiceByName(String serviceName) {
-        return serviceConfigRepository.findByServiceName(serviceName);
+    public Optional<ServiceConfiguration> getServiceByName(String tenantId, String serviceName) {
+        return serviceConfigRepository.findByTenantIdAndServiceName(tenantId, serviceName).stream().findFirst();
     }
     
     public ServiceConfiguration createService(ServiceConfiguration serviceConfig) {
@@ -142,8 +142,8 @@ public class ServiceConfigurationService {
         return serviceConfigRepository.save(service);
     }
     
-    public boolean validateFileAgainstService(String fileName, String serviceType, String fileType) {
-        Optional<ServiceConfiguration> serviceOpt = serviceConfigRepository.findByServiceName(serviceType);
+    public boolean validateFileAgainstService(String tenantId, String fileName, String serviceType, String fileType) {
+        Optional<ServiceConfiguration> serviceOpt = serviceConfigRepository.findByTenantIdAndServiceName(tenantId, serviceType).stream().findFirst();
         if (serviceOpt.isEmpty()) {
             return false;
         }

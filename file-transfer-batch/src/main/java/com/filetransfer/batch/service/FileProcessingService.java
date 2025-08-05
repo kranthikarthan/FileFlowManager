@@ -29,7 +29,20 @@ public class FileProcessingService {
     private SchemaValidationService schemaValidationService;
     
     public void processFiles() {
-        List<ServiceConfiguration> activeServices = serviceConfigurationRepository.findByEnabledTrue();
+        // Process files for all active tenants
+        List<String> activeTenantIds = serviceConfigurationRepository.findAllActiveTenantIds();
+        
+        for (String tenantId : activeTenantIds) {
+            try {
+                processFilesForTenant(tenantId);
+            } catch (Exception e) {
+                System.err.println("Error processing files for tenant: " + tenantId + ": " + e.getMessage());
+            }
+        }
+    }
+    
+    private void processFilesForTenant(String tenantId) {
+        List<ServiceConfiguration> activeServices = serviceConfigurationRepository.findAllEnabledServicesForTenant(tenantId);
         
         for (ServiceConfiguration service : activeServices) {
             processServiceFiles(service);

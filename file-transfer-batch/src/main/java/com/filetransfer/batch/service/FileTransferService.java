@@ -40,13 +40,30 @@ public class FileTransferService {
             return;
         }
         
-        List<FileTransferRecord> pendingTransfers = fileTransferRepository.findByStatus(TransferStatus.PENDING);
+        // Process pending transfers for all active tenants
+        List<String> activeTenantIds = serviceConfigurationRepository.findAllActiveTenantIds();
+        
+        for (String tenantId : activeTenantIds) {
+            try {
+                processPendingTransfersForTenant(tenantId);
+            } catch (Exception e) {
+                logger.error("Error processing pending transfers for tenant: {}", tenantId, e);
+            }
+        }
+    }
+    
+    /**
+     * Process pending transfers for a specific tenant
+     */
+    private void processPendingTransfersForTenant(String tenantId) {
+        List<FileTransferRecord> pendingTransfers = fileTransferRepository.findByTenantIdAndStatus(tenantId, TransferStatus.PENDING);
         
         for (FileTransferRecord record : pendingTransfers) {
             try {
                 processFileTransfer(record);
             } catch (Exception e) {
-                logger.error("Error processing file transfer for record ID {}: {}", record.getId(), e.getMessage());
+                logger.error("Error processing file transfer for record ID {} (tenant: {}): {}", 
+                           record.getId(), tenantId, e.getMessage());
                 handleTransferFailure(record, e.getMessage());
             }
         }
@@ -128,27 +145,25 @@ public class FileTransferService {
      */
     private void logTransferCompletion(FileTransferRecord record) {
         try {
-            // Parse service key to extract tenant and service information
-            String[] parts = record.getServiceType().split(":");
-            if (parts.length >= 2) {
-                String tenantId = parts[0];
-                String serviceName = parts[1];
-                String subServiceName = parts.length > 2 ? parts[2] : null;
-                
-                ServiceConfiguration config = serviceConfigurationRepository
-                    .findByTenantIdAndServiceNameAndSubServiceName(tenantId, serviceName, subServiceName)
-                    .orElse(null);
-                
-                if (config != null) {
-                    logger.info("Transfer completed - File: '{}', Service: '{}', Tenant: '{}', Sub-service: '{}', Description: '{}'",
-                               record.getFileName(), 
-                               config.getServiceName(), 
-                               config.getTenantId(),
-                               config.getSubServiceName() != null ? config.getSubServiceName() : "N/A",
-                               config.getDescription() != null ? config.getDescription() : "N/A");
-                } else {
-                    logger.warn("Could not find service configuration for completed transfer: {}", record.getServiceType());
-                }
+            // Get service configuration using tenant and service information
+            String tenantId = record.getTenantId();
+            String serviceName = record.getServiceType();
+            String subServiceType = record.getSubServiceType();
+            
+            ServiceConfiguration config = serviceConfigurationRepository
+                .findByTenantIdAndServiceNameAndSubServiceName(tenantId, serviceName, subServiceType)
+                .orElse(null);
+            
+            if (config != null) {
+                logger.info("Transfer completed - File: '{}', Service: '{}', Tenant: '{}', Sub-service: '{}', Description: '{}'",
+                           record.getFileName(), 
+                           config.getServiceName(), 
+                           config.getTenantId(),
+                           config.getSubServiceName() != null ? config.getSubServiceName() : "N/A",
+                           config.getDescription() != null ? config.getDescription() : "N/A");
+            } else {
+                logger.warn("Could not find service configuration for completed transfer - Tenant: '{}', Service: '{}', Sub-service: '{}'",
+                           tenantId, serviceName, subServiceType);
             }
         } catch (Exception e) {
             logger.warn("Error logging transfer completion details: {}", e.getMessage());

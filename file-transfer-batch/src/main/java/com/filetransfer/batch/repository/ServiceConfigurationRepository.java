@@ -35,5 +35,6 @@ public interface ServiceConfigurationRepository extends JpaRepository<ServiceCon
     
     boolean existsByTenantIdAndServiceNameAndSubServiceName(String tenantId, String serviceName, String subServiceName);
     
+    @Deprecated
     List<ServiceConfiguration> findByEnabledTrue();
 }

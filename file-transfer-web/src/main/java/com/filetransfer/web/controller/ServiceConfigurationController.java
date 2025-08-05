@@ -52,9 +52,9 @@ public class ServiceConfigurationController {
             .orElse(ResponseEntity.notFound().build());
     }
     
-    @GetMapping("/name/{serviceName}")
-    public ResponseEntity<ServiceConfiguration> getServiceByName(@PathVariable String serviceName) {
-        return serviceConfigService.getServiceByName(serviceName)
+    @GetMapping("/tenant/{tenantId}/name/{serviceName}")
+    public ResponseEntity<ServiceConfiguration> getServiceByName(@PathVariable String tenantId, @PathVariable String serviceName) {
+        return serviceConfigService.getServiceByName(tenantId, serviceName)
             .map(service -> ResponseEntity.ok(service))
             .orElse(ResponseEntity.notFound().build());
     }
@@ -100,8 +100,8 @@ public class ServiceConfigurationController {
         }
     }
     
-    @PostMapping("/validate-file")
-    public ResponseEntity<?> validateFile(@RequestBody Map<String, String> request) {
+    @PostMapping("/tenant/{tenantId}/validate-file")
+    public ResponseEntity<?> validateFile(@PathVariable String tenantId, @RequestBody Map<String, String> request) {
         try {
             String fileName = request.get("fileName");
             String serviceType = request.get("serviceType");
@@ -112,12 +112,13 @@ public class ServiceConfigurationController {
                     .body(Map.of("error", "fileName, serviceType, and fileType are required"));
             }
             
-            boolean isValid = serviceConfigService.validateFileAgainstService(fileName, serviceType, fileType);
+            boolean isValid = serviceConfigService.validateFileAgainstService(tenantId, fileName, serviceType, fileType);
             return ResponseEntity.ok(Map.of(
                 "valid", isValid,
                 "fileName", fileName,
                 "serviceType", serviceType,
-                "fileType", fileType
+                "fileType", fileType,
+                "tenantId", tenantId
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

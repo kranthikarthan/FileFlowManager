@@ -11,6 +11,7 @@ import java.util.Optional;
 @Repository
 public interface ServiceConfigurationRepository extends JpaRepository<ServiceConfiguration, Long> {
     
+    @Deprecated
     Optional<ServiceConfiguration> findByServiceName(String serviceName);
     
     List<ServiceConfiguration> findByTenantId(String tenantId);
