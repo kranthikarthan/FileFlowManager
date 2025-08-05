@@ -21,8 +21,8 @@ public class FileTransferController {
     private FileTransferManagementService fileTransferService;
     
     @GetMapping
-    public ResponseEntity<List<FileTransferRecordDto>> getAllFileTransfers() {
-        return ResponseEntity.ok(fileTransferService.getAllFileTransfers());
+    public ResponseEntity<List<FileTransferRecordDto>> getAllFileTransfers(@RequestParam String tenantId) {
+        return ResponseEntity.ok(fileTransferService.getAllFileTransfers(tenantId));
     }
     
     @GetMapping("/{id}")
@@ -31,40 +31,49 @@ public class FileTransferController {
     }
     
     @GetMapping("/service/{serviceType}")
-    public ResponseEntity<List<FileTransferRecordDto>> getFileTransfersByService(@PathVariable String serviceType) {
-        return ResponseEntity.ok(fileTransferService.getFileTransfersByService(serviceType));
+    public ResponseEntity<List<FileTransferRecordDto>> getFileTransfersByService(
+            @RequestParam String tenantId, 
+            @PathVariable String serviceType) {
+        return ResponseEntity.ok(fileTransferService.getFileTransfersByService(tenantId, serviceType));
     }
     
     @GetMapping("/status/{status}")
-    public ResponseEntity<List<FileTransferRecordDto>> getFileTransfersByStatus(@PathVariable TransferStatus status) {
-        return ResponseEntity.ok(fileTransferService.getFileTransfersByStatus(status));
+    public ResponseEntity<List<FileTransferRecordDto>> getFileTransfersByStatus(
+            @RequestParam String tenantId, 
+            @PathVariable TransferStatus status) {
+        return ResponseEntity.ok(fileTransferService.getFileTransfersByStatus(tenantId, status));
     }
     
     @GetMapping("/direction/{direction}")
-    public ResponseEntity<List<FileTransferRecordDto>> getFileTransfersByDirection(@PathVariable TransferDirection direction) {
-        return ResponseEntity.ok(fileTransferService.getFileTransfersByDirection(direction));
+    public ResponseEntity<List<FileTransferRecordDto>> getFileTransfersByDirection(
+            @RequestParam String tenantId, 
+            @PathVariable TransferDirection direction) {
+        return ResponseEntity.ok(fileTransferService.getFileTransfersByDirection(tenantId, direction));
     }
     
     @GetMapping("/service/{serviceType}/status/{status}")
     public ResponseEntity<List<FileTransferRecordDto>> getFileTransfersByServiceAndStatus(
+            @RequestParam String tenantId,
             @PathVariable String serviceType, 
             @PathVariable TransferStatus status) {
-        return ResponseEntity.ok(fileTransferService.getFileTransfersByServiceAndStatus(serviceType, status));
+        return ResponseEntity.ok(fileTransferService.getFileTransfersByServiceAndStatus(tenantId, serviceType, status));
     }
     
     @GetMapping("/date-range")
     public ResponseEntity<List<FileTransferRecordDto>> getFileTransfersByDateRange(
+            @RequestParam String tenantId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
-        return ResponseEntity.ok(fileTransferService.getFileTransfersByDateRange(startDate, endDate));
+        return ResponseEntity.ok(fileTransferService.getFileTransfersByDateRange(tenantId, startDate, endDate));
     }
     
     @GetMapping("/service/{serviceType}/date-range")
     public ResponseEntity<List<FileTransferRecordDto>> getFileTransfersByServiceAndDateRange(
+            @RequestParam String tenantId,
             @PathVariable String serviceType,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
-        return ResponseEntity.ok(fileTransferService.getFileTransfersByServiceAndDateRange(serviceType, startDate, endDate));
+        return ResponseEntity.ok(fileTransferService.getFileTransfersByServiceAndDateRange(tenantId, serviceType, startDate, endDate));
     }
     
     @PostMapping("/{id}/retry")
@@ -88,7 +97,21 @@ public class FileTransferController {
     }
     
     @GetMapping("/services")
-    public ResponseEntity<List<String>> getDistinctServiceTypes() {
-        return ResponseEntity.ok(fileTransferService.getDistinctServiceTypes());
+    public ResponseEntity<List<String>> getDistinctServiceTypes(@RequestParam String tenantId) {
+        return ResponseEntity.ok(fileTransferService.getDistinctServiceTypes(tenantId));
+    }
+    
+    @GetMapping("/services/{serviceType}/sub-services")
+    public ResponseEntity<List<String>> getDistinctSubServiceTypes(
+            @RequestParam String tenantId, 
+            @PathVariable String serviceType) {
+        return ResponseEntity.ok(fileTransferService.getDistinctSubServiceTypes(tenantId, serviceType));
+    }
+    
+    @GetMapping("/file/{fileName}")
+    public ResponseEntity<List<FileTransferRecordDto>> getFileTransfersByFileName(
+            @RequestParam String tenantId, 
+            @PathVariable String fileName) {
+        return ResponseEntity.ok(fileTransferService.getFileTransfersByFileName(tenantId, fileName));
     }
 }

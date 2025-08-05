@@ -18,46 +18,46 @@ public class FileTransferManagementService {
     @Autowired
     private FileTransferRecordRepository fileTransferRepository;
     
-    public List<FileTransferRecordDto> getAllFileTransfers() {
-        return fileTransferRepository.findAll().stream()
+    public List<FileTransferRecordDto> getAllFileTransfers(String tenantId) {
+        return fileTransferRepository.findByTenantId(tenantId).stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
     
-    public List<FileTransferRecordDto> getFileTransfersByService(String serviceType) {
-        return fileTransferRepository.findByServiceType(serviceType).stream()
+    public List<FileTransferRecordDto> getFileTransfersByService(String tenantId, String serviceType) {
+        return fileTransferRepository.findByTenantIdAndServiceType(tenantId, serviceType).stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
     
-    public List<FileTransferRecordDto> getFileTransfersByStatus(TransferStatus status) {
-        return fileTransferRepository.findByStatus(status).stream()
+    public List<FileTransferRecordDto> getFileTransfersByStatus(String tenantId, TransferStatus status) {
+        return fileTransferRepository.findByTenantIdAndStatus(tenantId, status).stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
     
-    public List<FileTransferRecordDto> getFileTransfersByDirection(TransferDirection direction) {
-        return fileTransferRepository.findByDirection(direction).stream()
+    public List<FileTransferRecordDto> getFileTransfersByDirection(String tenantId, TransferDirection direction) {
+        return fileTransferRepository.findByTenantIdAndDirection(tenantId, direction).stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
     
-    public List<FileTransferRecordDto> getFileTransfersByServiceAndStatus(String serviceType, TransferStatus status) {
-        return fileTransferRepository.findByServiceTypeAndStatus(serviceType, status).stream()
+    public List<FileTransferRecordDto> getFileTransfersByServiceAndStatus(String tenantId, String serviceType, TransferStatus status) {
+        return fileTransferRepository.findByTenantIdAndServiceTypeAndStatus(tenantId, serviceType, status).stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
     
-    public List<FileTransferRecordDto> getFileTransfersByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
-        return fileTransferRepository.findByDateRange(startDate, endDate).stream()
+    public List<FileTransferRecordDto> getFileTransfersByDateRange(String tenantId, LocalDateTime startDate, LocalDateTime endDate) {
+        return fileTransferRepository.findByTenantIdAndDateRange(tenantId, startDate, endDate).stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
     
-    public List<FileTransferRecordDto> getFileTransfersByServiceAndDateRange(String serviceType, 
+    public List<FileTransferRecordDto> getFileTransfersByServiceAndDateRange(String tenantId, String serviceType, 
                                                                           LocalDateTime startDate, 
                                                                           LocalDateTime endDate) {
-        return fileTransferRepository.findByServiceTypeAndDateRange(serviceType, startDate, endDate).stream()
+        return fileTransferRepository.findByTenantIdAndServiceTypeAndDateRange(tenantId, serviceType, startDate, endDate).stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
@@ -94,8 +94,18 @@ public class FileTransferManagementService {
         }
     }
     
-    public List<String> getDistinctServiceTypes() {
-        return fileTransferRepository.findDistinctServiceTypes();
+    public List<String> getDistinctServiceTypes(String tenantId) {
+        return fileTransferRepository.findDistinctServiceTypesForTenant(tenantId);
+    }
+    
+    public List<String> getDistinctSubServiceTypes(String tenantId, String serviceType) {
+        return fileTransferRepository.findDistinctSubServiceTypesForService(tenantId, serviceType);
+    }
+    
+    public List<FileTransferRecordDto> getFileTransfersByFileName(String tenantId, String fileName) {
+        return fileTransferRepository.findByTenantIdAndFileName(tenantId, fileName).stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
     }
     
     private FileTransferRecordDto convertToDto(FileTransferRecord record) {

@@ -82,8 +82,10 @@ public class FileProcessingService {
     
     private void processFile(ServiceConfiguration service, Path file, String fileType) {
         FileTransferRecord record = new FileTransferRecord();
+        record.setTenantId(service.getTenantId());
         record.setFileName(file.getFileName().toString());
         record.setServiceType(service.getServiceName());
+        record.setSubServiceType(service.getSubServiceName());
         record.setSourcePath(file.toString());
         record.setStatus("IN_PROGRESS");
         record.setDirection("INBOUND");
