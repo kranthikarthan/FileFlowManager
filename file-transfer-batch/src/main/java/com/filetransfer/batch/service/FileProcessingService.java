@@ -35,9 +35,9 @@ public class FileProcessingService {
         for (String tenantId : activeTenantIds) {
             try {
                 processFilesForTenant(tenantId);
-            } catch (Exception e) {
-                System.err.println("Error processing files for tenant: " + tenantId + ": " + e.getMessage());
-            }
+                    } catch (Exception e) {
+            logger.error("Error processing files for tenant: {}", tenantId, e);
+        }
         }
     }
     
@@ -68,7 +68,7 @@ public class FileProcessingService {
             
         } catch (Exception e) {
             // Log error and continue with other services
-            System.err.println("Error processing service " + service.getServiceName() + ": " + e.getMessage());
+            logger.error("Error processing service {} (tenant: {}): {}", service.getServiceName(), service.getTenantId(), e.getMessage());
         }
     }
     
@@ -89,7 +89,8 @@ public class FileProcessingService {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Error processing " + fileType + " files for service " + service.getServiceName() + ": " + e.getMessage());
+            logger.error("Error processing {} files for service {} (tenant: {}): {}", 
+                       fileType, service.getServiceName(), service.getTenantId(), e.getMessage());
         }
     }
     
@@ -170,7 +171,7 @@ public class FileProcessingService {
      */
     private void trackDataFile(String tenantId, String serviceType, String fileName) {
         // This would typically call the tracking service
-        System.out.println("Tracking data file: " + fileName + " for EOT validation");
+        logger.info("Tracking data file: {} for EOT validation", fileName);
     }
     
     /**

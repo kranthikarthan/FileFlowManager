@@ -1,5 +1,7 @@
 package com.filetransfer.web.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +14,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Service
 @Transactional
 public class FileProcessingTrackingService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(FileProcessingTrackingService.class);
     
     // In-memory tracking for file counts per service per day
     // In production, this should be stored in database
@@ -28,8 +32,8 @@ public class FileProcessingTrackingService {
         dailyFileCounts.computeIfAbsent(key, k -> new AtomicInteger(0)).incrementAndGet();
         
         // Log the tracking
-        System.out.println("Tracked data file: " + fileName + " for service: " + serviceType + 
-                          " (Total today: " + getDailyFileCount(tenantId, serviceType) + ")");
+        logger.info("Tracked data file: {} for service: {} (Total today: {})", 
+                   fileName, serviceType, getDailyFileCount(tenantId, serviceType));
     }
     
     /**
@@ -144,7 +148,7 @@ public class FileProcessingTrackingService {
         
         alertService.createAlert(alert);
         
-        System.out.println("Alert generated: " + alertMessage);
+        logger.info("Alert generated: {}", alertMessage);
     }
     
     /**
@@ -153,7 +157,7 @@ public class FileProcessingTrackingService {
     public void resetDailyFileCount(String tenantId, String serviceType) {
         String key = generateKey(tenantId, serviceType);
         dailyFileCounts.remove(key);
-        System.out.println("Reset daily file count for service: " + serviceType);
+        logger.info("Reset daily file count for service: {} (tenant: {})", serviceType, tenantId);
     }
     
     /**
