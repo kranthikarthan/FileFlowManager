@@ -2,6 +2,7 @@ package com.filetransfer.web.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import com.filetransfer.web.entity.AlertConfiguration;
 
 @Entity
 @Table(name = "alert_history")

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
+import com.filetransfer.batch.entity.CutOffTimeType;
 
 @Entity
 @Table(name = "service_configurations")
@@ -101,6 +102,36 @@ public class ServiceConfiguration {
     
     @Column(length = 1000)
     private String dataFileValidationRegex;
+    
+    // Schema validation settings
+    @Column(name = "schema_validation_enabled")
+    private Boolean schemaValidationEnabled = false;
+    
+    @Column(name = "schema_id")
+    private Long schemaId;
+    
+    @Column(name = "schema_validation_mode")
+    private String schemaValidationMode = "STRICT"; // STRICT, LENIENT, WARNING_ONLY
+    
+    @Column(name = "binary_file_bypass")
+    private Boolean binaryFileBypass = false;
+    
+    // File type specific schema IDs
+    @Column(name = "sot_schema_id")
+    private Long sotSchemaId;
+    
+    @Column(name = "data_schema_id")
+    private Long dataSchemaId;
+    
+    @Column(name = "eot_schema_id")
+    private Long eotSchemaId;
+    
+    // EOT file validation settings
+    @Column(name = "eot_total_files_field")
+    private String eotTotalFilesField;
+    
+    @Column(name = "eot_validation_enabled")
+    private Boolean eotValidationEnabled = false;
     
     @Column
     private String description;
@@ -232,4 +263,34 @@ public class ServiceConfiguration {
     
     public String getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
+    
+    // Schema validation getters and setters
+    public Boolean getSchemaValidationEnabled() { return schemaValidationEnabled; }
+    public void setSchemaValidationEnabled(Boolean schemaValidationEnabled) { this.schemaValidationEnabled = schemaValidationEnabled; }
+    
+    public Long getSchemaId() { return schemaId; }
+    public void setSchemaId(Long schemaId) { this.schemaId = schemaId; }
+    
+    public String getSchemaValidationMode() { return schemaValidationMode; }
+    public void setSchemaValidationMode(String schemaValidationMode) { this.schemaValidationMode = schemaValidationMode; }
+    
+    public Boolean getBinaryFileBypass() { return binaryFileBypass; }
+    public void setBinaryFileBypass(Boolean binaryFileBypass) { this.binaryFileBypass = binaryFileBypass; }
+    
+    // File type specific schema getters and setters
+    public Long getSotSchemaId() { return sotSchemaId; }
+    public void setSotSchemaId(Long sotSchemaId) { this.sotSchemaId = sotSchemaId; }
+    
+    public Long getDataSchemaId() { return dataSchemaId; }
+    public void setDataSchemaId(Long dataSchemaId) { this.dataSchemaId = dataSchemaId; }
+    
+    public Long getEotSchemaId() { return eotSchemaId; }
+    public void setEotSchemaId(Long eotSchemaId) { this.eotSchemaId = eotSchemaId; }
+    
+    // EOT validation getters and setters
+    public String getEotTotalFilesField() { return eotTotalFilesField; }
+    public void setEotTotalFilesField(String eotTotalFilesField) { this.eotTotalFilesField = eotTotalFilesField; }
+    
+    public Boolean getEotValidationEnabled() { return eotValidationEnabled; }
+    public void setEotValidationEnabled(Boolean eotValidationEnabled) { this.eotValidationEnabled = eotValidationEnabled; }
 }

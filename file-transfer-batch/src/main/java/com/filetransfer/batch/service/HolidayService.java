@@ -1,6 +1,5 @@
 package com.filetransfer.batch.service;
 
-import com.filetransfer.batch.entity.Holiday;
 import com.filetransfer.batch.repository.HolidayRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

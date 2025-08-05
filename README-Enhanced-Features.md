@@ -308,7 +308,7 @@ await axios.post('/api/alerts/configurations', alertConfig);
 ### Database Setup
 ```bash
 # Run the enhanced init.sql to create all tables
-mysql -u username -p database_name < init.sql
+sqlcmd -S your-sql-mi-server.database.windows.net -d filetransfer -U filetransfer -P YourPassword -i init.sql
 ```
 
 ### API Testing

@@ -59,6 +59,18 @@ fi
 
 # Build and start all services
 echo "Building and starting all services..."
+
+# Set enhanced configuration environment variables
+export ENHANCED_CUTOFF_ENABLED=true
+export DEFAULT_CUTOFF_TIME_TYPE=WEEKDAY_WEEKEND
+export SUNDAY_HOLIDAY_ENABLED=true
+export HOLIDAY_SERVICE_ENABLED=true
+export AUTO_CREATE_SUNDAY_HOLIDAYS=true
+export MULTI_TENANT_ENABLED=true
+export DEFAULT_TENANT_ID=default
+export TIMEZONE_SUPPORT_ENABLED=true
+export DEFAULT_TIMEZONE=UTC
+
 docker-compose up --build -d
 
 # Wait for services to start
@@ -67,7 +79,7 @@ sleep 30
 
 # Check service health
 echo "Checking service health..."
-echo "MySQL: $(docker-compose ps mysql | grep -o 'healthy\|unhealthy' | head -1)"
+echo "Azure SQL MI: Connected via application configuration"
 echo "Batch App: $(docker-compose ps file-transfer-batch | grep -o 'Up\|Exited' | head -1)"
 echo "Web App: $(docker-compose ps file-transfer-web | grep -o 'Up\|Exited' | head -1)"
 echo "Frontend: $(docker-compose ps file-transfer-frontend | grep -o 'Up\|Exited' | head -1)"
@@ -77,7 +89,7 @@ echo "Application URLs:"
 echo "Frontend: http://localhost:3000"
 echo "Web API: http://localhost:8080"
 echo "Batch App: http://localhost:8081"
-echo "MySQL: localhost:3306"
+echo "Azure SQL MI: your-sql-mi-server.database.windows.net:1433"
 echo ""
 echo "To view logs: docker-compose logs -f [service-name]"
 echo "To stop: docker-compose down"

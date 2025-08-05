@@ -213,6 +213,345 @@ GET /file-transfers/services
 ["service1", "service2", "service3"]
 ```
 
+## Enhanced Cut-Off Time Management
+
+### Get Cut-Off Time for Service
+```
+GET /api/services/{id}/cutoff-time/{date}
+```
+
+**Parameters**:
+- `id` (path): Service configuration ID
+- `date` (path): Date in YYYY-MM-DD format
+
+**Response**:
+```json
+{
+  "serviceId": 1,
+  "date": "2024-01-15",
+  "cutOffTime": "18:00:00",
+  "cutOffTimeType": "WEEKDAY_WEEKEND",
+  "isHoliday": false,
+  "isSunday": false
+}
+```
+
+### Check Cut-Off Time for Service
+```
+POST /api/services/{id}/check-cutoff
+```
+
+**Request Body**:
+```json
+{
+  "date": "2024-01-15",
+  "time": "17:30:00"
+}
+```
+
+**Response**:
+```json
+{
+  "serviceId": 1,
+  "date": "2024-01-15",
+  "time": "17:30:00",
+  "cutOffTime": "18:00:00",
+  "isBeforeCutOff": true,
+  "isHoliday": false,
+  "isSunday": false
+}
+```
+
+### Get Cut-Off Time by Tenant and Service Name
+```
+GET /api/services/tenant/{tenantId}/service/{serviceName}/cutoff-time/{date}
+```
+
+**Parameters**:
+- `tenantId` (path): Tenant identifier
+- `serviceName` (path): Service name
+- `date` (path): Date in YYYY-MM-DD format
+
+## Holiday Management
+
+### Create Sunday Holidays for a Year
+```
+POST /api/holidays/tenant/{tenantId}/create-sunday-holidays/{year}?holidayName=Sunday Holiday
+```
+
+**Parameters**:
+- `tenantId` (path): Tenant identifier
+- `year` (path): Year to create Sunday holidays for
+- `holidayName` (query): Name for the Sunday holidays
+
+### Create Sunday Holidays for Date Range
+```
+POST /api/holidays/tenant/{tenantId}/create-sunday-holidays-range?startDate=2024-01-01&endDate=2024-12-31&holidayName=Sunday Holiday
+```
+
+**Parameters**:
+- `tenantId` (path): Tenant identifier
+- `startDate` (query): Start date in YYYY-MM-DD format
+- `endDate` (query): End date in YYYY-MM-DD format
+- `holidayName` (query): Name for the Sunday holidays
+
+### Remove Sunday Holidays for a Year
+```
+DELETE /api/holidays/tenant/{tenantId}/remove-sunday-holidays/{year}
+```
+
+**Parameters**:
+- `tenantId` (path): Tenant identifier
+- `year` (path): Year to remove Sunday holidays for
+
+### Check if Date is Holiday or Sunday
+```
+GET /api/holidays/tenant/{tenantId}/is-holiday-or-sunday/{date}?allSundaysAsHolidays=true
+```
+
+**Parameters**:
+- `tenantId` (path): Tenant identifier
+- `date` (path): Date in YYYY-MM-DD format
+- `allSundaysAsHolidays` (query): Whether to treat all Sundays as holidays
+
+**Response**:
+```json
+{
+  "date": "2024-01-14",
+  "isHoliday": true,
+  "isSunday": true,
+  "holidayName": "Sunday Holiday"
+}
+```
+
+## Schema Management
+
+### Create File Schema
+```
+POST /api/schemas?createdBy=admin
+```
+
+**Request Body**:
+```json
+{
+  "tenantId": "tenant1",
+  "serviceType": "service1",
+  "schemaName": "CSV Data Schema",
+  "schemaVersion": "1.0",
+  "schemaType": "CSV",
+  "schemaDefinition": "{\"type\":\"csv\",\"delimiter\":\",\",\"hasHeader\":true,\"fields\":[{\"name\":\"transaction_id\",\"type\":\"STRING\",\"required\":true,\"length\":50}]}",
+  "description": "Standard CSV schema for financial transactions",
+  "isActive": true
+}
+```
+
+### Update File Schema
+```
+PUT /api/schemas/{schemaId}?updatedBy=admin
+```
+
+### Delete File Schema
+```
+DELETE /api/schemas/{schemaId}
+```
+
+### Get Schema by ID
+```
+GET /api/schemas/{schemaId}
+```
+
+### Get Schemas by Service Type
+```
+GET /api/schemas/tenant/{tenantId}/service/{serviceType}
+```
+
+### Get All Schemas for Tenant
+```
+GET /api/schemas/tenant/{tenantId}
+```
+
+### Add Validation Rule to Schema
+```
+POST /api/schemas/{schemaId}/validation-rules
+```
+
+**Request Body**:
+```json
+{
+  "ruleName": "File Size Check",
+  "ruleType": "CUSTOM",
+  "ruleDefinition": "fileSize <= 10485760",
+  "ruleOrder": 1,
+  "isActive": true,
+  "errorMessage": "File size exceeds maximum allowed size of 10MB"
+}
+```
+
+### Add Field to Schema
+```
+POST /api/schemas/{schemaId}/fields
+```
+
+**Request Body**:
+```json
+{
+  "fieldName": "transaction_id",
+  "fieldType": "STRING",
+  "fieldLength": 50,
+  "isRequired": true,
+  "isUnique": false,
+  "defaultValue": "",
+  "validationRegex": "^[A-Z0-9]+$",
+  "fieldOrder": 1,
+  "description": "Unique transaction identifier"
+}
+```
+
+### Validate File Against Schema
+```
+POST /api/schemas/validate-file
+```
+
+**Parameters**:
+- `tenantId` (form): Tenant identifier
+- `serviceType` (form): Service type
+- `file` (form): File to validate
+- `binaryFileBypass` (form, optional): Whether to bypass binary files (default: false)
+- `fileType` (form, optional): File type (SOT, DATA, EOT) for schema selection
+
+**Response**:
+```json
+{
+  "valid": true,
+  "message": "Validation passed",
+  "fileName": "data.csv",
+  "fileSize": 1024,
+  "tenantId": "tenant1",
+  "serviceType": "service1"
+}
+```
+
+**Binary File Bypass Response**:
+```json
+{
+  "valid": true,
+  "message": "Binary file bypassed - no validation performed",
+  "fileName": "document.pdf",
+  "fileSize": 2048,
+  "tenantId": "tenant1",
+  "serviceType": "service1"
+}
+```
+
+### Validate EOT File
+```
+POST /api/schemas/validate-eot
+```
+
+**Parameters**:
+- `tenantId` (form): Tenant identifier
+- `serviceType` (form): Service type
+- `eotContent` (form): EOT file content
+- `totalFilesField` (form): Field name containing total files count
+
+**Response**:
+```json
+{
+  "valid": true,
+  "message": "EOT file validation passed - file count matches",
+  "expectedCount": 150,
+  "actualCount": 150,
+  "tenantId": "tenant1",
+  "serviceType": "service1"
+}
+```
+
+**EOT Validation Mismatch Response**:
+```json
+{
+  "valid": false,
+  "message": "EOT file mismatch: Expected 150 files, but processed 145 files",
+  "expectedCount": 150,
+  "actualCount": 145,
+  "tenantId": "tenant1",
+  "serviceType": "service1"
+}
+```
+
+### Get Schema Templates
+```
+GET /api/schemas/templates
+```
+
+**Response**:
+```json
+{
+  "CSV": {
+    "type": "CSV",
+    "description": "Comma-separated values file schema",
+    "example": {
+      "delimiter": ",",
+      "hasHeader": true,
+      "fields": [
+        {"name": "field1", "type": "STRING", "required": true},
+        {"name": "field2", "type": "INTEGER", "required": false}
+      ]
+    }
+  },
+  "JSON": {
+    "type": "JSON",
+    "description": "JSON file schema",
+    "example": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "value": {"type": "number"}
+      },
+      "required": ["id", "name"]
+    }
+  },
+  "COBOL_COPYBOOK": {
+    "type": "COBOL_COPYBOOK",
+    "description": "COBOL copybook file schema",
+    "example": {
+      "recordLength": 80,
+      "fields": [
+        {"name": "CUSTOMER-ID", "level": "05", "type": "PIC", "picture": "X(10)", "start": 1, "length": 10, "required": true},
+        {"name": "CUSTOMER-NAME", "level": "05", "type": "PIC", "picture": "X(30)", "start": 11, "length": 30, "required": true},
+        {"name": "ACCOUNT-BALANCE", "level": "05", "type": "PIC", "picture": "9(10)V99", "start": 41, "length": 12, "required": true},
+        {"name": "LAST-UPDATE-DATE", "level": "05", "type": "PIC", "picture": "9(8)", "start": 53, "length": 8, "required": true},
+        {"name": "STATUS-CODE", "level": "05", "type": "PIC", "picture": "X(1)", "start": 61, "length": 1, "required": true}
+      ]
+    }
+  }
+}
+```
+
+## Service Configuration
+```
+PUT /api/services/{id}
+```
+
+**Request Body**:
+```json
+{
+  "serviceName": "business-service",
+  "tenantId": "tenant1",
+  "cutOffTimeType": "WEEKDAY_WEEKEND",
+  "cutOffTime": "18:00:00",
+  "weekdayCutOffTime": "18:00:00",
+  "weekendCutOffTime": "12:00:00",
+  "allSundaysAsHolidays": false,
+  "enabled": true
+}
+```
+
+**Enhanced Configuration Types**:
+- `DAILY`: Single cut-off time for all days
+- `WEEKDAY_WEEKEND`: Different times for weekdays and weekends
+- `PER_DAY`: Individual times for each day of the week
+
 ## Data Models
 
 ### FileTransferRecord
@@ -290,7 +629,7 @@ GET /actuator/health
     "db": {
       "status": "UP",
       "details": {
-        "database": "MySQL",
+        "database": "Azure SQL MI",
         "validationQuery": "isValid()"
       }
     }

@@ -63,12 +63,6 @@ stages:
         ProcessingService:
           serviceName: 'processing-service'
           serviceDirectory: 'microservices/file-transfer-processing-service'
-        AuthService:
-          serviceName: 'auth-service'
-          serviceDirectory: 'microservices/file-transfer-auth-service'
-        NotificationService:
-          serviceName: 'notification-service'
-          serviceDirectory: 'microservices/file-transfer-notification-service'
     steps:
     - checkout: self
       fetchDepth: 0  # Shallow clones should be disabled for SonarCloud analysis
@@ -242,12 +236,6 @@ stages:
         ProcessingService:
           serviceName: 'processing-service'
           serviceDirectory: 'microservices/file-transfer-processing-service'
-        AuthService:
-          serviceName: 'auth-service'
-          serviceDirectory: 'microservices/file-transfer-auth-service'
-        NotificationService:
-          serviceName: 'notification-service'
-          serviceDirectory: 'microservices/file-transfer-notification-service'
     steps:
     - checkout: self
 

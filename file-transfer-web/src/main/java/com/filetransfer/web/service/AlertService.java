@@ -6,6 +6,8 @@ import com.filetransfer.web.entity.AlertConfiguration;
 import com.filetransfer.web.entity.AlertHistory;
 import com.filetransfer.web.repository.AlertConfigurationRepository;
 import com.filetransfer.web.repository.AlertHistoryRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +20,8 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class AlertService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(AlertService.class);
     
     @Autowired
     private AlertConfigurationRepository alertConfigurationRepository;
@@ -217,5 +221,20 @@ public class AlertService {
     
     private AlertHistory.AlertLevel convertToEntityAlertLevel(AlertHistoryDto.AlertLevel alertLevel) {
         return AlertHistory.AlertLevel.valueOf(alertLevel.name());
+    }
+
+    /**
+     * Create an alert for EOT validation mismatch
+     */
+    public void createAlert(FileProcessingTrackingService.AlertDto alert) {
+        // In production, this would save to database and/or send notifications
+        logger.info("ALERT [{}] {} - {} at {}", 
+                   alert.getSeverity(), alert.getAlertType(), alert.getMessage(), alert.getCreatedAt());
+        
+        // TODO: Implement actual alert storage and notification
+        // - Save to alerts table
+        // - Send email/SMS notifications
+        // - Update dashboard
+        // - Trigger escalation procedures
     }
 }

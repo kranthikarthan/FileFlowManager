@@ -60,6 +60,21 @@ public class ServiceConfigurationDto {
     private String eotFileValidationRegex;
     private String dataFileValidationRegex;
     
+    // Schema validation settings
+    private Boolean schemaValidationEnabled = false;
+    private Long schemaId;
+    private String schemaValidationMode = "STRICT"; // STRICT, LENIENT, WARNING_ONLY
+    private Boolean binaryFileBypass = false;
+    
+    // File type specific schema IDs
+    private Long sotSchemaId;
+    private Long dataSchemaId;
+    private Long eotSchemaId;
+    
+    // EOT file validation settings
+    private String eotTotalFilesField;
+    private Boolean eotValidationEnabled = false;
+    
     private String description;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -159,6 +174,33 @@ public class ServiceConfigurationDto {
     
     public String getDataFileValidationRegex() { return dataFileValidationRegex; }
     public void setDataFileValidationRegex(String dataFileValidationRegex) { this.dataFileValidationRegex = dataFileValidationRegex; }
+    
+    public Boolean getSchemaValidationEnabled() { return schemaValidationEnabled; }
+    public void setSchemaValidationEnabled(Boolean schemaValidationEnabled) { this.schemaValidationEnabled = schemaValidationEnabled; }
+    
+    public Long getSchemaId() { return schemaId; }
+    public void setSchemaId(Long schemaId) { this.schemaId = schemaId; }
+    
+    public String getSchemaValidationMode() { return schemaValidationMode; }
+    public void setSchemaValidationMode(String schemaValidationMode) { this.schemaValidationMode = schemaValidationMode; }
+    
+    public Boolean getBinaryFileBypass() { return binaryFileBypass; }
+    public void setBinaryFileBypass(Boolean binaryFileBypass) { this.binaryFileBypass = binaryFileBypass; }
+    
+    public Long getSotSchemaId() { return sotSchemaId; }
+    public void setSotSchemaId(Long sotSchemaId) { this.sotSchemaId = sotSchemaId; }
+    
+    public Long getDataSchemaId() { return dataSchemaId; }
+    public void setDataSchemaId(Long dataSchemaId) { this.dataSchemaId = dataSchemaId; }
+    
+    public Long getEotSchemaId() { return eotSchemaId; }
+    public void setEotSchemaId(Long eotSchemaId) { this.eotSchemaId = eotSchemaId; }
+    
+    public String getEotTotalFilesField() { return eotTotalFilesField; }
+    public void setEotTotalFilesField(String eotTotalFilesField) { this.eotTotalFilesField = eotTotalFilesField; }
+    
+    public Boolean getEotValidationEnabled() { return eotValidationEnabled; }
+    public void setEotValidationEnabled(Boolean eotValidationEnabled) { this.eotValidationEnabled = eotValidationEnabled; }
     
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
