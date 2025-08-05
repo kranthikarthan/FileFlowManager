@@ -100,4 +100,52 @@ public class HolidayController {
         List<HolidayDto> holidays = holidayService.searchHolidays(tenantId, searchTerm);
         return ResponseEntity.ok(holidays);
     }
+    
+    @PostMapping("/tenant/{tenantId}/create-sunday-holidays/{year}")
+    public ResponseEntity<List<HolidayDto>> createSundayHolidays(
+            @PathVariable String tenantId,
+            @PathVariable int year,
+            @RequestParam(required = false, defaultValue = "Sunday Holiday") String holidayName) {
+        try {
+            List<HolidayDto> createdHolidays = holidayService.createSundayHolidays(tenantId, year, holidayName);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdHolidays);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    @PostMapping("/tenant/{tenantId}/create-sunday-holidays-range")
+    public ResponseEntity<List<HolidayDto>> createSundayHolidaysForDateRange(
+            @PathVariable String tenantId,
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate,
+            @RequestParam(required = false, defaultValue = "Sunday Holiday") String holidayName) {
+        try {
+            List<HolidayDto> createdHolidays = holidayService.createSundayHolidaysForDateRange(tenantId, startDate, endDate, holidayName);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdHolidays);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    @DeleteMapping("/tenant/{tenantId}/remove-sunday-holidays/{year}")
+    public ResponseEntity<Integer> removeSundayHolidays(
+            @PathVariable String tenantId,
+            @PathVariable int year) {
+        try {
+            int removedCount = holidayService.removeSundayHolidays(tenantId, year);
+            return ResponseEntity.ok(removedCount);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    @GetMapping("/tenant/{tenantId}/is-holiday-or-sunday/{date}")
+    public ResponseEntity<Boolean> isHolidayOrSunday(
+            @PathVariable String tenantId, 
+            @PathVariable LocalDate date,
+            @RequestParam(required = false, defaultValue = "false") boolean allSundaysAsHolidays) {
+        boolean isHolidayOrSunday = holidayService.isHolidayOrSunday(tenantId, date, allSundaysAsHolidays);
+        return ResponseEntity.ok(isHolidayOrSunday);
+    }
 }

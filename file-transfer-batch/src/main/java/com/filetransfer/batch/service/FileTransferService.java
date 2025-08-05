@@ -2,8 +2,10 @@ package com.filetransfer.batch.service;
 
 import com.filetransfer.batch.config.FileTransferConfig;
 import com.filetransfer.batch.entity.FileTransferRecord;
+import com.filetransfer.batch.entity.ServiceConfiguration;
 import com.filetransfer.batch.entity.TransferStatus;
 import com.filetransfer.batch.repository.FileTransferRecordRepository;
+import com.filetransfer.batch.repository.ServiceConfigurationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +30,9 @@ public class FileTransferService {
     
     @Autowired
     private FileTransferConfig fileTransferConfig;
+    
+    @Autowired
+    private ServiceConfigurationRepository serviceConfigurationRepository;
     
     @Scheduled(fixedDelayString = "${file-transfer.poll-interval-seconds:30}000")
     public void processPendingTransfers() {
@@ -69,13 +74,8 @@ public class FileTransferService {
                 record.setStatus(TransferStatus.COMPLETED);
                 logger.info("File transfer completed successfully: {}", record.getFileName());
                 
-                // Optionally delete source file (based on configuration)
-                FileTransferConfig.ServiceConfig serviceConfig = 
-                    fileTransferConfig.getServices().get(record.getServiceType());
-                if (serviceConfig != null) {
-                    // For now, we'll keep the source file for safety
-                    logger.debug("Source file retained: {}", sourcePath);
-                }
+                // Log completion with service details from database
+                logTransferCompletion(record);
             } else {
                 throw new IOException("File verification failed after transfer");
             }
@@ -120,6 +120,38 @@ public class FileTransferService {
             logger.info("Cancelled file transfer for record ID: {}", recordId);
         } else {
             throw new RuntimeException("Cannot cancel transfer with status: " + record.getStatus());
+        }
+    }
+    
+    /**
+     * Log transfer completion with service configuration details
+     */
+    private void logTransferCompletion(FileTransferRecord record) {
+        try {
+            // Parse service key to extract tenant and service information
+            String[] parts = record.getServiceType().split(":");
+            if (parts.length >= 2) {
+                String tenantId = parts[0];
+                String serviceName = parts[1];
+                String subServiceName = parts.length > 2 ? parts[2] : null;
+                
+                ServiceConfiguration config = serviceConfigurationRepository
+                    .findByTenantIdAndServiceNameAndSubServiceName(tenantId, serviceName, subServiceName)
+                    .orElse(null);
+                
+                if (config != null) {
+                    logger.info("Transfer completed - File: '{}', Service: '{}', Tenant: '{}', Sub-service: '{}', Description: '{}'",
+                               record.getFileName(), 
+                               config.getServiceName(), 
+                               config.getTenantId(),
+                               config.getSubServiceName() != null ? config.getSubServiceName() : "N/A",
+                               config.getDescription() != null ? config.getDescription() : "N/A");
+                } else {
+                    logger.warn("Could not find service configuration for completed transfer: {}", record.getServiceType());
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("Error logging transfer completion details: {}", e.getMessage());
         }
     }
 }

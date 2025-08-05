@@ -14,13 +14,21 @@ This document describes the enhanced features that have been added to the File T
 - **Precedence Logic**: Sub-services take precedence over parent services during processing
 - **Flexible Configuration**: Each sub-service can have its own cut-off time and configuration
 
-### 3. Cut-Off Time Management
-- **Daily Cut-Off**: Configurable cut-off time for each service/sub-service
+### 3. Enhanced Cut-Off Time Management
+- **Flexible Configuration**: Multiple cut-off time types - Daily, Weekday vs Weekend, or Per Day
+- **Daily Cut-Off**: Single configurable cut-off time for all days
+- **Weekday vs Weekend**: Different cut-off times for weekdays (Mon-Fri) and weekends (Sat-Sun)
+- **Per Day Configuration**: Individual cut-off times for each day of the week
+- **Sunday Holiday Support**: Option to automatically treat all Sundays as holidays
 - **Timezone-Aware**: Cut-off times are calculated based on tenant timezone
 - **EOT Processing**: End-of-transmission (EOT) files must be received before cut-off time
+- **Smart Resolution**: Intelligent cut-off time resolution based on configuration type and date
 
-### 4. Holiday Management
+### 4. Enhanced Holiday Management
 - **Holiday Calendar**: Define holidays for each tenant
+- **Automatic Sunday Holidays**: Bulk creation of Sunday holidays for any year or date range
+- **Sunday Holiday Management**: Remove Sunday holidays with single operations
+- **Enhanced Holiday Checks**: Combined holiday and Sunday validation for services
 - **No Processing**: File processing is automatically skipped on holidays
 - **Flexible Configuration**: Add, edit, and delete holidays with descriptions
 
@@ -109,6 +117,10 @@ CREATE TABLE alert_history (
 - Added `sub_service_name VARCHAR(100) NULL`
 - Added `tenant_id VARCHAR(100) NOT NULL`
 - Added `cut_off_time TIME NOT NULL DEFAULT '23:59:59'`
+- Added `cut_off_time_type VARCHAR(20) NOT NULL DEFAULT 'DAILY'`
+- Added weekday/weekend specific cut-off times
+- Added individual day cut-off times (Monday through Sunday)
+- Added `all_sundays_as_holidays BIT NOT NULL DEFAULT 0`
 
 ## 🔧 Backend Implementation
 
@@ -342,6 +354,14 @@ Enable debug logging in application.properties:
 ```properties
 logging.level.com.filetransfer=DEBUG
 ```
+
+## 📚 Additional Resources
+
+- [Enhanced Cut-Off Time Features](README-Enhanced-CutOff-Features.md) - Detailed guide for new cut-off time management
+- [Microservices Architecture](README-Microservices.md) - Detailed microservices setup and configuration
+- [API Documentation](docs/API.md) - Complete API reference
+- [Frontend Guide](file-transfer-frontend/README.md) - React frontend setup and usage
+- [Migration Script](scripts/migrate-enhanced-cutoff.sql) - Database migration for existing installations
 
 ## 📞 Support
 

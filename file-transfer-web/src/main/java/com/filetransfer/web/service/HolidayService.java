@@ -7,8 +7,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -98,6 +101,131 @@ public class HolidayService {
         return holidayRepository.searchHolidays(tenantId, searchTerm).stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
+    }
+    
+    /**
+     * Create Sunday holidays for a given year and tenant
+     */
+    public List<HolidayDto> createSundayHolidays(String tenantId, int year) {
+        return createSundayHolidays(tenantId, year, "Sunday Holiday");
+    }
+    
+    /**
+     * Create Sunday holidays for a given year, tenant with custom name
+     */
+    public List<HolidayDto> createSundayHolidays(String tenantId, int year, String holidayName) {
+        List<HolidayDto> createdHolidays = new ArrayList<>();
+        
+        // Start from the first Sunday of the year
+        LocalDate date = LocalDate.of(year, 1, 1);
+        LocalDate firstSunday = date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+        
+        // Create holidays for all Sundays in the year
+        LocalDate currentSunday = firstSunday;
+        LocalDate endOfYear = LocalDate.of(year, 12, 31);
+        
+        while (!currentSunday.isAfter(endOfYear)) {
+            // Check if holiday already exists for this date
+            if (!isHoliday(tenantId, currentSunday)) {
+                try {
+                    HolidayDto holidayDto = new HolidayDto();
+                    holidayDto.setTenantId(tenantId);
+                    holidayDto.setHolidayDate(currentSunday);
+                    holidayDto.setHolidayName(holidayName);
+                    holidayDto.setDescription("Automatically created Sunday holiday");
+                    
+                    HolidayDto createdHoliday = createHoliday(holidayDto);
+                    createdHolidays.add(createdHoliday);
+                } catch (IllegalArgumentException e) {
+                    // Holiday already exists, skip
+                }
+            }
+            
+            // Move to next Sunday
+            currentSunday = currentSunday.plusWeeks(1);
+        }
+        
+        return createdHolidays;
+    }
+    
+    /**
+     * Create Sunday holidays for a date range
+     */
+    public List<HolidayDto> createSundayHolidaysForDateRange(String tenantId, LocalDate startDate, LocalDate endDate, String holidayName) {
+        List<HolidayDto> createdHolidays = new ArrayList<>();
+        
+        // Find the first Sunday on or after the start date
+        LocalDate firstSunday = startDate.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+        
+        // Create holidays for all Sundays in the date range
+        LocalDate currentSunday = firstSunday;
+        
+        while (!currentSunday.isAfter(endDate)) {
+            // Check if holiday already exists for this date
+            if (!isHoliday(tenantId, currentSunday)) {
+                try {
+                    HolidayDto holidayDto = new HolidayDto();
+                    holidayDto.setTenantId(tenantId);
+                    holidayDto.setHolidayDate(currentSunday);
+                    holidayDto.setHolidayName(holidayName != null ? holidayName : "Sunday Holiday");
+                    holidayDto.setDescription("Automatically created Sunday holiday");
+                    
+                    HolidayDto createdHoliday = createHoliday(holidayDto);
+                    createdHolidays.add(createdHoliday);
+                } catch (IllegalArgumentException e) {
+                    // Holiday already exists, skip
+                }
+            }
+            
+            // Move to next Sunday
+            currentSunday = currentSunday.plusWeeks(1);
+        }
+        
+        return createdHolidays;
+    }
+    
+    /**
+     * Remove all Sunday holidays for a given year and tenant
+     */
+    public int removeSundayHolidays(String tenantId, int year) {
+        int removedCount = 0;
+        LocalDate startOfYear = LocalDate.of(year, 1, 1);
+        LocalDate endOfYear = LocalDate.of(year, 12, 31);
+        
+        List<HolidayDto> holidays = getHolidaysForTenantAndDateRange(tenantId, startOfYear, endOfYear);
+        
+        for (HolidayDto holiday : holidays) {
+            if (holiday.getHolidayDate().getDayOfWeek() == DayOfWeek.SUNDAY) {
+                deleteHoliday(holiday.getId());
+                removedCount++;
+            }
+        }
+        
+        return removedCount;
+    }
+    
+    /**
+     * Check if a date falls on Sunday
+     */
+    public boolean isSunday(LocalDate date) {
+        return date.getDayOfWeek() == DayOfWeek.SUNDAY;
+    }
+    
+    /**
+     * Enhanced holiday check that includes Sunday check for services with allSundaysAsHolidays enabled
+     */
+    public boolean isHolidayOrSunday(String tenantId, LocalDate date, boolean allSundaysAsHolidays) {
+        // Check regular holidays
+        if (isHoliday(tenantId, date)) {
+            return true;
+        }
+        
+        // Check if all Sundays are treated as holidays
+        if (allSundaysAsHolidays && isSunday(date)) {
+            return true;
+        }
+        
+        return false;
     }
     
     private HolidayDto convertToDto(Holiday holiday) {

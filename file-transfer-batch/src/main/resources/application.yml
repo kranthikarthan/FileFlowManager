@@ -1,22 +1,37 @@
 spring:
   application:
     name: file-transfer-batch
+  
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  
+  # Azure SQL Managed Instance Configuration (Production)
   datasource:
-    url: jdbc:h2:mem:testdb
-    driverClassName: org.h2.Driver
-    username: sa
-    password: 
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
+    url: jdbc:sqlserver://${AZURE_SQL_MI_SERVER:localhost}:${AZURE_SQL_MI_PORT:1433};database=${AZURE_SQL_MI_DATABASE:filetransfer};encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30;
+    username: ${AZURE_SQL_MI_USERNAME:filetransfer}
+    password: ${AZURE_SQL_MI_PASSWORD:Password123}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      connection-timeout: 20000
+      leak-detection-threshold: 60000
+  
   jpa:
+    database-platform: org.hibernate.dialect.SQLServerDialect
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: ${DDL_AUTO:validate}
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     show-sql: false
     properties:
       hibernate:
         format_sql: true
+        use_sql_comments: true
+        jdbc:
+          batch_size: 20
   batch:
     job:
       enabled: false # Disable auto-start of jobs
@@ -26,23 +41,8 @@ spring:
 file-transfer:
   enabled: true
   poll-interval-seconds: 30
-  services:
-    service1:
-      inbound-path: /app/data/inbound/service1
-      outbound-path: /app/data/outbound/service1
-      start-marker-prefix: SOT_
-      end-marker-prefix: EOT_
-      data-file-pattern: "*.dat"
-      enabled: true
-      max-retries: 3
-    service2:
-      inbound-path: /app/data/inbound/service2
-      outbound-path: /app/data/outbound/service2
-      start-marker-prefix: START_
-      end-marker-prefix: END_
-      data-file-pattern: "*.xml"
-      enabled: true
-      max-retries: 3
+  # Services are now loaded from database - no static configuration needed
+  # Configuration is managed through the web application interface
 
 logging:
   level:
@@ -65,3 +65,52 @@ management:
 
 server:
   port: 8081
+
+---
+# Local Development Profile
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: jdbc:sqlserver://localhost:1433;database=filetransfer;encrypt=false;trustServerCertificate=true
+    username: sa
+    password: Password123
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+
+logging:
+  level:
+    com.filetransfer: DEBUG
+    org.hibernate.SQL: DEBUG
+
+---
+# Azure AKS Profile
+spring:
+  config:
+    activate:
+      on-profile: aks
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+logging:
+  level:
+    com.filetransfer: INFO
+
+---
+# Production Profile
+spring:
+  config:
+    activate:
+      on-profile: prod
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+logging:
+  level:
+    com.filetransfer: WARN

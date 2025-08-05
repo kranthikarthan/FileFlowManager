@@ -1,4 +1,4 @@
-package com.filetransfer.web.entity;
+package com.filetransfer.batch.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;

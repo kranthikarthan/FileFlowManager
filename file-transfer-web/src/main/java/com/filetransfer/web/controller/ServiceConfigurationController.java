@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 
@@ -133,5 +135,67 @@ public class ServiceConfigurationController {
             "disabledServices", totalCount - enabledCount,
             "tenantId", tenantId
         ));
+    }
+    
+    @GetMapping("/{id}/cutoff-time/{date}")
+    public ResponseEntity<Map<String, Object>> getEffectiveCutOffTime(
+            @PathVariable Long id, 
+            @PathVariable LocalDate date) {
+        try {
+            LocalTime cutOffTime = serviceConfigService.getEffectiveCutOffTime(id, date);
+            String description = serviceConfigService.getCutOffTimeDescription(id);
+            
+            return ResponseEntity.ok(Map.of(
+                "serviceId", id,
+                "date", date,
+                "cutOffTime", cutOffTime.toString(),
+                "description", description
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    @GetMapping("/tenant/{tenantId}/service/{serviceName}/cutoff-time/{date}")
+    public ResponseEntity<Map<String, Object>> getEffectiveCutOffTimeByName(
+            @PathVariable String tenantId,
+            @PathVariable String serviceName,
+            @PathVariable LocalDate date) {
+        try {
+            LocalTime cutOffTime = serviceConfigService.getEffectiveCutOffTime(tenantId, serviceName, date);
+            
+            return ResponseEntity.ok(Map.of(
+                "tenantId", tenantId,
+                "serviceName", serviceName,
+                "date", date,
+                "cutOffTime", cutOffTime.toString()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/{id}/check-cutoff")
+    public ResponseEntity<Map<String, Object>> checkCutOffTime(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request) {
+        try {
+            LocalDate date = LocalDate.parse(request.get("date"));
+            LocalTime time = LocalTime.parse(request.get("time"));
+            
+            boolean isBeforeCutOff = serviceConfigService.isBeforeCutOffTime(id, date, time);
+            LocalTime cutOffTime = serviceConfigService.getEffectiveCutOffTime(id, date);
+            
+            return ResponseEntity.ok(Map.of(
+                "serviceId", id,
+                "date", date,
+                "time", time.toString(),
+                "cutOffTime", cutOffTime.toString(),
+                "isBeforeCutOff", isBeforeCutOff,
+                "message", isBeforeCutOff ? "Within cut-off time" : "Past cut-off time"
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 }

@@ -1,139 +1,81 @@
-package com.filetransfer.web.entity;
+package com.filetransfer.web.dto;
 
-import jakarta.persistence.*;
+import com.filetransfer.web.entity.CutOffTimeType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "service_configurations")
-public class ServiceConfiguration {
+public class ServiceConfigurationDto {
     
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false)
     @NotBlank(message = "Service name is required")
     private String serviceName;
     
-    @Column
     private String subServiceName;
     
-    @Column(nullable = false)
     @NotBlank(message = "Tenant ID is required")
     private String tenantId;
     
-    @Column(nullable = false)
     @NotBlank(message = "Inbound path is required")
     private String inboundPath;
     
-    @Column(nullable = false)
     @NotBlank(message = "Outbound path is required")
     private String outboundPath;
     
-    @Column(nullable = false)
     private String startMarkerPrefix = "SOT_";
-    
-    @Column(nullable = false)
     private String endMarkerPrefix = "EOT_";
-    
-    @Column(nullable = false)
     private String dataFilePattern = "*.*";
     
-    @Column(nullable = false)
     @NotNull
     private Boolean enabled = true;
     
-    @Column(nullable = false)
     private Integer maxRetries = 3;
-    
-    @Column(nullable = false)
     private Integer pollIntervalSeconds = 30;
     
     // Enhanced cut-off time configuration
-    @Column(nullable = false)
     private String cutOffTime = "23:59:59";
     
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @NotNull
     private CutOffTimeType cutOffTimeType = CutOffTimeType.DAILY;
     
     // Weekday vs Weekend cut-off times
-    @Column
     private String weekdayCutOffTime;
-    
-    @Column
     private String weekendCutOffTime;
     
     // Individual day cut-off times
-    @Column
     private String mondayCutOffTime;
-    
-    @Column
     private String tuesdayCutOffTime;
-    
-    @Column
     private String wednesdayCutOffTime;
-    
-    @Column
     private String thursdayCutOffTime;
-    
-    @Column
     private String fridayCutOffTime;
-    
-    @Column
     private String saturdayCutOffTime;
-    
-    @Column
     private String sundayCutOffTime;
     
     // Holiday configuration
-    @Column(nullable = false)
     private Boolean allSundaysAsHolidays = false;
     
     // Validation regex patterns
-    @Column(length = 1000)
     private String sotFileValidationRegex;
-    
-    @Column(length = 1000)
     private String eotFileValidationRegex;
-    
-    @Column(length = 1000)
     private String dataFileValidationRegex;
     
-    @Column
     private String description;
-    
-    @Column(nullable = false)
     private LocalDateTime createdAt;
-    
-    @Column
     private LocalDateTime updatedAt;
-    
-    @Column
     private String createdBy;
-    
-    @Column
     private String updatedBy;
     
     // Constructors
-    public ServiceConfiguration() {
-        this.createdAt = LocalDateTime.now();
-    }
+    public ServiceConfigurationDto() {}
     
-    public ServiceConfiguration(String serviceName, String subServiceName, String tenantId, String inboundPath, String outboundPath) {
-        this();
+    public ServiceConfigurationDto(String serviceName, String subServiceName, String tenantId, 
+                                  String inboundPath, String outboundPath) {
         this.serviceName = serviceName;
         this.subServiceName = subServiceName;
         this.tenantId = tenantId;
         this.inboundPath = inboundPath;
         this.outboundPath = outboundPath;
-    }
-    
-    @PreUpdate
-    public void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
     }
     
     // Getters and Setters

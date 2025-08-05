@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -17,6 +19,9 @@ public class ServiceConfigurationService {
     
     @Autowired
     private ServiceConfigurationRepository serviceConfigRepository;
+    
+    @Autowired
+    private CutOffTimeService cutOffTimeService;
     
     public List<ServiceConfiguration> getServicesForTenant(String tenantId) {
         return serviceConfigRepository.findByTenantId(tenantId);
@@ -83,6 +88,17 @@ public class ServiceConfigurationService {
         existingService.setEndMarkerPrefix(serviceConfig.getEndMarkerPrefix());
         existingService.setDataFilePattern(serviceConfig.getDataFilePattern());
         existingService.setCutOffTime(serviceConfig.getCutOffTime());
+        existingService.setCutOffTimeType(serviceConfig.getCutOffTimeType());
+        existingService.setWeekdayCutOffTime(serviceConfig.getWeekdayCutOffTime());
+        existingService.setWeekendCutOffTime(serviceConfig.getWeekendCutOffTime());
+        existingService.setMondayCutOffTime(serviceConfig.getMondayCutOffTime());
+        existingService.setTuesdayCutOffTime(serviceConfig.getTuesdayCutOffTime());
+        existingService.setWednesdayCutOffTime(serviceConfig.getWednesdayCutOffTime());
+        existingService.setThursdayCutOffTime(serviceConfig.getThursdayCutOffTime());
+        existingService.setFridayCutOffTime(serviceConfig.getFridayCutOffTime());
+        existingService.setSaturdayCutOffTime(serviceConfig.getSaturdayCutOffTime());
+        existingService.setSundayCutOffTime(serviceConfig.getSundayCutOffTime());
+        existingService.setAllSundaysAsHolidays(serviceConfig.getAllSundaysAsHolidays());
         existingService.setEnabled(serviceConfig.getEnabled());
         existingService.setMaxRetries(serviceConfig.getMaxRetries());
         existingService.setPollIntervalSeconds(serviceConfig.getPollIntervalSeconds());
@@ -153,6 +169,9 @@ public class ServiceConfigurationService {
         validateRegexPattern(serviceConfig.getEotFileValidationRegex(), "EOT file validation regex");
         validateRegexPattern(serviceConfig.getDataFileValidationRegex(), "Data file validation regex");
         
+        // Validate cut-off time configuration
+        cutOffTimeService.validateCutOffTimeConfiguration(serviceConfig);
+        
         // Validate numeric fields
         if (serviceConfig.getMaxRetries() != null && serviceConfig.getMaxRetries() < 0) {
             throw new RuntimeException("Max retries must be a non-negative number");
@@ -184,5 +203,54 @@ public class ServiceConfigurationService {
     
     public long getEnabledServicesCountForTenant(String tenantId) {
         return serviceConfigRepository.countEnabledServicesForTenant(tenantId);
+    }
+    
+    /**
+     * Get the effective cut-off time for a service on a specific date
+     */
+    public LocalTime getEffectiveCutOffTime(Long serviceId, LocalDate date) {
+        Optional<ServiceConfiguration> serviceOpt = getServiceById(serviceId);
+        if (serviceOpt.isEmpty()) {
+            return LocalTime.parse("23:59:59");
+        }
+        
+        return cutOffTimeService.getCutOffTimeForDate(serviceOpt.get(), date);
+    }
+    
+    /**
+     * Get the effective cut-off time for a service by name on a specific date
+     */
+    public LocalTime getEffectiveCutOffTime(String tenantId, String serviceName, LocalDate date) {
+        List<ServiceConfiguration> services = getServicesByNameForTenant(tenantId, serviceName);
+        if (services.isEmpty()) {
+            return LocalTime.parse("23:59:59");
+        }
+        
+        // Use the first service configuration (or you could add logic to handle multiple)
+        return cutOffTimeService.getCutOffTimeForDate(services.get(0), date);
+    }
+    
+    /**
+     * Check if a time is before the cut-off for a service on a specific date
+     */
+    public boolean isBeforeCutOffTime(Long serviceId, LocalDate date, LocalTime time) {
+        Optional<ServiceConfiguration> serviceOpt = getServiceById(serviceId);
+        if (serviceOpt.isEmpty()) {
+            return true; // Default to allowing if service not found
+        }
+        
+        return cutOffTimeService.isBeforeCutOffTime(serviceOpt.get(), date, time);
+    }
+    
+    /**
+     * Get a description of the cut-off time configuration for a service
+     */
+    public String getCutOffTimeDescription(Long serviceId) {
+        Optional<ServiceConfiguration> serviceOpt = getServiceById(serviceId);
+        if (serviceOpt.isEmpty()) {
+            return "Service not found";
+        }
+        
+        return cutOffTimeService.getCutOffTimeDescription(serviceOpt.get());
     }
 }
