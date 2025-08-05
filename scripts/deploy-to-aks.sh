@@ -308,6 +308,20 @@ configService:
     AZURE_TENANT_ID: "$(az account show --query tenantId -o tsv)"
     AZURE_CLIENT_ID: "$IDENTITY_CLIENT_ID"
     JWT_SECRET: "$(openssl rand -base64 32)"
+  
+  # Enhanced Configuration
+  config:
+    ENHANCED_CUTOFF_ENABLED: "true"
+    DEFAULT_CUTOFF_TIME_TYPE: "WEEKDAY_WEEKEND"
+    SUNDAY_HOLIDAY_ENABLED: "true"
+    HOLIDAY_SERVICE_ENABLED: "true"
+    AUTO_CREATE_SUNDAY_HOLIDAYS: "true"
+    MULTI_TENANT_ENABLED: "true"
+    DEFAULT_TENANT_ID: "default"
+    TIMEZONE_SUPPORT_ENABLED: "true"
+    DEFAULT_TIMEZONE: "UTC"
+    PROMETHEUS_ENABLED: "true"
+    METRICS_ENDPOINT: "/actuator/prometheus"
 
 azure:
   workloadIdentity:

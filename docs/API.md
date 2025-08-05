@@ -213,6 +213,143 @@ GET /file-transfers/services
 ["service1", "service2", "service3"]
 ```
 
+## Enhanced Cut-Off Time Management
+
+### Get Cut-Off Time for Service
+```
+GET /api/services/{id}/cutoff-time/{date}
+```
+
+**Parameters**:
+- `id` (path): Service configuration ID
+- `date` (path): Date in YYYY-MM-DD format
+
+**Response**:
+```json
+{
+  "serviceId": 1,
+  "date": "2024-01-15",
+  "cutOffTime": "18:00:00",
+  "cutOffTimeType": "WEEKDAY_WEEKEND",
+  "isHoliday": false,
+  "isSunday": false
+}
+```
+
+### Check Cut-Off Time for Service
+```
+POST /api/services/{id}/check-cutoff
+```
+
+**Request Body**:
+```json
+{
+  "date": "2024-01-15",
+  "time": "17:30:00"
+}
+```
+
+**Response**:
+```json
+{
+  "serviceId": 1,
+  "date": "2024-01-15",
+  "time": "17:30:00",
+  "cutOffTime": "18:00:00",
+  "isBeforeCutOff": true,
+  "isHoliday": false,
+  "isSunday": false
+}
+```
+
+### Get Cut-Off Time by Tenant and Service Name
+```
+GET /api/services/tenant/{tenantId}/service/{serviceName}/cutoff-time/{date}
+```
+
+**Parameters**:
+- `tenantId` (path): Tenant identifier
+- `serviceName` (path): Service name
+- `date` (path): Date in YYYY-MM-DD format
+
+## Holiday Management
+
+### Create Sunday Holidays for a Year
+```
+POST /api/holidays/tenant/{tenantId}/create-sunday-holidays/{year}?holidayName=Sunday Holiday
+```
+
+**Parameters**:
+- `tenantId` (path): Tenant identifier
+- `year` (path): Year to create Sunday holidays for
+- `holidayName` (query): Name for the Sunday holidays
+
+### Create Sunday Holidays for Date Range
+```
+POST /api/holidays/tenant/{tenantId}/create-sunday-holidays-range?startDate=2024-01-01&endDate=2024-12-31&holidayName=Sunday Holiday
+```
+
+**Parameters**:
+- `tenantId` (path): Tenant identifier
+- `startDate` (query): Start date in YYYY-MM-DD format
+- `endDate` (query): End date in YYYY-MM-DD format
+- `holidayName` (query): Name for the Sunday holidays
+
+### Remove Sunday Holidays for a Year
+```
+DELETE /api/holidays/tenant/{tenantId}/remove-sunday-holidays/{year}
+```
+
+**Parameters**:
+- `tenantId` (path): Tenant identifier
+- `year` (path): Year to remove Sunday holidays for
+
+### Check if Date is Holiday or Sunday
+```
+GET /api/holidays/tenant/{tenantId}/is-holiday-or-sunday/{date}?allSundaysAsHolidays=true
+```
+
+**Parameters**:
+- `tenantId` (path): Tenant identifier
+- `date` (path): Date in YYYY-MM-DD format
+- `allSundaysAsHolidays` (query): Whether to treat all Sundays as holidays
+
+**Response**:
+```json
+{
+  "date": "2024-01-14",
+  "isHoliday": true,
+  "isSunday": true,
+  "holidayName": "Sunday Holiday"
+}
+```
+
+## Service Configuration
+
+### Update Service Configuration with Enhanced Cut-Off Times
+```
+PUT /api/services/{id}
+```
+
+**Request Body**:
+```json
+{
+  "serviceName": "business-service",
+  "tenantId": "tenant1",
+  "cutOffTimeType": "WEEKDAY_WEEKEND",
+  "cutOffTime": "18:00:00",
+  "weekdayCutOffTime": "18:00:00",
+  "weekendCutOffTime": "12:00:00",
+  "allSundaysAsHolidays": false,
+  "enabled": true
+}
+```
+
+**Enhanced Configuration Types**:
+- `DAILY`: Single cut-off time for all days
+- `WEEKDAY_WEEKEND`: Different times for weekdays and weekends
+- `PER_DAY`: Individual times for each day of the week
+
 ## Data Models
 
 ### FileTransferRecord

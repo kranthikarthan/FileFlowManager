@@ -12,6 +12,27 @@ data:
   ZIPKIN_URL: "http://zipkin-service:9411"
   LOG_LEVEL: "INFO"
   TRACE_SAMPLE_RATE: "0.1"
+  
+  # Enhanced Cut-Off Time Configuration
+  ENHANCED_CUTOFF_ENABLED: "true"
+  DEFAULT_CUTOFF_TIME_TYPE: "WEEKDAY_WEEKEND"
+  SUNDAY_HOLIDAY_ENABLED: "true"
+  
+  # Holiday Management
+  HOLIDAY_SERVICE_ENABLED: "true"
+  AUTO_CREATE_SUNDAY_HOLIDAYS: "true"
+  
+  # Multi-tenancy
+  MULTI_TENANT_ENABLED: "true"
+  DEFAULT_TENANT_ID: "default"
+  
+  # Timezone Support
+  TIMEZONE_SUPPORT_ENABLED: "true"
+  DEFAULT_TIMEZONE: "UTC"
+  
+  # Enhanced Monitoring
+  PROMETHEUS_ENABLED: "true"
+  METRICS_ENDPOINT: "/actuator/prometheus"
 ---
 apiVersion: v1
 kind: Secret
@@ -141,6 +162,62 @@ spec:
             secretKeyRef:
               name: config-service-secrets
               key: JWT_SECRET
+        # Enhanced Configuration
+        - name: ENHANCED_CUTOFF_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: config-service-config
+              key: ENHANCED_CUTOFF_ENABLED
+        - name: DEFAULT_CUTOFF_TIME_TYPE
+          valueFrom:
+            configMapKeyRef:
+              name: config-service-config
+              key: DEFAULT_CUTOFF_TIME_TYPE
+        - name: SUNDAY_HOLIDAY_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: config-service-config
+              key: SUNDAY_HOLIDAY_ENABLED
+        - name: HOLIDAY_SERVICE_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: config-service-config
+              key: HOLIDAY_SERVICE_ENABLED
+        - name: AUTO_CREATE_SUNDAY_HOLIDAYS
+          valueFrom:
+            configMapKeyRef:
+              name: config-service-config
+              key: AUTO_CREATE_SUNDAY_HOLIDAYS
+        - name: MULTI_TENANT_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: config-service-config
+              key: MULTI_TENANT_ENABLED
+        - name: DEFAULT_TENANT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: config-service-config
+              key: DEFAULT_TENANT_ID
+        - name: TIMEZONE_SUPPORT_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: config-service-config
+              key: TIMEZONE_SUPPORT_ENABLED
+        - name: DEFAULT_TIMEZONE
+          valueFrom:
+            configMapKeyRef:
+              name: config-service-config
+              key: DEFAULT_TIMEZONE
+        - name: PROMETHEUS_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: config-service-config
+              key: PROMETHEUS_ENABLED
+        - name: METRICS_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: config-service-config
+              key: METRICS_ENDPOINT
         resources:
           limits:
             cpu: 1000m

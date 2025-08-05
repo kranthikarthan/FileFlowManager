@@ -188,6 +188,154 @@ Import dashboard configuration from `monitoring/grafana-dashboard.json`
 ### Database Backup
 - Use Kubernetes CronJobs or external backup tools to back up MySQL persistent volumes.
 
+## Enhanced Configuration
+
+### Enhanced Cut-Off Time Configuration
+
+The system supports enhanced cut-off time management with the following configuration options:
+
+#### Environment Variables for Enhanced Features
+```yaml
+# Enhanced Cut-Off Time Configuration
+ENHANCED_CUTOFF_ENABLED: "true"
+DEFAULT_CUTOFF_TIME_TYPE: "WEEKDAY_WEEKEND"
+SUNDAY_HOLIDAY_ENABLED: "true"
+
+# Holiday Management
+HOLIDAY_SERVICE_ENABLED: "true"
+AUTO_CREATE_SUNDAY_HOLIDAYS: "true"
+```
+
+#### Database Migration
+Run the enhanced migration script to add new columns:
+```bash
+# For existing installations
+kubectl exec -it <mysql-pod> -n file-transfer -- mysql -u filetransfer -p filetransfer < /scripts/migrate-enhanced-cutoff.sql
+
+# Or using the provided script
+kubectl cp scripts/migrate-enhanced-cutoff.sql <mysql-pod>:/tmp/ -n file-transfer
+kubectl exec -it <mysql-pod> -n file-transfer -- mysql -u filetransfer -p filetransfer < /tmp/migrate-enhanced-cutoff.sql
+```
+
+#### Enhanced Service Configuration
+```yaml
+# ConfigMap for enhanced features
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: enhanced-config
+  namespace: file-transfer
+data:
+  # Cut-off time configuration
+  CUTOFF_TIME_TYPE: "WEEKDAY_WEEKEND"
+  WEEKDAY_CUTOFF_TIME: "18:00:00"
+  WEEKEND_CUTOFF_TIME: "12:00:00"
+  
+  # Holiday configuration
+  ALL_SUNDAYS_AS_HOLIDAYS: "true"
+  HOLIDAY_SERVICE_ENABLED: "true"
+  
+  # Multi-tenancy
+  MULTI_TENANT_ENABLED: "true"
+  DEFAULT_TENANT_ID: "default"
+```
+
+### Multi-Tenancy Configuration
+
+#### Tenant Management
+```yaml
+# Tenant configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tenant-config
+  namespace: file-transfer
+data:
+  TENANT_ISOLATION_ENABLED: "true"
+  TENANT_DATABASE_PREFIX: "ft_"
+  TENANT_SCHEMA_SEPARATION: "true"
+```
+
+#### Timezone Support
+```yaml
+# Timezone configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: timezone-config
+  namespace: file-transfer
+data:
+  DEFAULT_TIMEZONE: "UTC"
+  TIMEZONE_SUPPORT_ENABLED: "true"
+  DATE_FORMAT: "yyyy-MM-dd"
+  TIME_FORMAT: "HH:mm:ss"
+```
+
+### Azure Integration Configuration
+
+#### Azure Key Vault Integration
+```yaml
+# Azure Key Vault configuration
+apiVersion: v1
+kind: Secret
+metadata:
+  name: azure-keyvault-config
+  namespace: file-transfer
+type: Opaque
+stringData:
+  AZURE_KEYVAULT_URI: "https://your-keyvault.vault.azure.net/"
+  AZURE_TENANT_ID: "your-tenant-id"
+  AZURE_CLIENT_ID: "your-client-id"
+  AZURE_CLIENT_SECRET: "your-client-secret"
+```
+
+#### Azure SQL Managed Instance
+```yaml
+# Azure SQL configuration
+apiVersion: v1
+kind: Secret
+metadata:
+  name: azure-sql-config
+  namespace: file-transfer
+type: Opaque
+stringData:
+  AZURE_SQL_MI_SERVER: "your-sql-mi-server.database.windows.net"
+  AZURE_SQL_MI_DATABASE: "filetransfer"
+  AZURE_SQL_MI_USERNAME: "filetransfer"
+  AZURE_SQL_MI_PASSWORD: "YourSecurePassword123!"
+```
+
+### Enhanced Monitoring Configuration
+
+#### Prometheus Metrics
+```yaml
+# Enhanced monitoring
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: monitoring-config
+  namespace: file-transfer
+data:
+  PROMETHEUS_ENABLED: "true"
+  METRICS_ENDPOINT: "/actuator/prometheus"
+  TRACE_SAMPLE_RATE: "0.1"
+  LOG_LEVEL: "INFO"
+```
+
+#### Distributed Tracing
+```yaml
+# Zipkin configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tracing-config
+  namespace: file-transfer
+data:
+  ZIPKIN_URL: "http://zipkin-service:9411"
+  SLEUTH_SAMPLER_PROBABILITY: "0.1"
+  TRACE_ID_128_BIT: "true"
+```
+
 ## Security Considerations
 
 ### Network Security

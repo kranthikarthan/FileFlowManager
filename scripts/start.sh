@@ -59,6 +59,18 @@ fi
 
 # Build and start all services
 echo "Building and starting all services..."
+
+# Set enhanced configuration environment variables
+export ENHANCED_CUTOFF_ENABLED=true
+export DEFAULT_CUTOFF_TIME_TYPE=WEEKDAY_WEEKEND
+export SUNDAY_HOLIDAY_ENABLED=true
+export HOLIDAY_SERVICE_ENABLED=true
+export AUTO_CREATE_SUNDAY_HOLIDAYS=true
+export MULTI_TENANT_ENABLED=true
+export DEFAULT_TENANT_ID=default
+export TIMEZONE_SUPPORT_ENABLED=true
+export DEFAULT_TIMEZONE=UTC
+
 docker-compose up --build -d
 
 # Wait for services to start

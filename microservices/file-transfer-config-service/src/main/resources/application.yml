@@ -92,6 +92,25 @@ management:
       service: ${spring.application.name}
       version: ${BUILD_VERSION:1.0.0}
 
+# Enhanced Configuration
+enhanced:
+  cutoff:
+    enabled: ${ENHANCED_CUTOFF_ENABLED:true}
+    default-type: ${DEFAULT_CUTOFF_TIME_TYPE:WEEKDAY_WEEKEND}
+    sunday-holiday-enabled: ${SUNDAY_HOLIDAY_ENABLED:true}
+  
+  holiday:
+    service-enabled: ${HOLIDAY_SERVICE_ENABLED:true}
+    auto-create-sunday-holidays: ${AUTO_CREATE_SUNDAY_HOLIDAYS:true}
+  
+  multi-tenant:
+    enabled: ${MULTI_TENANT_ENABLED:true}
+    default-tenant-id: ${DEFAULT_TENANT_ID:default}
+  
+  timezone:
+    support-enabled: ${TIMEZONE_SUPPORT_ENABLED:true}
+    default: ${DEFAULT_TIMEZONE:UTC}
+
 # Logging Configuration
 logging:
   level:
