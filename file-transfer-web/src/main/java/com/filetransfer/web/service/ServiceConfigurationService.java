@@ -105,6 +105,11 @@ public class ServiceConfigurationService {
         existingService.setSotFileValidationRegex(serviceConfig.getSotFileValidationRegex());
         existingService.setEotFileValidationRegex(serviceConfig.getEotFileValidationRegex());
         existingService.setDataFileValidationRegex(serviceConfig.getDataFileValidationRegex());
+        
+        // Schema validation settings
+        existingService.setSchemaValidationEnabled(serviceConfig.getSchemaValidationEnabled());
+        existingService.setSchemaId(serviceConfig.getSchemaId());
+        existingService.setSchemaValidationMode(serviceConfig.getSchemaValidationMode());
         existingService.setDescription(serviceConfig.getDescription());
         existingService.setUpdatedBy(serviceConfig.getUpdatedBy());
         

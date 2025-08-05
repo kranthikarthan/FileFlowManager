@@ -461,6 +461,20 @@ GET /api/schemas/templates
       },
       "required": ["id", "name"]
     }
+  },
+  "COBOL_COPYBOOK": {
+    "type": "COBOL_COPYBOOK",
+    "description": "COBOL copybook file schema",
+    "example": {
+      "recordLength": 80,
+      "fields": [
+        {"name": "CUSTOMER-ID", "level": "05", "type": "PIC", "picture": "X(10)", "start": 1, "length": 10, "required": true},
+        {"name": "CUSTOMER-NAME", "level": "05", "type": "PIC", "picture": "X(30)", "start": 11, "length": 30, "required": true},
+        {"name": "ACCOUNT-BALANCE", "level": "05", "type": "PIC", "picture": "9(10)V99", "start": 41, "length": 12, "required": true},
+        {"name": "LAST-UPDATE-DATE", "level": "05", "type": "PIC", "picture": "9(8)", "start": 53, "length": 8, "required": true},
+        {"name": "STATUS-CODE", "level": "05", "type": "PIC", "picture": "X(1)", "start": 61, "length": 1, "required": true}
+      ]
+    }
   }
 }
 ```

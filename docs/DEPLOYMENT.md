@@ -198,6 +198,36 @@ az sql mi db execute --resource-group your-rg --managed-instance your-sql-mi --d
 sqlcmd -S your-sql-mi-server.database.windows.net -d filetransfer -U filetransfer -P YourPassword -i scripts/migrate-enhanced-cutoff.sql
 ```
 
+#### Schema Validation Configuration
+
+The schema validation feature is optional and can be enabled per service configuration. To enable schema validation:
+
+1. **Database Migration**: Run the schema validation migration script:
+```bash
+sqlcmd -S your-sql-mi-server.database.windows.net -d filetransfer -U filetransfer -P YourPassword -i scripts/migrate-schema-validation.sql
+```
+
+2. **Environment Variables**: Add schema validation configuration:
+```yaml
+# Schema Validation Settings
+SCHEMA_VALIDATION_ENABLED: "true"
+SCHEMA_VALIDATION_DEFAULT_MODE: "STRICT"  # STRICT, LENIENT, WARNING_ONLY
+```
+
+3. **Service Configuration**: Enable schema validation per service:
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: service-config-schema-validation
+  namespace: file-transfer
+data:
+  # Schema validation settings
+  SCHEMA_VALIDATION_ENABLED: "true"
+  SCHEMA_ID: "1"  # Reference to schema in database
+  SCHEMA_VALIDATION_MODE: "STRICT"
+```
+
 #### Enhanced Service Configuration
 ```yaml
 # ConfigMap for enhanced features

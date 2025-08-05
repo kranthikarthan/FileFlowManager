@@ -177,6 +177,17 @@ const SchemaForm = ({ schema, tenantId, onSave, onCancel }) => {
           { name: 'field1', start: 1, length: 10, type: 'STRING' },
           { name: 'field2', start: 11, length: 5, type: 'INTEGER' }
         ]
+      },
+      COBOL_COPYBOOK: {
+        recordLength: 80,
+        fields: [
+          { name: 'CUSTOMER-ID', level: '05', type: 'PIC', picture: 'X(10)', start: 1, length: 10, required: true },
+          { name: 'CUSTOMER-NAME', level: '05', type: 'PIC', picture: 'X(30)', start: 11, length: 30, required: true },
+          { name: 'ACCOUNT-BALANCE', level: '05', type: 'PIC', picture: '9(10)V99', start: 41, length: 12, required: true },
+          { name: 'LAST-UPDATE-DATE', level: '05', type: 'PIC', picture: '9(8)', start: 53, length: 8, required: true },
+          { name: 'STATUS-CODE', level: '05', type: 'PIC', picture: 'X(1)', start: 61, length: 1, required: true },
+          { name: 'FILLER', level: '05', type: 'PIC', picture: 'X(19)', start: 62, length: 19, required: false }
+        ]
       }
     };
     return templates[type] || {};
@@ -221,10 +232,11 @@ const SchemaForm = ({ schema, tenantId, onSave, onCancel }) => {
               onChange={(e) => handleSchemaTypeChange(e.target.value)}
               label="Schema Type"
             >
-              <MenuItem value="CSV">CSV</MenuItem>
-              <MenuItem value="JSON">JSON</MenuItem>
-              <MenuItem value="XML">XML</MenuItem>
-              <MenuItem value="FIXED_WIDTH">Fixed Width</MenuItem>
+                          <MenuItem value="CSV">CSV</MenuItem>
+            <MenuItem value="JSON">JSON</MenuItem>
+            <MenuItem value="XML">XML</MenuItem>
+            <MenuItem value="FIXED_WIDTH">Fixed Width</MenuItem>
+            <MenuItem value="COBOL_COPYBOOK">COBOL Copybook</MenuItem>
             </Select>
           </FormControl>
         </Grid>

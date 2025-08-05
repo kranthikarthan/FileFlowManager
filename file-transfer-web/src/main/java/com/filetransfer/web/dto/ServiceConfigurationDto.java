@@ -60,6 +60,11 @@ public class ServiceConfigurationDto {
     private String eotFileValidationRegex;
     private String dataFileValidationRegex;
     
+    // Schema validation settings
+    private Boolean schemaValidationEnabled = false;
+    private Long schemaId;
+    private String schemaValidationMode = "STRICT"; // STRICT, LENIENT, WARNING_ONLY
+    
     private String description;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -159,6 +164,15 @@ public class ServiceConfigurationDto {
     
     public String getDataFileValidationRegex() { return dataFileValidationRegex; }
     public void setDataFileValidationRegex(String dataFileValidationRegex) { this.dataFileValidationRegex = dataFileValidationRegex; }
+    
+    public Boolean getSchemaValidationEnabled() { return schemaValidationEnabled; }
+    public void setSchemaValidationEnabled(Boolean schemaValidationEnabled) { this.schemaValidationEnabled = schemaValidationEnabled; }
+    
+    public Long getSchemaId() { return schemaId; }
+    public void setSchemaId(Long schemaId) { this.schemaId = schemaId; }
+    
+    public String getSchemaValidationMode() { return schemaValidationMode; }
+    public void setSchemaValidationMode(String schemaValidationMode) { this.schemaValidationMode = schemaValidationMode; }
     
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }

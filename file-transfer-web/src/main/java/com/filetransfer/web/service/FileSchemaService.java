@@ -192,6 +192,8 @@ public class FileSchemaService {
                 return validateJsonSchemaRule(rule, content);
             case "XML_SCHEMA":
                 return validateXmlSchemaRule(rule, content);
+            case "COBOL_COPYBOOK":
+                return validateCobolCopybookRule(rule, content);
             default:
                 return true; // Unknown rule type, skip
         }
@@ -240,6 +242,86 @@ public class FileSchemaService {
     private boolean validateXmlSchemaRule(SchemaValidationRule rule, String content) {
         // Implement XML schema validation
         return true; // Placeholder
+    }
+    
+    private boolean validateCobolCopybookRule(SchemaValidationRule rule, String content) {
+        try {
+            // Parse COBOL copybook definition from rule
+            String copybookDefinition = rule.getRuleDefinition();
+            
+            // Basic COBOL copybook validation
+            // This is a simplified implementation - in production, use a proper COBOL parser
+            
+            // Check if content matches COBOL record structure
+            String[] lines = content.split("\n");
+            
+            for (String line : lines) {
+                if (!line.trim().isEmpty()) {
+                    // Validate record length
+                    if (line.length() != 80) { // Standard COBOL record length
+                        return false;
+                    }
+                    
+                    // Validate field positions and formats
+                    if (!validateCobolRecord(line, copybookDefinition)) {
+                        return false;
+                    }
+                }
+            }
+            
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    
+    private boolean validateCobolRecord(String record, String copybookDefinition) {
+        try {
+            // Parse copybook definition (simplified)
+            // In production, use a proper COBOL copybook parser
+            
+            // Basic validation for common COBOL field types
+            // X(n) - alphanumeric fields
+            // 9(n) - numeric fields
+            // 9(n)V99 - decimal fields
+            
+            // Example validation for a simple copybook structure
+            if (record.length() >= 80) {
+                // Validate first 10 characters as alphanumeric (CUSTOMER-ID)
+                String customerId = record.substring(0, 10);
+                if (!customerId.matches("^[A-Za-z0-9\\s]+$")) {
+                    return false;
+                }
+                
+                // Validate next 30 characters as alphanumeric (CUSTOMER-NAME)
+                String customerName = record.substring(10, 40);
+                if (!customerName.matches("^[A-Za-z0-9\\s]+$")) {
+                    return false;
+                }
+                
+                // Validate next 12 characters as numeric (ACCOUNT-BALANCE)
+                String accountBalance = record.substring(40, 52);
+                if (!accountBalance.matches("^\\d{10}\\.\\d{2}$")) {
+                    return false;
+                }
+                
+                // Validate next 8 characters as numeric (LAST-UPDATE-DATE)
+                String lastUpdateDate = record.substring(52, 60);
+                if (!lastUpdateDate.matches("^\\d{8}$")) {
+                    return false;
+                }
+                
+                // Validate next 1 character as alphanumeric (STATUS-CODE)
+                String statusCode = record.substring(60, 61);
+                if (!statusCode.matches("^[A-Za-z0-9]$")) {
+                    return false;
+                }
+            }
+            
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
     
     private boolean evaluateSimpleExpression(String expression) {

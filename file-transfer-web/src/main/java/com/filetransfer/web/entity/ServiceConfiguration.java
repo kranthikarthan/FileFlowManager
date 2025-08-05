@@ -102,6 +102,16 @@ public class ServiceConfiguration {
     @Column(length = 1000)
     private String dataFileValidationRegex;
     
+    // Schema validation settings
+    @Column(name = "schema_validation_enabled")
+    private Boolean schemaValidationEnabled = false;
+    
+    @Column(name = "schema_id")
+    private Long schemaId;
+    
+    @Column(name = "schema_validation_mode")
+    private String schemaValidationMode = "STRICT"; // STRICT, LENIENT, WARNING_ONLY
+    
     @Column
     private String description;
     
@@ -217,6 +227,15 @@ public class ServiceConfiguration {
     
     public String getDataFileValidationRegex() { return dataFileValidationRegex; }
     public void setDataFileValidationRegex(String dataFileValidationRegex) { this.dataFileValidationRegex = dataFileValidationRegex; }
+    
+    public Boolean getSchemaValidationEnabled() { return schemaValidationEnabled; }
+    public void setSchemaValidationEnabled(Boolean schemaValidationEnabled) { this.schemaValidationEnabled = schemaValidationEnabled; }
+    
+    public Long getSchemaId() { return schemaId; }
+    public void setSchemaId(Long schemaId) { this.schemaId = schemaId; }
+    
+    public String getSchemaValidationMode() { return schemaValidationMode; }
+    public void setSchemaValidationMode(String schemaValidationMode) { this.schemaValidationMode = schemaValidationMode; }
     
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }

@@ -129,7 +129,21 @@ VALUES
     {"name": "balance", "type": "DECIMAL", "start": 15, "length": 15, "precision": 10, "scale": 2, "required": true},
     {"name": "last_updated", "type": "DATE", "start": 30, "length": 8, "format": "yyyyMMdd", "required": true}
   ]
-}', 'system', 'Fixed width schema for account data');
+}', 'system', 'Fixed width schema for account data'),
+
+('default', 'service4', 'COBOL Copybook Schema', '1.0', 'COBOL_COPYBOOK', 
+'{
+  "type": "cobol_copybook",
+  "recordLength": 80,
+  "fields": [
+    {"name": "CUSTOMER-ID", "level": "05", "type": "PIC", "picture": "X(10)", "start": 1, "length": 10, "required": true},
+    {"name": "CUSTOMER-NAME", "level": "05", "type": "PIC", "picture": "X(30)", "start": 11, "length": 30, "required": true},
+    {"name": "ACCOUNT-BALANCE", "level": "05", "type": "PIC", "picture": "9(10)V99", "start": 41, "length": 12, "required": true},
+    {"name": "LAST-UPDATE-DATE", "level": "05", "type": "PIC", "picture": "9(8)", "start": 53, "length": 8, "required": true},
+    {"name": "STATUS-CODE", "level": "05", "type": "PIC", "picture": "X(1)", "start": 61, "length": 1, "required": true},
+    {"name": "FILLER", "level": "05", "type": "PIC", "picture": "X(19)", "start": 62, "length": 19, "required": false}
+  ]
+}', 'system', 'COBOL copybook schema for customer records');
 
 -- Insert sample validation rules
 INSERT INTO schema_validation_rules (schema_id, rule_name, rule_type, rule_definition, rule_order, error_message)
