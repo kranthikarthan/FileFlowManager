@@ -11,7 +11,19 @@ This document summarizes the alignment fixes made to ensure all artefacts in the
 - Removed `AuthService` and `NotificationService` entries from both matrix configurations
 - Only `ConfigService` and `ProcessingService` remain in the build pipeline
 
-### 2. API Documentation (docs/API.md)
+### 2. Database References (Multiple Files)
+**Issue**: MySQL references throughout documentation instead of Azure SQL MI
+**Fix**: Updated all database references to use Azure SQL MI
+- Updated API documentation health check response
+- Updated deployment documentation with Azure SQL MI configuration
+- Updated start script to reference Azure SQL MI
+- Updated README files to use Azure SQL MI
+- Updated enhanced features documentation
+- Replaced MySQL deployment with Azure SQL MI configuration
+- Updated database connection strings to use SQL Server format
+- Updated troubleshooting commands to use sqlcmd instead of mysql
+
+### 3. API Documentation (docs/API.md)
 **Issue**: Missing documentation for enhanced cut-off time and holiday management features
 **Fix**: Added comprehensive API documentation for enhanced features
 - Added "Enhanced Cut-Off Time Management" section with endpoints:
@@ -25,7 +37,7 @@ This document summarizes the alignment fixes made to ensure all artefacts in the
   - `GET /api/holidays/tenant/{tenantId}/is-holiday-or-sunday/{date}`
 - Added "Service Configuration" section with enhanced configuration examples
 
-### 3. Deployment Documentation (docs/DEPLOYMENT.md)
+### 4. Deployment Documentation (docs/DEPLOYMENT.md)
 **Issue**: Missing deployment configuration for enhanced features
 **Fix**: Added comprehensive enhanced configuration section
 - Added "Enhanced Configuration" section with:
@@ -37,7 +49,7 @@ This document summarizes the alignment fixes made to ensure all artefacts in the
   - Enhanced monitoring configuration
 - Included environment variables, ConfigMaps, and Secrets examples
 
-### 4. Kubernetes Configuration (k8s/config-service.yml)
+### 5. Kubernetes Configuration (k8s/config-service.yml)
 **Issue**: Missing environment variables for enhanced features
 **Fix**: Added enhanced configuration to ConfigMap and container environment variables
 - Added enhanced cut-off time configuration variables
@@ -47,7 +59,7 @@ This document summarizes the alignment fixes made to ensure all artefacts in the
 - Added enhanced monitoring configuration variables
 - Updated container environment variables to reference the new ConfigMap values
 
-### 5. Microservices Configuration (microservices/file-transfer-config-service/src/main/resources/application.yml)
+### 6. Microservices Configuration (microservices/file-transfer-config-service/src/main/resources/application.yml)
 **Issue**: Missing enhanced configuration section
 **Fix**: Added enhanced configuration section
 - Added `enhanced.cutoff` configuration
@@ -56,7 +68,7 @@ This document summarizes the alignment fixes made to ensure all artefacts in the
 - Added `enhanced.timezone` configuration
 - All configurations use environment variable substitution for flexibility
 
-### 6. Start Script (scripts/start.sh)
+### 7. Start Script (scripts/start.sh)
 **Issue**: Missing enhanced configuration environment variables
 **Fix**: Added enhanced configuration environment variables
 - Added `ENHANCED_CUTOFF_ENABLED=true`
@@ -69,7 +81,7 @@ This document summarizes the alignment fixes made to ensure all artefacts in the
 - Added `TIMEZONE_SUPPORT_ENABLED=true`
 - Added `DEFAULT_TIMEZONE=UTC`
 
-### 7. AKS Deployment Script (scripts/deploy-to-aks.sh)
+### 8. AKS Deployment Script (scripts/deploy-to-aks.sh)
 **Issue**: Missing enhanced configuration in Helm values
 **Fix**: Added enhanced configuration to the values-override.yaml generation
 - Added enhanced configuration section to configService
@@ -130,11 +142,15 @@ This document summarizes the alignment fixes made to ensure all artefacts in the
 ## Files Modified
 
 1. `azure-pipelines/build-pipeline.yml` - Removed non-existent services
-2. `docs/API.md` - Added enhanced API documentation
-3. `docs/DEPLOYMENT.md` - Added enhanced deployment configuration
+2. `docs/API.md` - Added enhanced API documentation and fixed database reference
+3. `docs/DEPLOYMENT.md` - Added enhanced deployment configuration and Azure SQL MI setup
 4. `k8s/config-service.yml` - Added enhanced environment variables
 5. `microservices/file-transfer-config-service/src/main/resources/application.yml` - Added enhanced configuration
-6. `scripts/start.sh` - Added enhanced environment variables
+6. `scripts/start.sh` - Added enhanced environment variables and fixed database reference
 7. `scripts/deploy-to-aks.sh` - Added enhanced Helm configuration
+8. `README.md` - Fixed database references to Azure SQL MI
+9. `README-Enhanced-Features.md` - Fixed database references to Azure SQL MI
+
+All artefacts are now properly aligned with the enhanced features of the File Transfer Management System and use Azure SQL MI instead of MySQL.
 
 All artefacts are now properly aligned with the enhanced features of the File Transfer Management System.

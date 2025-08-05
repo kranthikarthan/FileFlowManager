@@ -76,7 +76,7 @@ The system consists of three main components:
 
 ### Technical Features
 - **Kubernetes Deployment**: Production-grade deployment using Kubernetes manifests
-- **Database Integration**: MySQL for persistent storage with dynamic schema
+- **Database Integration**: Azure SQL Managed Instance for persistent storage with dynamic schema
 - **RESTful API**: Comprehensive REST endpoints for all operations
 - **Modern UI**: React with Material-UI components
 - **Security**: Spring Security with OAuth2 and JWT support
@@ -103,13 +103,13 @@ The system consists of three main components:
    ```bash
    kubectl apply -f k8s/
    ```
-   - This will deploy MySQL, backend services, and the frontend to your cluster.
+   - This will deploy Azure SQL MI, backend services, and the frontend to your cluster.
 
 3. **Access the application**
    - Frontend: http://<your-k8s-ingress-or-service>
    - Web API: http://<your-k8s-ingress-or-service>/api
    - Batch App: http://<your-k8s-ingress-or-service>:8081
-   - Database: <your-mysql-service>:3306
+   - Database: <your-sql-mi-server>.database.windows.net:1433
 
 4. **Default Login**
    - **SSO**: Demo Organization (demo-org) with Azure AD provider
@@ -373,7 +373,7 @@ metadata:
   name: file-transfer-config
   namespace: file-transfer
 data:
-  database-url: "jdbc:mysql://mysql:3306/filetransfer"
+  database-url: "jdbc:sqlserver://your-sql-mi-server.database.windows.net:1433;database=filetransfer;encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30;"
   database-username: "filetransfer"
 ---
 apiVersion: v1
@@ -384,7 +384,7 @@ metadata:
 type: Opaque
 data:
   database-password: <base64-encoded-password>
-  mysql-root-password: <base64-encoded-root-password>
+  azure-sql-mi-password: <base64-encoded-password>
 ```
 
 ### Security Considerations

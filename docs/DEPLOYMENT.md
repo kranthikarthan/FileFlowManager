@@ -46,7 +46,7 @@ metadata:
   name: file-transfer-config
   namespace: file-transfer
 data:
-  database-url: "jdbc:mysql://mysql:3306/filetransfer"
+  database-url: "jdbc:sqlserver://your-sql-mi-server.database.windows.net:1433;database=filetransfer;encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30;"
   database-username: "filetransfer"
 ```
 
@@ -60,55 +60,34 @@ metadata:
 type: Opaque
 data:
   database-password: <base64-encoded-password>
-  mysql-root-password: <base64-encoded-root-password>
+  azure-sql-mi-password: <base64-encoded-password>
 ```
 
-### MySQL Deployment
+### Azure SQL Managed Instance Configuration
 ```yaml
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: v1
+kind: ConfigMap
 metadata:
-  name: mysql
+  name: azure-sql-config
   namespace: file-transfer
-spec:
-  selector:
-    matchLabels:
-      app: mysql
-  template:
-    metadata:
-      labels:
-        app: mysql
-    spec:
-      containers:
-      - name: mysql
-        image: mysql:8.0
-        env:
-        - name: MYSQL_DATABASE
-          value: filetransfer
-        - name: MYSQL_USER
-          valueFrom:
-            configMapKeyRef:
-              name: file-transfer-config
-              key: database-username
-        - name: MYSQL_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: file-transfer-secret
-              key: database-password
-        - name: MYSQL_ROOT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: file-transfer-secret
-              key: mysql-root-password
-        ports:
-        - containerPort: 3306
-        volumeMounts:
-        - name: mysql-storage
-          mountPath: /var/lib/mysql
-      volumes:
-      - name: mysql-storage
-        persistentVolumeClaim:
-          claimName: mysql-pvc
+data:
+  AZURE_SQL_MI_SERVER: "your-sql-mi-server.database.windows.net"
+  AZURE_SQL_MI_DATABASE: "filetransfer"
+  AZURE_SQL_MI_USERNAME: "filetransfer"
+  AZURE_SQL_MI_PORT: "1433"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: azure-sql-secret
+  namespace: file-transfer
+type: Opaque
+stringData:
+  AZURE_SQL_MI_PASSWORD: "YourSecurePassword123!"
+  AZURE_KEYVAULT_URI: "https://your-keyvault.vault.azure.net/"
+  AZURE_TENANT_ID: "your-tenant-id"
+  AZURE_CLIENT_ID: "your-client-id"
+  AZURE_CLIENT_SECRET: "your-client-secret"
 ```
 
 ### Application Deployments
@@ -186,7 +165,9 @@ Import dashboard configuration from `monitoring/grafana-dashboard.json`
 ## Backup and Recovery
 
 ### Database Backup
-- Use Kubernetes CronJobs or external backup tools to back up MySQL persistent volumes.
+- Use Azure SQL MI built-in backup and point-in-time restore capabilities
+- Configure automated backups through Azure portal or Azure CLI
+- Set up geo-replication for disaster recovery
 
 ## Enhanced Configuration
 
@@ -209,12 +190,12 @@ AUTO_CREATE_SUNDAY_HOLIDAYS: "true"
 #### Database Migration
 Run the enhanced migration script to add new columns:
 ```bash
-# For existing installations
-kubectl exec -it <mysql-pod> -n file-transfer -- mysql -u filetransfer -p filetransfer < /scripts/migrate-enhanced-cutoff.sql
+# For existing installations using Azure SQL MI
+# Using Azure CLI to run migration script
+az sql mi db execute --resource-group your-rg --managed-instance your-sql-mi --database filetransfer --file-path scripts/migrate-enhanced-cutoff.sql
 
-# Or using the provided script
-kubectl cp scripts/migrate-enhanced-cutoff.sql <mysql-pod>:/tmp/ -n file-transfer
-kubectl exec -it <mysql-pod> -n file-transfer -- mysql -u filetransfer -p filetransfer < /tmp/migrate-enhanced-cutoff.sql
+# Or using sqlcmd with Azure SQL MI
+sqlcmd -S your-sql-mi-server.database.windows.net -d filetransfer -U filetransfer -P YourPassword -i scripts/migrate-enhanced-cutoff.sql
 ```
 
 #### Enhanced Service Configuration
@@ -367,10 +348,10 @@ env:
 
 ### Database Tuning
 ```sql
--- MySQL configuration
-SET GLOBAL innodb_buffer_pool_size = 1073741824; -- 1GB
-SET GLOBAL innodb_log_file_size = 268435456;     -- 256MB
-SET GLOBAL max_connections = 200;
+-- Azure SQL MI configuration
+-- These settings are managed by Azure SQL MI
+-- Connection pooling and performance are optimized automatically
+-- Monitor performance using Azure SQL Analytics
 ```
 
 ### Connection Pooling
@@ -401,9 +382,12 @@ spring:
 2. **Database connection issues**
    ```bash
    # Test database connectivity
-   kubectl exec -it <mysql-pod> -n file-transfer -- mysql -u root -p
+   sqlcmd -S your-sql-mi-server.database.windows.net -d filetransfer -U filetransfer -P YourPassword
    
-   # Check network
+   # Check Azure SQL MI status
+   az sql mi show --name your-sql-mi --resource-group your-rg
+   
+   # Check network connectivity
    kubectl get svc -n file-transfer
    kubectl get pods -o wide -n file-transfer
    ```
@@ -421,7 +405,7 @@ kubectl exec -it <web-pod> -n file-transfer -- curl http://localhost:8080/actuat
 kubectl exec -it <batch-pod> -n file-transfer -- curl http://localhost:8081/actuator/health
 
 # Check database
-kubectl exec -it <mysql-pod> -n file-transfer -- mysqladmin ping -u root -p
+sqlcmd -S your-sql-mi-server.database.windows.net -d filetransfer -U filetransfer -P YourPassword -Q "SELECT 1"
 ```
 
 ### Log Analysis

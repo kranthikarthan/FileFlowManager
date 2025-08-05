@@ -427,7 +427,7 @@ GET /actuator/health
     "db": {
       "status": "UP",
       "details": {
-        "database": "MySQL",
+        "database": "Azure SQL MI",
         "validationQuery": "isValid()"
       }
     }
