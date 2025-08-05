@@ -169,8 +169,8 @@ public class FileMonitoringService {
                 .forEach(dataFilePath -> {
                     String dataFileName = dataFilePath.getFileName().toString();
                     
-                    // Check if this file is already being tracked
-                    List<FileTransferRecord> existingRecords = fileTransferRepository.findByFileName(dataFileName);
+                    // Check if this file is already being tracked for this tenant
+                    List<FileTransferRecord> existingRecords = fileTransferRepository.findByTenantIdAndFileName(config.getTenantId(), dataFileName);
                     if (existingRecords.isEmpty()) {
                         createFileTransferRecord(config, dataFilePath, TransferDirection.INBOUND);
                     }
@@ -189,10 +189,9 @@ public class FileMonitoringService {
         logger.info("Found end marker for service {} (tenant: {}): {}", 
                    config.getServiceName(), config.getTenantId(), endMarkerName);
         
-        // Find files waiting for end marker for this specific service
-        String serviceKey = buildServiceKey(config);
+        // Find files waiting for end marker for this specific tenant and service
         List<FileTransferRecord> waitingFiles = fileTransferRepository
-            .findByServiceTypeAndStatus(serviceKey, TransferStatus.WAITING_FOR_END_MARKER);
+            .findByTenantIdAndServiceTypeAndStatus(config.getTenantId(), config.getServiceName(), TransferStatus.WAITING_FOR_END_MARKER);
         
         waitingFiles.stream()
             .filter(record -> record.getFileName().contains(baseFileName))
@@ -218,12 +217,10 @@ public class FileMonitoringService {
             long fileSize = Files.size(filePath);
             String checksum = calculateChecksum(filePath);
             
-            String serviceKey = buildServiceKey(config);
-            
             FileTransferRecord record = new FileTransferRecord(
                 config.getTenantId(),
                 fileName, 
-                serviceKey, 
+                config.getServiceName(), 
                 filePath.toString(), 
                 Paths.get(config.getOutboundPath(), fileName).toString(),
                 direction
@@ -243,18 +240,7 @@ public class FileMonitoringService {
         }
     }
     
-    /**
-     * Build a unique service key that includes tenant, service, and sub-service
-     */
-    private String buildServiceKey(ServiceConfiguration config) {
-        StringBuilder key = new StringBuilder();
-        key.append(config.getTenantId()).append(":");
-        key.append(config.getServiceName());
-        if (config.getSubServiceName() != null && !config.getSubServiceName().trim().isEmpty()) {
-            key.append(":").append(config.getSubServiceName());
-        }
-        return key.toString();
-    }
+
     
     private String calculateChecksum(Path filePath) {
         try {
