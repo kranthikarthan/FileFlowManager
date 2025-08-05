@@ -2,6 +2,8 @@ package com.filetransfer.batch.service;
 
 import com.filetransfer.batch.entity.ServiceConfiguration;
 import com.filetransfer.batch.entity.FileTransferRecord;
+import com.filetransfer.batch.entity.TransferStatus;
+import com.filetransfer.batch.entity.TransferDirection;
 import com.filetransfer.batch.repository.ServiceConfigurationRepository;
 import com.filetransfer.batch.repository.FileTransferRecordRepository;
 import com.filetransfer.batch.service.FileProcessingService.ValidationResult;
@@ -86,8 +88,8 @@ public class FileProcessingService {
         record.setServiceType(service.getServiceName());
         record.setSubServiceType(service.getSubServiceName());
         record.setSourcePath(file.toString());
-        record.setStatus("IN_PROGRESS");
-        record.setDirection("INBOUND");
+        record.setStatus(TransferStatus.IN_PROGRESS);
+        record.setDirection(TransferDirection.INBOUND);
         record.setCreatedAt(LocalDateTime.now());
         
         try {
@@ -111,12 +113,12 @@ public class FileProcessingService {
                     fileType
                 );
                 
-                if (!validationResult.isValid()) {
-                    record.setStatus("FAILED");
-                    record.setErrorMessage("Schema validation failed: " + validationResult.getMessage());
-                    fileTransferRecordRepository.save(record);
-                    return;
-                }
+                            if (!validationResult.isValid()) {
+                record.setStatus(TransferStatus.FAILED);
+                record.setErrorMessage("Schema validation failed: " + validationResult.getMessage());
+                fileTransferRecordRepository.save(record);
+                return;
+            }
             }
             
             // Track data files for EOT validation
@@ -127,12 +129,12 @@ public class FileProcessingService {
             // Special handling for EOT files
             if ("EOT".equals(fileType) && service.getEotValidationEnabled()) {
                 ValidationResult eotValidationResult = validateEotFile(service, file);
-                if (!eotValidationResult.isValid()) {
-                    record.setStatus("FAILED");
-                    record.setErrorMessage("EOT validation failed: " + eotValidationResult.getMessage());
-                    fileTransferRecordRepository.save(record);
-                    return;
-                }
+                            if (!eotValidationResult.isValid()) {
+                record.setStatus(TransferStatus.FAILED);
+                record.setErrorMessage("EOT validation failed: " + eotValidationResult.getMessage());
+                fileTransferRecordRepository.save(record);
+                return;
+            }
             }
             
             // Move file to outbound directory
@@ -140,11 +142,11 @@ public class FileProcessingService {
             Files.move(file, targetPath, StandardCopyOption.REPLACE_EXISTING);
             
             record.setTargetPath(targetPath.toString());
-            record.setStatus("COMPLETED");
+            record.setStatus(TransferStatus.COMPLETED);
             record.setProcessedAt(LocalDateTime.now());
             
         } catch (Exception e) {
-            record.setStatus("FAILED");
+            record.setStatus(TransferStatus.FAILED);
             record.setErrorMessage("Processing failed: " + e.getMessage());
         }
         
