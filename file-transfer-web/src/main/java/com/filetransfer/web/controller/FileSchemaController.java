@@ -4,6 +4,7 @@ import com.filetransfer.web.dto.FileSchemaDto;
 import com.filetransfer.web.dto.SchemaValidationRuleDto;
 import com.filetransfer.web.dto.SchemaFieldDto;
 import com.filetransfer.web.service.FileSchemaService;
+import com.filetransfer.web.service.FileProcessingTrackingService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -22,6 +23,9 @@ public class FileSchemaController {
     
     @Autowired
     private FileSchemaService fileSchemaService;
+    
+    @Autowired
+    private FileProcessingTrackingService fileProcessingTrackingService;
     
     // Schema Management Endpoints
     
@@ -101,13 +105,14 @@ public class FileSchemaController {
     public ResponseEntity<Map<String, Object>> validateFile(@RequestParam String tenantId,
                                                           @RequestParam String serviceType,
                                                           @RequestParam("file") MultipartFile file,
-                                                          @RequestParam(defaultValue = "false") Boolean binaryFileBypass) {
+                                                          @RequestParam(defaultValue = "false") Boolean binaryFileBypass,
+                                                          @RequestParam(required = false) String fileType) {
         try {
             InputStream fileContent = file.getInputStream();
             Long fileSize = file.getSize();
             String fileName = file.getOriginalFilename();
             
-            FileSchemaService.ValidationResult result = fileSchemaService.validateFile(tenantId, serviceType, fileName, fileContent, fileSize, binaryFileBypass);
+            FileSchemaService.ValidationResult result = fileSchemaService.validateFile(tenantId, serviceType, fileName, fileContent, fileSize, binaryFileBypass, fileType);
             
             Map<String, Object> response = Map.of(
                 "valid", result.isValid(),
@@ -135,11 +140,12 @@ public class FileSchemaController {
                                                                  @RequestParam String fileName,
                                                                  @RequestParam Long fileSize,
                                                                  @RequestParam(defaultValue = "false") Boolean binaryFileBypass,
+                                                                 @RequestParam(required = false) String fileType,
                                                                  @RequestBody String fileContent) {
         try {
             InputStream contentStream = new java.io.ByteArrayInputStream(fileContent.getBytes());
             
-            FileSchemaService.ValidationResult result = fileSchemaService.validateFile(tenantId, serviceType, fileName, contentStream, fileSize, binaryFileBypass);
+            FileSchemaService.ValidationResult result = fileSchemaService.validateFile(tenantId, serviceType, fileName, contentStream, fileSize, binaryFileBypass, fileType);
             
             Map<String, Object> response = Map.of(
                 "valid", result.isValid(),
@@ -157,6 +163,38 @@ public class FileSchemaController {
                 "valid", false,
                 "message", "Error validating file content: " + e.getMessage()
             );
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+    
+    @PostMapping("/validate-eot")
+    public ResponseEntity<Map<String, Object>> validateEotFile(@RequestParam String tenantId,
+                                                             @RequestParam String serviceType,
+                                                             @RequestParam String eotContent,
+                                                             @RequestParam String totalFilesField) {
+        try {
+            FileProcessingTrackingService.EotValidationResult result = fileProcessingTrackingService.validateEotFile(
+                tenantId, serviceType, eotContent, totalFilesField);
+            
+            Map<String, Object> response = Map.of(
+                "valid", result.isValid(),
+                "message", result.getMessage(),
+                "expectedCount", result.getExpectedCount(),
+                "actualCount", result.getActualCount(),
+                "tenantId", tenantId,
+                "serviceType", serviceType
+            );
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = Map.of(
+                "valid", false,
+                "message", "Error validating EOT file: " + e.getMessage(),
+                "tenantId", tenantId,
+                "serviceType", serviceType
+            );
+            
             return ResponseEntity.badRequest().body(errorResponse);
         }
     }

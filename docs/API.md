@@ -417,6 +417,7 @@ POST /api/schemas/validate-file
 - `serviceType` (form): Service type
 - `file` (form): File to validate
 - `binaryFileBypass` (form, optional): Whether to bypass binary files (default: false)
+- `fileType` (form, optional): File type (SOT, DATA, EOT) for schema selection
 
 **Response**:
 ```json
@@ -437,6 +438,41 @@ POST /api/schemas/validate-file
   "message": "Binary file bypassed - no validation performed",
   "fileName": "document.pdf",
   "fileSize": 2048,
+  "tenantId": "tenant1",
+  "serviceType": "service1"
+}
+```
+
+### Validate EOT File
+```
+POST /api/schemas/validate-eot
+```
+
+**Parameters**:
+- `tenantId` (form): Tenant identifier
+- `serviceType` (form): Service type
+- `eotContent` (form): EOT file content
+- `totalFilesField` (form): Field name containing total files count
+
+**Response**:
+```json
+{
+  "valid": true,
+  "message": "EOT file validation passed - file count matches",
+  "expectedCount": 150,
+  "actualCount": 150,
+  "tenantId": "tenant1",
+  "serviceType": "service1"
+}
+```
+
+**EOT Validation Mismatch Response**:
+```json
+{
+  "valid": false,
+  "message": "EOT file mismatch: Expected 150 files, but processed 145 files",
+  "expectedCount": 150,
+  "actualCount": 145,
   "tenantId": "tenant1",
   "serviceType": "service1"
 }

@@ -54,6 +54,11 @@ const ServiceConfigurationForm = ({ service, onSave, onCancel }) => {
     schemaId: null,
     schemaValidationMode: 'STRICT',
     binaryFileBypass: false,
+    sotSchemaId: null,
+    dataSchemaId: null,
+    eotSchemaId: null,
+    eotTotalFilesField: '',
+    eotValidationEnabled: false,
     description: ''
   });
   const [schemas, setSchemas] = useState([]);
@@ -67,7 +72,12 @@ const ServiceConfigurationForm = ({ service, onSave, onCancel }) => {
         schemaValidationEnabled: service.schemaValidationEnabled || false,
         schemaId: service.schemaId || null,
         schemaValidationMode: service.schemaValidationMode || 'STRICT',
-        binaryFileBypass: service.binaryFileBypass || false
+        binaryFileBypass: service.binaryFileBypass || false,
+        sotSchemaId: service.sotSchemaId || null,
+        dataSchemaId: service.dataSchemaId || null,
+        eotSchemaId: service.eotSchemaId || null,
+        eotTotalFilesField: service.eotTotalFilesField || '',
+        eotValidationEnabled: service.eotValidationEnabled || false
       });
     }
     fetchSchemas();
@@ -288,6 +298,137 @@ const ServiceConfigurationForm = ({ service, onSave, onCancel }) => {
                     Schema validation will be performed on all files processed by this service.
                     Files that fail validation will be rejected based on the selected mode.
                     When binary file bypass is enabled, binary files will skip validation entirely.
+                  </Typography>
+                </Grid>
+              </>
+            )}
+          </Grid>
+        </AccordionDetails>
+      </Accordion>
+
+      {/* File Type Specific Schemas */}
+      <Accordion defaultExpanded>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Box display="flex" alignItems="center" gap={1}>
+            <SchemaIcon />
+            <Typography variant="h6">File Type Specific Schemas</Typography>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth>
+                <InputLabel>SOT Schema</InputLabel>
+                <Select
+                  value={formData.sotSchemaId || ''}
+                  onChange={(e) => handleInputChange('sotSchemaId', e.target.value)}
+                  label="SOT Schema"
+                >
+                  <MenuItem value="">
+                    <em>Select SOT schema</em>
+                  </MenuItem>
+                  {schemas.map((schema) => (
+                    <MenuItem key={schema.id} value={schema.id}>
+                      {schema.schemaName} ({schema.schemaType})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth>
+                <InputLabel>Data Schema</InputLabel>
+                <Select
+                  value={formData.dataSchemaId || ''}
+                  onChange={(e) => handleInputChange('dataSchemaId', e.target.value)}
+                  label="Data Schema"
+                >
+                  <MenuItem value="">
+                    <em>Select data schema</em>
+                  </MenuItem>
+                  {schemas.map((schema) => (
+                    <MenuItem key={schema.id} value={schema.id}>
+                      {schema.schemaName} ({schema.schemaType})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth>
+                <InputLabel>EOT Schema</InputLabel>
+                <Select
+                  value={formData.eotSchemaId || ''}
+                  onChange={(e) => handleInputChange('eotSchemaId', e.target.value)}
+                  label="EOT Schema"
+                >
+                  <MenuItem value="">
+                    <em>Select EOT schema</em>
+                  </MenuItem>
+                  {schemas.map((schema) => (
+                    <MenuItem key={schema.id} value={schema.id}>
+                      {schema.schemaName} ({schema.schemaType})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12}>
+              <Typography variant="body2" color="textSecondary">
+                Configure different schemas for SOT, data, and EOT files. 
+                Only data files can be binary and use binary bypass.
+              </Typography>
+            </Grid>
+          </Grid>
+        </AccordionDetails>
+      </Accordion>
+
+      {/* EOT File Validation */}
+      <Accordion defaultExpanded>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Typography variant="h6">EOT File Validation</Typography>
+            <Chip
+              label={formData.eotValidationEnabled ? 'Enabled' : 'Disabled'}
+              color={formData.eotValidationEnabled ? 'success' : 'default'}
+              size="small"
+            />
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.eotValidationEnabled}
+                    onChange={(e) => handleInputChange('eotValidationEnabled', e.target.checked)}
+                  />
+                }
+                label="Enable EOT File Validation"
+              />
+            </Grid>
+            
+            {formData.eotValidationEnabled && (
+              <>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Total Files Field Name"
+                    value={formData.eotTotalFilesField}
+                    onChange={(e) => handleInputChange('eotTotalFilesField', e.target.value)}
+                    placeholder="e.g., TOTAL_FILES, FILE_COUNT"
+                    helperText="Field name in EOT file containing total data files count"
+                  />
+                </Grid>
+                
+                <Grid item xs={12}>
+                  <Typography variant="body2" color="textSecondary">
+                    EOT validation compares the total files count in EOT file with actual processed data files.
+                    Mismatches generate alerts but don't stop processing.
                   </Typography>
                 </Grid>
               </>

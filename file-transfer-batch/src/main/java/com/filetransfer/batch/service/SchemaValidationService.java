@@ -20,6 +20,10 @@ public class SchemaValidationService {
     private final RestTemplate restTemplate = new RestTemplate();
     
     public FileProcessingService.ValidationResult validateFile(String tenantId, String serviceType, String fileName, InputStream fileContent, Long fileSize, Boolean binaryFileBypass) {
+        return validateFile(tenantId, serviceType, fileName, fileContent, fileSize, binaryFileBypass, null);
+    }
+    
+    public FileProcessingService.ValidationResult validateFile(String tenantId, String serviceType, String fileName, InputStream fileContent, Long fileSize, Boolean binaryFileBypass, String fileType) {
         try {
             // Convert InputStream to byte array
             byte[] fileBytes = fileContent.readAllBytes();
@@ -32,6 +36,9 @@ public class SchemaValidationService {
             body.add("tenantId", tenantId);
             body.add("serviceType", serviceType);
             body.add("binaryFileBypass", binaryFileBypass);
+            if (fileType != null) {
+                body.add("fileType", fileType);
+            }
             body.add("file", new ByteArrayResource(fileBytes) {
                 @Override
                 public String getFilename() {
@@ -60,6 +67,42 @@ public class SchemaValidationService {
             
         } catch (Exception e) {
             return new FileProcessingService.ValidationResult(false, "Validation error: " + e.getMessage());
+        }
+    }
+    
+    public FileProcessingService.ValidationResult validateEotFile(String tenantId, String serviceType, String eotContent, String totalFilesField) {
+        try {
+            // Create request body for EOT validation
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("tenantId", tenantId);
+            body.add("serviceType", serviceType);
+            body.add("eotContent", eotContent);
+            body.add("totalFilesField", totalFilesField);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+            
+            // Call web API for EOT validation
+            ResponseEntity<ValidationResponse> response = restTemplate.postForEntity(
+                webApiUrl + "/api/schemas/validate-eot",
+                requestEntity,
+                ValidationResponse.class
+            );
+            
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                ValidationResponse validationResponse = response.getBody();
+                return new FileProcessingService.ValidationResult(
+                    validationResponse.isValid(),
+                    validationResponse.getMessage()
+                );
+            } else {
+                return new FileProcessingService.ValidationResult(false, "EOT validation service unavailable");
+            }
+            
+        } catch (Exception e) {
+            return new FileProcessingService.ValidationResult(false, "EOT validation error: " + e.getMessage());
         }
     }
     

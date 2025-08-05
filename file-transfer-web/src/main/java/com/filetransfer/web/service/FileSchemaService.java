@@ -145,21 +145,32 @@ public class FileSchemaService {
     
     // File Validation
     public ValidationResult validateFile(String tenantId, String serviceType, String fileName, InputStream fileContent, Long fileSize, Boolean binaryFileBypass) {
-        List<FileSchema> schemas = fileSchemaRepository.findByTenantIdAndServiceTypeAndIsActiveTrue(tenantId, serviceType);
+        return validateFile(tenantId, serviceType, fileName, fileContent, fileSize, binaryFileBypass, null);
+    }
+    
+    // File Validation with file type
+    public ValidationResult validateFile(String tenantId, String serviceType, String fileName, InputStream fileContent, Long fileSize, Boolean binaryFileBypass, String fileType) {
+        // Determine which schema to use based on file type
+        Long schemaId = determineSchemaId(tenantId, serviceType, fileType);
         
-        if (schemas.isEmpty()) {
-            return new ValidationResult(false, "No active schema found for service type: " + serviceType);
+        if (schemaId == null) {
+            return new ValidationResult(false, "No schema configured for file type: " + fileType);
         }
         
-        // Use the first active schema (you might want to implement version selection logic)
-        FileSchema schema = schemas.get(0);
+        FileSchema schema = fileSchemaRepository.findById(schemaId)
+            .orElse(null);
+            
+        if (schema == null) {
+            return new ValidationResult(false, "Schema not found for ID: " + schemaId);
+        }
+        
         List<SchemaValidationRule> rules = validationRuleRepository.findBySchemaAndIsActiveTrueOrderByRuleOrder(schema);
         
         ValidationResult result = new ValidationResult(true, "Validation passed");
         
         try {
-            // Check if file is binary and bypass is enabled
-            if (binaryFileBypass && isBinaryFile(fileContent, fileName)) {
+            // Only check binary bypass for data files
+            if ("DATA".equals(fileType) && binaryFileBypass && isBinaryFile(fileContent, fileName)) {
                 result.setMessage("Binary file bypassed - no validation performed");
                 logValidationResult(schema, result, fileName, fileSize);
                 return result;
@@ -187,6 +198,44 @@ public class FileSchemaService {
         }
         
         return result;
+    }
+    
+    /**
+     * Determine which schema ID to use based on file type
+     */
+    private Long determineSchemaId(String tenantId, String serviceType, String fileType) {
+        // This would typically come from service configuration
+        // For now, we'll use a simplified approach
+        if ("SOT".equals(fileType)) {
+            // Return SOT schema ID from service configuration
+            return getSotSchemaId(tenantId, serviceType);
+        } else if ("DATA".equals(fileType)) {
+            // Return data schema ID from service configuration
+            return getDataSchemaId(tenantId, serviceType);
+        } else if ("EOT".equals(fileType)) {
+            // Return EOT schema ID from service configuration
+            return getEotSchemaId(tenantId, serviceType);
+        }
+        
+        // Fallback to general schema
+        List<FileSchema> schemas = fileSchemaRepository.findByTenantIdAndServiceTypeAndIsActiveTrue(tenantId, serviceType);
+        return schemas.isEmpty() ? null : schemas.get(0).getId();
+    }
+    
+    // These methods would typically get schema IDs from service configuration
+    private Long getSotSchemaId(String tenantId, String serviceType) {
+        // Implementation would get from service configuration
+        return null; // Placeholder
+    }
+    
+    private Long getDataSchemaId(String tenantId, String serviceType) {
+        // Implementation would get from service configuration
+        return null; // Placeholder
+    }
+    
+    private Long getEotSchemaId(String tenantId, String serviceType) {
+        // Implementation would get from service configuration
+        return null; // Placeholder
     }
     
     private boolean isBinaryFile(InputStream fileContent, String fileName) {

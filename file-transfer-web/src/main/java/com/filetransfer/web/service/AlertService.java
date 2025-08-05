@@ -218,4 +218,19 @@ public class AlertService {
     private AlertHistory.AlertLevel convertToEntityAlertLevel(AlertHistoryDto.AlertLevel alertLevel) {
         return AlertHistory.AlertLevel.valueOf(alertLevel.name());
     }
+
+    /**
+     * Create an alert for EOT validation mismatch
+     */
+    public void createAlert(FileProcessingTrackingService.AlertDto alert) {
+        // In production, this would save to database and/or send notifications
+        System.out.println("ALERT [" + alert.getSeverity() + "] " + alert.getAlertType() + 
+                          " - " + alert.getMessage() + " at " + alert.getCreatedAt());
+        
+        // TODO: Implement actual alert storage and notification
+        // - Save to alerts table
+        // - Send email/SMS notifications
+        // - Update dashboard
+        // - Trigger escalation procedures
+    }
 }

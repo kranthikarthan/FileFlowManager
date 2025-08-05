@@ -98,19 +98,36 @@ public class FileProcessingService {
             record.setChecksum(checksum);
             
             // Schema validation (if enabled)
-            if (service.getSchemaValidationEnabled() && service.getSchemaId() != null) {
+            if (service.getSchemaValidationEnabled()) {
                 ValidationResult validationResult = schemaValidationService.validateFile(
                     service.getTenantId(),
                     service.getServiceName(),
                     file.getFileName().toString(),
                     Files.newInputStream(file),
                     fileSize,
-                    service.getBinaryFileBypass()
+                    service.getBinaryFileBypass(),
+                    fileType
                 );
                 
                 if (!validationResult.isValid()) {
                     record.setStatus("FAILED");
                     record.setErrorMessage("Schema validation failed: " + validationResult.getMessage());
+                    fileTransferRecordRepository.save(record);
+                    return;
+                }
+            }
+            
+            // Track data files for EOT validation
+            if ("DATA".equals(fileType)) {
+                trackDataFile(service.getTenantId(), service.getServiceName(), file.getFileName().toString());
+            }
+            
+            // Special handling for EOT files
+            if ("EOT".equals(fileType) && service.getEotValidationEnabled()) {
+                ValidationResult eotValidationResult = validateEotFile(service, file);
+                if (!eotValidationResult.isValid()) {
+                    record.setStatus("FAILED");
+                    record.setErrorMessage("EOT validation failed: " + eotValidationResult.getMessage());
                     fileTransferRecordRepository.save(record);
                     return;
                 }
@@ -130,6 +147,38 @@ public class FileProcessingService {
         }
         
         fileTransferRecordRepository.save(record);
+    }
+    
+    /**
+     * Track data file for EOT validation
+     */
+    private void trackDataFile(String tenantId, String serviceType, String fileName) {
+        // This would typically call the tracking service
+        System.out.println("Tracking data file: " + fileName + " for EOT validation");
+    }
+    
+    /**
+     * Validate EOT file against expected data file count
+     */
+    private ValidationResult validateEotFile(ServiceConfiguration service, Path eotFile) {
+        try {
+            // Read EOT file content
+            String eotContent = new String(Files.readAllBytes(eotFile));
+            
+            // Call web API for EOT validation
+            ValidationResult result = schemaValidationService.validateEotFile(
+                service.getTenantId(),
+                service.getServiceName(),
+                eotContent,
+                service.getEotTotalFilesField()
+            );
+            
+            return result;
+            
+        } catch (Exception e) {
+            ValidationResult result = new ValidationResult(false, "Error validating EOT file: " + e.getMessage());
+            return result;
+        }
     }
     
     private String calculateChecksum(Path file) throws IOException {

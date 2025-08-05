@@ -33,6 +33,73 @@ BEGIN
     PRINT 'schema_id column already exists';
 END
 
+-- Add file type specific schema columns
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
+               WHERE TABLE_NAME = 'service_configurations' 
+               AND COLUMN_NAME = 'sot_schema_id')
+BEGIN
+    ALTER TABLE service_configurations 
+    ADD sot_schema_id BIGINT NULL;
+    PRINT 'Added sot_schema_id column';
+END
+ELSE
+BEGIN
+    PRINT 'sot_schema_id column already exists';
+END
+
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
+               WHERE TABLE_NAME = 'service_configurations' 
+               AND COLUMN_NAME = 'data_schema_id')
+BEGIN
+    ALTER TABLE service_configurations 
+    ADD data_schema_id BIGINT NULL;
+    PRINT 'Added data_schema_id column';
+END
+ELSE
+BEGIN
+    PRINT 'data_schema_id column already exists';
+END
+
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
+               WHERE TABLE_NAME = 'service_configurations' 
+               AND COLUMN_NAME = 'eot_schema_id')
+BEGIN
+    ALTER TABLE service_configurations 
+    ADD eot_schema_id BIGINT NULL;
+    PRINT 'Added eot_schema_id column';
+END
+ELSE
+BEGIN
+    PRINT 'eot_schema_id column already exists';
+END
+
+-- Add EOT file validation settings
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
+               WHERE TABLE_NAME = 'service_configurations' 
+               AND COLUMN_NAME = 'eot_total_files_field')
+BEGIN
+    ALTER TABLE service_configurations 
+    ADD eot_total_files_field VARCHAR(200) NULL;
+    PRINT 'Added eot_total_files_field column';
+END
+ELSE
+BEGIN
+    PRINT 'eot_total_files_field column already exists';
+END
+
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
+               WHERE TABLE_NAME = 'service_configurations' 
+               AND COLUMN_NAME = 'eot_validation_enabled')
+BEGIN
+    ALTER TABLE service_configurations 
+    ADD eot_validation_enabled BIT NOT NULL DEFAULT 0;
+    PRINT 'Added eot_validation_enabled column';
+END
+ELSE
+BEGIN
+    PRINT 'eot_validation_enabled column already exists';
+END
+
 -- Add schema_validation_mode column if it doesn't exist
 IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
                WHERE TABLE_NAME = 'service_configurations' 
