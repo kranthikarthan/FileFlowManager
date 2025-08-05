@@ -4,6 +4,7 @@ import com.filetransfer.batch.entity.ServiceConfiguration;
 import com.filetransfer.batch.entity.FileTransferRecord;
 import com.filetransfer.batch.repository.ServiceConfigurationRepository;
 import com.filetransfer.batch.repository.FileTransferRecordRepository;
+import com.filetransfer.batch.service.FileProcessingService.ValidationResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

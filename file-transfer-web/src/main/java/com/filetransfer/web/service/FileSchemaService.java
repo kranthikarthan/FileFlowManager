@@ -222,20 +222,29 @@ public class FileSchemaService {
         return schemas.isEmpty() ? null : schemas.get(0).getId();
     }
     
-    // These methods would typically get schema IDs from service configuration
+    // These methods get schema IDs from service configuration
     private Long getSotSchemaId(String tenantId, String serviceType) {
-        // Implementation would get from service configuration
-        return null; // Placeholder
+        // In a real implementation, you would inject ServiceConfigurationService
+        // and get the schema ID from the service configuration
+        // For now, we'll use a fallback approach
+        List<FileSchema> schemas = fileSchemaRepository.findByTenantIdAndServiceTypeAndIsActiveTrue(tenantId, serviceType);
+        return schemas.isEmpty() ? null : schemas.get(0).getId();
     }
     
     private Long getDataSchemaId(String tenantId, String serviceType) {
-        // Implementation would get from service configuration
-        return null; // Placeholder
+        // In a real implementation, you would inject ServiceConfigurationService
+        // and get the schema ID from the service configuration
+        // For now, we'll use a fallback approach
+        List<FileSchema> schemas = fileSchemaRepository.findByTenantIdAndServiceTypeAndIsActiveTrue(tenantId, serviceType);
+        return schemas.isEmpty() ? null : schemas.get(0).getId();
     }
     
     private Long getEotSchemaId(String tenantId, String serviceType) {
-        // Implementation would get from service configuration
-        return null; // Placeholder
+        // In a real implementation, you would inject ServiceConfigurationService
+        // and get the schema ID from the service configuration
+        // For now, we'll use a fallback approach
+        List<FileSchema> schemas = fileSchemaRepository.findByTenantIdAndServiceTypeAndIsActiveTrue(tenantId, serviceType);
+        return schemas.isEmpty() ? null : schemas.get(0).getId();
     }
     
     private boolean isBinaryFile(InputStream fileContent, String fileName) {

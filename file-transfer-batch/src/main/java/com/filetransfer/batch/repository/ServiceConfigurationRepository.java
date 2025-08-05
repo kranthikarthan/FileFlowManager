@@ -34,4 +34,6 @@ public interface ServiceConfigurationRepository extends JpaRepository<ServiceCon
     List<String> findDistinctServiceNamesForTenant(@Param("tenantId") String tenantId);
     
     boolean existsByTenantIdAndServiceNameAndSubServiceName(String tenantId, String serviceName, String subServiceName);
+    
+    List<ServiceConfiguration> findByEnabledTrue();
 }

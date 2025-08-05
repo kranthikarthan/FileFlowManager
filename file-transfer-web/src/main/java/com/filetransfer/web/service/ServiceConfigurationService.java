@@ -111,6 +111,15 @@ public class ServiceConfigurationService {
         existingService.setSchemaId(serviceConfig.getSchemaId());
         existingService.setSchemaValidationMode(serviceConfig.getSchemaValidationMode());
         existingService.setBinaryFileBypass(serviceConfig.getBinaryFileBypass());
+        
+        // File type specific schema IDs
+        existingService.setSotSchemaId(serviceConfig.getSotSchemaId());
+        existingService.setDataSchemaId(serviceConfig.getDataSchemaId());
+        existingService.setEotSchemaId(serviceConfig.getEotSchemaId());
+        
+        // EOT file validation settings
+        existingService.setEotTotalFilesField(serviceConfig.getEotTotalFilesField());
+        existingService.setEotValidationEnabled(serviceConfig.getEotValidationEnabled());
         existingService.setDescription(serviceConfig.getDescription());
         existingService.setUpdatedBy(serviceConfig.getUpdatedBy());
         
