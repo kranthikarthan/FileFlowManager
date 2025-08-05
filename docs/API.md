@@ -324,9 +324,148 @@ GET /api/holidays/tenant/{tenantId}/is-holiday-or-sunday/{date}?allSundaysAsHoli
 }
 ```
 
-## Service Configuration
+## Schema Management
 
-### Update Service Configuration with Enhanced Cut-Off Times
+### Create File Schema
+```
+POST /api/schemas?createdBy=admin
+```
+
+**Request Body**:
+```json
+{
+  "tenantId": "tenant1",
+  "serviceType": "service1",
+  "schemaName": "CSV Data Schema",
+  "schemaVersion": "1.0",
+  "schemaType": "CSV",
+  "schemaDefinition": "{\"type\":\"csv\",\"delimiter\":\",\",\"hasHeader\":true,\"fields\":[{\"name\":\"transaction_id\",\"type\":\"STRING\",\"required\":true,\"length\":50}]}",
+  "description": "Standard CSV schema for financial transactions",
+  "isActive": true
+}
+```
+
+### Update File Schema
+```
+PUT /api/schemas/{schemaId}?updatedBy=admin
+```
+
+### Delete File Schema
+```
+DELETE /api/schemas/{schemaId}
+```
+
+### Get Schema by ID
+```
+GET /api/schemas/{schemaId}
+```
+
+### Get Schemas by Service Type
+```
+GET /api/schemas/tenant/{tenantId}/service/{serviceType}
+```
+
+### Get All Schemas for Tenant
+```
+GET /api/schemas/tenant/{tenantId}
+```
+
+### Add Validation Rule to Schema
+```
+POST /api/schemas/{schemaId}/validation-rules
+```
+
+**Request Body**:
+```json
+{
+  "ruleName": "File Size Check",
+  "ruleType": "CUSTOM",
+  "ruleDefinition": "fileSize <= 10485760",
+  "ruleOrder": 1,
+  "isActive": true,
+  "errorMessage": "File size exceeds maximum allowed size of 10MB"
+}
+```
+
+### Add Field to Schema
+```
+POST /api/schemas/{schemaId}/fields
+```
+
+**Request Body**:
+```json
+{
+  "fieldName": "transaction_id",
+  "fieldType": "STRING",
+  "fieldLength": 50,
+  "isRequired": true,
+  "isUnique": false,
+  "defaultValue": "",
+  "validationRegex": "^[A-Z0-9]+$",
+  "fieldOrder": 1,
+  "description": "Unique transaction identifier"
+}
+```
+
+### Validate File Against Schema
+```
+POST /api/schemas/validate-file
+```
+
+**Parameters**:
+- `tenantId` (form): Tenant identifier
+- `serviceType` (form): Service type
+- `file` (form): File to validate
+
+**Response**:
+```json
+{
+  "valid": true,
+  "message": "Validation passed",
+  "fileName": "data.csv",
+  "fileSize": 1024,
+  "tenantId": "tenant1",
+  "serviceType": "service1"
+}
+```
+
+### Get Schema Templates
+```
+GET /api/schemas/templates
+```
+
+**Response**:
+```json
+{
+  "CSV": {
+    "type": "CSV",
+    "description": "Comma-separated values file schema",
+    "example": {
+      "delimiter": ",",
+      "hasHeader": true,
+      "fields": [
+        {"name": "field1", "type": "STRING", "required": true},
+        {"name": "field2", "type": "INTEGER", "required": false}
+      ]
+    }
+  },
+  "JSON": {
+    "type": "JSON",
+    "description": "JSON file schema",
+    "example": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "value": {"type": "number"}
+      },
+      "required": ["id", "name"]
+    }
+  }
+}
+```
+
+## Service Configuration
 ```
 PUT /api/services/{id}
 ```
