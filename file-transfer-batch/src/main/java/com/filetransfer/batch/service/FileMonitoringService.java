@@ -213,6 +213,7 @@ public class FileMonitoringService {
             String serviceKey = buildServiceKey(config);
             
             FileTransferRecord record = new FileTransferRecord(
+                config.getTenantId(),
                 fileName, 
                 serviceKey, 
                 filePath.toString(), 
