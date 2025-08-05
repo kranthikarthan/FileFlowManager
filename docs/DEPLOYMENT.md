@@ -226,6 +226,7 @@ data:
   SCHEMA_VALIDATION_ENABLED: "true"
   SCHEMA_ID: "1"  # Reference to schema in database
   SCHEMA_VALIDATION_MODE: "STRICT"
+  BINARY_FILE_BYPASS: "true"  # Bypass binary files from validation
 ```
 
 #### Enhanced Service Configuration

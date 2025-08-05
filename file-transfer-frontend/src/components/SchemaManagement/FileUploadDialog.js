@@ -23,6 +23,7 @@ const FileUploadDialog = ({ tenantId, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [serviceTypes, setServiceTypes] = useState([]);
+  const [binaryFileBypass, setBinaryFileBypass] = useState(false);
 
   useEffect(() => {
     fetchServiceTypes();
@@ -65,6 +66,7 @@ const FileUploadDialog = ({ tenantId, onClose }) => {
       formData.append('file', selectedFile);
       formData.append('tenantId', tenantId);
       formData.append('serviceType', serviceType);
+      formData.append('binaryFileBypass', binaryFileBypass);
 
       const response = await fetch('/api/schemas/validate-file', {
         method: 'POST',
@@ -115,6 +117,18 @@ const FileUploadDialog = ({ tenantId, onClose }) => {
               ))}
             </Select>
           </FormControl>
+        </Grid>
+
+        <Grid item xs={12}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={binaryFileBypass}
+                onChange={(e) => setBinaryFileBypass(e.target.checked)}
+              />
+            }
+            label="Bypass Binary Files"
+          />
         </Grid>
 
         <Grid item xs={12}>

@@ -104,7 +104,8 @@ public class FileProcessingService {
                     service.getServiceName(),
                     file.getFileName().toString(),
                     Files.newInputStream(file),
-                    fileSize
+                    fileSize,
+                    service.getBinaryFileBypass()
                 );
                 
                 if (!validationResult.isValid()) {

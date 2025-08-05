@@ -112,6 +112,9 @@ public class ServiceConfiguration {
     @Column(name = "schema_validation_mode")
     private String schemaValidationMode = "STRICT"; // STRICT, LENIENT, WARNING_ONLY
     
+    @Column(name = "binary_file_bypass")
+    private Boolean binaryFileBypass = false;
+    
     @Column
     private String description;
     
@@ -236,6 +239,9 @@ public class ServiceConfiguration {
     
     public String getSchemaValidationMode() { return schemaValidationMode; }
     public void setSchemaValidationMode(String schemaValidationMode) { this.schemaValidationMode = schemaValidationMode; }
+    
+    public Boolean getBinaryFileBypass() { return binaryFileBypass; }
+    public void setBinaryFileBypass(Boolean binaryFileBypass) { this.binaryFileBypass = binaryFileBypass; }
     
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }

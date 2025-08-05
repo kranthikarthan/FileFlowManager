@@ -416,6 +416,7 @@ POST /api/schemas/validate-file
 - `tenantId` (form): Tenant identifier
 - `serviceType` (form): Service type
 - `file` (form): File to validate
+- `binaryFileBypass` (form, optional): Whether to bypass binary files (default: false)
 
 **Response**:
 ```json
@@ -424,6 +425,18 @@ POST /api/schemas/validate-file
   "message": "Validation passed",
   "fileName": "data.csv",
   "fileSize": 1024,
+  "tenantId": "tenant1",
+  "serviceType": "service1"
+}
+```
+
+**Binary File Bypass Response**:
+```json
+{
+  "valid": true,
+  "message": "Binary file bypassed - no validation performed",
+  "fileName": "document.pdf",
+  "fileSize": 2048,
   "tenantId": "tenant1",
   "serviceType": "service1"
 }

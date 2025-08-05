@@ -110,6 +110,7 @@ public class ServiceConfigurationService {
         existingService.setSchemaValidationEnabled(serviceConfig.getSchemaValidationEnabled());
         existingService.setSchemaId(serviceConfig.getSchemaId());
         existingService.setSchemaValidationMode(serviceConfig.getSchemaValidationMode());
+        existingService.setBinaryFileBypass(serviceConfig.getBinaryFileBypass());
         existingService.setDescription(serviceConfig.getDescription());
         existingService.setUpdatedBy(serviceConfig.getUpdatedBy());
         

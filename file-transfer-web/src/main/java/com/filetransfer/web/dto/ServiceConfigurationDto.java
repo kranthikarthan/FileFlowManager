@@ -64,6 +64,7 @@ public class ServiceConfigurationDto {
     private Boolean schemaValidationEnabled = false;
     private Long schemaId;
     private String schemaValidationMode = "STRICT"; // STRICT, LENIENT, WARNING_ONLY
+    private Boolean binaryFileBypass = false;
     
     private String description;
     private LocalDateTime createdAt;
@@ -173,6 +174,9 @@ public class ServiceConfigurationDto {
     
     public String getSchemaValidationMode() { return schemaValidationMode; }
     public void setSchemaValidationMode(String schemaValidationMode) { this.schemaValidationMode = schemaValidationMode; }
+    
+    public Boolean getBinaryFileBypass() { return binaryFileBypass; }
+    public void setBinaryFileBypass(Boolean binaryFileBypass) { this.binaryFileBypass = binaryFileBypass; }
     
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }

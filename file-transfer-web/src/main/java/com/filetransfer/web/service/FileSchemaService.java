@@ -144,7 +144,7 @@ public class FileSchemaService {
     }
     
     // File Validation
-    public ValidationResult validateFile(String tenantId, String serviceType, String fileName, InputStream fileContent, Long fileSize) {
+    public ValidationResult validateFile(String tenantId, String serviceType, String fileName, InputStream fileContent, Long fileSize, Boolean binaryFileBypass) {
         List<FileSchema> schemas = fileSchemaRepository.findByTenantIdAndServiceTypeAndIsActiveTrue(tenantId, serviceType);
         
         if (schemas.isEmpty()) {
@@ -158,6 +158,13 @@ public class FileSchemaService {
         ValidationResult result = new ValidationResult(true, "Validation passed");
         
         try {
+            // Check if file is binary and bypass is enabled
+            if (binaryFileBypass && isBinaryFile(fileContent, fileName)) {
+                result.setMessage("Binary file bypassed - no validation performed");
+                logValidationResult(schema, result, fileName, fileSize);
+                return result;
+            }
+            
             // Read file content for validation
             String content = readFileContent(fileContent);
             
@@ -180,6 +187,82 @@ public class FileSchemaService {
         }
         
         return result;
+    }
+    
+    private boolean isBinaryFile(InputStream fileContent, String fileName) {
+        try {
+            // Reset stream to beginning
+            if (fileContent.markSupported()) {
+                fileContent.mark(1024);
+            }
+            
+            // Read first 1024 bytes to check for binary content
+            byte[] buffer = new byte[1024];
+            int bytesRead = fileContent.read(buffer);
+            
+            // Reset stream
+            if (fileContent.markSupported()) {
+                fileContent.reset();
+            }
+            
+            if (bytesRead == -1) {
+                return false; // Empty file
+            }
+            
+            // Check for binary indicators
+            int nullBytes = 0;
+            int printableChars = 0;
+            
+            for (int i = 0; i < bytesRead; i++) {
+                byte b = buffer[i];
+                if (b == 0) {
+                    nullBytes++;
+                } else if (b >= 32 && b <= 126) {
+                    printableChars++;
+                }
+            }
+            
+            // Calculate binary ratio
+            double binaryRatio = (double) nullBytes / bytesRead;
+            double printableRatio = (double) printableChars / bytesRead;
+            
+            // File is considered binary if:
+            // 1. Contains null bytes (common in binary files)
+            // 2. Low percentage of printable characters
+            // 3. Has binary file extensions
+            boolean hasBinaryExtension = hasBinaryFileExtension(fileName);
+            boolean hasNullBytes = nullBytes > 0;
+            boolean lowPrintableRatio = printableRatio < 0.7;
+            
+            return hasBinaryExtension || hasNullBytes || lowPrintableRatio;
+            
+        } catch (Exception e) {
+            // If we can't determine, assume it's not binary
+            return false;
+        }
+    }
+    
+    private boolean hasBinaryFileExtension(String fileName) {
+        if (fileName == null) return false;
+        
+        String lowerFileName = fileName.toLowerCase();
+        String[] binaryExtensions = {
+            ".exe", ".dll", ".so", ".dylib", ".bin", ".dat", ".obj", ".class",
+            ".jar", ".war", ".ear", ".zip", ".tar", ".gz", ".rar", ".7z",
+            ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+            ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".ico",
+            ".mp3", ".mp4", ".avi", ".mov", ".wmv", ".flv", ".mkv",
+            ".db", ".sqlite", ".mdb", ".accdb", ".dbf", ".fdb",
+            ".bak", ".tmp", ".log", ".out", ".err"
+        };
+        
+        for (String ext : binaryExtensions) {
+            if (lowerFileName.endsWith(ext)) {
+                return true;
+            }
+        }
+        
+        return false;
     }
     
     private boolean validateRule(SchemaValidationRule rule, String content, String fileName, Long fileSize) {

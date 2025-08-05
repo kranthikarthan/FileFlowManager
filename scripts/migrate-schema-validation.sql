@@ -47,6 +47,20 @@ BEGIN
     PRINT 'schema_validation_mode column already exists';
 END
 
+-- Add binary_file_bypass column if it doesn't exist
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
+               WHERE TABLE_NAME = 'service_configurations' 
+               AND COLUMN_NAME = 'binary_file_bypass')
+BEGIN
+    ALTER TABLE service_configurations 
+    ADD binary_file_bypass BIT NOT NULL DEFAULT 0;
+    PRINT 'Added binary_file_bypass column';
+END
+ELSE
+BEGIN
+    PRINT 'binary_file_bypass column already exists';
+END
+
 -- Add foreign key constraint for schema_id if it doesn't exist
 IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
                WHERE TABLE_NAME = 'service_configurations' 

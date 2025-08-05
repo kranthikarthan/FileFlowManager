@@ -53,6 +53,7 @@ const ServiceConfigurationForm = ({ service, onSave, onCancel }) => {
     schemaValidationEnabled: false,
     schemaId: null,
     schemaValidationMode: 'STRICT',
+    binaryFileBypass: false,
     description: ''
   });
   const [schemas, setSchemas] = useState([]);
@@ -65,7 +66,8 @@ const ServiceConfigurationForm = ({ service, onSave, onCancel }) => {
         ...service,
         schemaValidationEnabled: service.schemaValidationEnabled || false,
         schemaId: service.schemaId || null,
-        schemaValidationMode: service.schemaValidationMode || 'STRICT'
+        schemaValidationMode: service.schemaValidationMode || 'STRICT',
+        binaryFileBypass: service.binaryFileBypass || false
       });
     }
     fetchSchemas();
@@ -270,9 +272,22 @@ const ServiceConfigurationForm = ({ service, onSave, onCancel }) => {
                 </Grid>
                 
                 <Grid item xs={12}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={formData.binaryFileBypass}
+                        onChange={(e) => handleInputChange('binaryFileBypass', e.target.checked)}
+                      />
+                    }
+                    label="Bypass Binary Files"
+                  />
+                </Grid>
+                
+                <Grid item xs={12}>
                   <Typography variant="body2" color="textSecondary">
                     Schema validation will be performed on all files processed by this service.
                     Files that fail validation will be rejected based on the selected mode.
+                    When binary file bypass is enabled, binary files will skip validation entirely.
                   </Typography>
                 </Grid>
               </>

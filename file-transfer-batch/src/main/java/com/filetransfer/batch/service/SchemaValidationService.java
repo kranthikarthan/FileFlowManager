@@ -19,7 +19,7 @@ public class SchemaValidationService {
     
     private final RestTemplate restTemplate = new RestTemplate();
     
-    public FileProcessingService.ValidationResult validateFile(String tenantId, String serviceType, String fileName, InputStream fileContent, Long fileSize) {
+    public FileProcessingService.ValidationResult validateFile(String tenantId, String serviceType, String fileName, InputStream fileContent, Long fileSize, Boolean binaryFileBypass) {
         try {
             // Convert InputStream to byte array
             byte[] fileBytes = fileContent.readAllBytes();
@@ -31,6 +31,7 @@ public class SchemaValidationService {
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             body.add("tenantId", tenantId);
             body.add("serviceType", serviceType);
+            body.add("binaryFileBypass", binaryFileBypass);
             body.add("file", new ByteArrayResource(fileBytes) {
                 @Override
                 public String getFilename() {

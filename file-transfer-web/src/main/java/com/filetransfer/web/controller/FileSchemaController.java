@@ -100,13 +100,14 @@ public class FileSchemaController {
     @PostMapping("/validate-file")
     public ResponseEntity<Map<String, Object>> validateFile(@RequestParam String tenantId,
                                                           @RequestParam String serviceType,
-                                                          @RequestParam("file") MultipartFile file) {
+                                                          @RequestParam("file") MultipartFile file,
+                                                          @RequestParam(defaultValue = "false") Boolean binaryFileBypass) {
         try {
             InputStream fileContent = file.getInputStream();
             Long fileSize = file.getSize();
             String fileName = file.getOriginalFilename();
             
-            FileSchemaService.ValidationResult result = fileSchemaService.validateFile(tenantId, serviceType, fileName, fileContent, fileSize);
+            FileSchemaService.ValidationResult result = fileSchemaService.validateFile(tenantId, serviceType, fileName, fileContent, fileSize, binaryFileBypass);
             
             Map<String, Object> response = Map.of(
                 "valid", result.isValid(),
@@ -133,11 +134,12 @@ public class FileSchemaController {
                                                                  @RequestParam String serviceType,
                                                                  @RequestParam String fileName,
                                                                  @RequestParam Long fileSize,
+                                                                 @RequestParam(defaultValue = "false") Boolean binaryFileBypass,
                                                                  @RequestBody String fileContent) {
         try {
             InputStream contentStream = new java.io.ByteArrayInputStream(fileContent.getBytes());
             
-            FileSchemaService.ValidationResult result = fileSchemaService.validateFile(tenantId, serviceType, fileName, contentStream, fileSize);
+            FileSchemaService.ValidationResult result = fileSchemaService.validateFile(tenantId, serviceType, fileName, contentStream, fileSize, binaryFileBypass);
             
             Map<String, Object> response = Map.of(
                 "valid", result.isValid(),
