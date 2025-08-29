@@ -1,0 +1,564 @@
+# Azure AKS Deployment Template for File Transfer System
+# Optimized for Azure Kubernetes Service with enterprise features
+
+---
+# File Transfer Web Application - Azure AKS Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: file-transfer-web-AZURE_SLOT
+  namespace: NAMESPACE
+  labels:
+    app: file-transfer-web
+    version: AZURE_SLOT
+    component: web-application
+    azure-workload: "web-tier"
+  annotations:
+    deployment.kubernetes.io/revision: "IMAGE_TAG"
+    azure.workload.identity/use: "true"
+spec:
+  replicas: 6
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: file-transfer-web
+      version: AZURE_SLOT
+  template:
+    metadata:
+      labels:
+        app: file-transfer-web
+        version: AZURE_SLOT
+        component: web-application
+        azure-workload: "web-tier"
+        aadpodidbinding: file-transfer-identity
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/actuator/prometheus"
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: file-transfer-web-sa
+      
+      # Node affinity for Azure workload optimization
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: workload-type
+                operator: In
+                values: ["web-application"]
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values: ["file-transfer-web"]
+              topologyKey: kubernetes.io/hostname
+      
+      containers:
+      - name: web-container
+        image: filetransferregistry.azurecr.io/file-transfer-web:IMAGE_TAG
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "production-enterprise,azure"
+        - name: AZURE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: azure-identity
+              key: client-id
+        - name: AZURE_TENANT_ID
+          valueFrom:
+            secretKeyRef:
+              name: azure-identity
+              key: tenant-id
+        - name: SPRING_DATASOURCE_URL
+          valueFrom:
+            secretKeyRef:
+              name: database-credentials
+              key: url
+        - name: SPRING_DATASOURCE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: database-credentials
+              key: username
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-credentials
+              key: password
+        - name: SPRING_DATA_REDIS_HOST
+          valueFrom:
+            secretKeyRef:
+              name: redis-credentials
+              key: hostname
+        - name: SPRING_DATA_REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-credentials
+              key: password
+        - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: application-insights
+              key: connection-string
+        - name: JAVA_OPTS
+          value: "-Xms8g -Xmx32g -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Dspring.profiles.active=production-enterprise,azure"
+        
+        # Enterprise resource configuration
+        resources:
+          requests:
+            memory: "8Gi"
+            cpu: "2000m"
+            ephemeral-storage: "10Gi"
+          limits:
+            memory: "36Gi"
+            cpu: "8000m"
+            ephemeral-storage: "50Gi"
+        
+        # Azure-optimized health checks
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 180  # Longer for enterprise startup
+          periodSeconds: 30
+          timeoutSeconds: 15
+          failureThreshold: 3
+          successThreshold: 1
+          
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 120
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+          successThreshold: 1
+        
+        # Startup probe for enterprise applications
+        startupProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 30  # Allow 5 minutes for startup
+        
+        volumeMounts:
+        - name: app-data
+          mountPath: /app/data
+        - name: azure-logs
+          mountPath: /var/log
+        - name: temp-storage
+          mountPath: /tmp
+        
+        # Security context for Azure
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+      
+      # Azure-specific volumes
+      volumes:
+      - name: app-data
+        persistentVolumeClaim:
+          claimName: file-transfer-web-data-azure
+      - name: azure-logs
+        emptyDir:
+          sizeLimit: 10Gi
+      - name: temp-storage
+        emptyDir:
+          sizeLimit: 20Gi
+      
+      # Security context for pod
+      securityContext:
+        fsGroup: 1000
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+
+---
+# File Transfer Batch Application - Azure AKS Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: file-transfer-batch-AZURE_SLOT
+  namespace: NAMESPACE
+  labels:
+    app: file-transfer-batch
+    version: AZURE_SLOT
+    component: batch-application
+    azure-workload: "batch-tier"
+spec:
+  replicas: 4
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: file-transfer-batch
+      version: AZURE_SLOT
+  template:
+    metadata:
+      labels:
+        app: file-transfer-batch
+        version: AZURE_SLOT
+        component: batch-application
+        azure-workload: "batch-tier"
+        aadpodidbinding: file-transfer-identity
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8082"
+        prometheus.io/path: "/actuator/prometheus"
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: file-transfer-batch-sa
+      
+      # Node affinity for Azure batch workload
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: workload-type
+                operator: In
+                values: ["batch-processing"]
+      
+      # Toleration for batch node taints
+      tolerations:
+      - key: "workload-type"
+        operator: "Equal"
+        value: "batch-processing"
+        effect: "NoSchedule"
+      
+      containers:
+      - name: batch-container
+        image: filetransferregistry.azurecr.io/file-transfer-batch:IMAGE_TAG
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8082
+          name: http
+          protocol: TCP
+        
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "production-enterprise,azure,batch-scalability"
+        - name: AZURE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: azure-identity
+              key: client-id
+        - name: SPRING_DATASOURCE_URL
+          valueFrom:
+            secretKeyRef:
+              name: database-credentials
+              key: batch-url
+        - name: SPRING_DATASOURCE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: database-credentials
+              key: username
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-credentials
+              key: password
+        - name: SPRING_DATA_REDIS_HOST
+          valueFrom:
+            secretKeyRef:
+              name: redis-credentials
+              key: hostname
+        - name: SPRING_DATA_REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-credentials
+              key: password
+        - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: application-insights
+              key: connection-string
+        - name: JAVA_OPTS
+          value: "-Xms16g -Xmx64g -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Dspring.profiles.active=production-enterprise,azure"
+        
+        # Enterprise batch resource configuration
+        resources:
+          requests:
+            memory: "16Gi"
+            cpu: "4000m"
+            ephemeral-storage: "20Gi"
+          limits:
+            memory: "72Gi"
+            cpu: "16000m"
+            ephemeral-storage: "100Gi"
+        
+        # Azure-optimized health checks for batch
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8082
+          initialDelaySeconds: 300  # Longer for batch startup
+          periodSeconds: 60
+          timeoutSeconds: 30
+          failureThreshold: 3
+          
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8082
+          initialDelaySeconds: 240
+          periodSeconds: 30
+          timeoutSeconds: 20
+          failureThreshold: 3
+        
+        volumeMounts:
+        - name: batch-data
+          mountPath: /app/batch-data
+        - name: azure-logs
+          mountPath: /var/log
+        - name: temp-storage
+          mountPath: /tmp
+      
+      volumes:
+      - name: batch-data
+        persistentVolumeClaim:
+          claimName: file-transfer-batch-data-azure
+      - name: azure-logs
+        emptyDir:
+          sizeLimit: 20Gi
+      - name: temp-storage
+        emptyDir:
+          sizeLimit: 50Gi
+
+---
+# Azure Load Balancer Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: file-transfer-web-AZURE_SLOT
+  namespace: NAMESPACE
+  labels:
+    app: file-transfer-web
+    version: AZURE_SLOT
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+    service.beta.kubernetes.io/azure-load-balancer-internal-subnet: "aks-subnet"
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: file-transfer-web
+    version: AZURE_SLOT
+
+---
+# Azure Persistent Volume Claims with Premium Storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: file-transfer-web-data-azure
+  namespace: NAMESPACE
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "managed-premium"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: managed-premium
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: file-transfer-batch-data-azure
+  namespace: NAMESPACE
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "managed-premium"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Ti
+  storageClassName: managed-premium
+
+---
+# Azure Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: file-transfer-web-hpa-azure
+  namespace: NAMESPACE
+  annotations:
+    azure.workload.identity/use: "true"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: file-transfer-web-AZURE_SLOT
+  minReplicas: 6
+  maxReplicas: 50
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  # Azure-specific scaling behavior
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 180  # 3 minutes
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+      - type: Pods
+        value: 5
+        periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300  # 5 minutes
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+
+---
+# Azure Service Account with Workload Identity
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: file-transfer-web-sa
+  namespace: NAMESPACE
+  annotations:
+    azure.workload.identity/client-id: "AZURE_CLIENT_ID"
+    azure.workload.identity/tenant-id: "AZURE_TENANT_ID"
+  labels:
+    azure.workload.identity/use: "true"
+
+---
+# Azure ConfigMap for Application Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: file-transfer-config-azure
+  namespace: NAMESPACE
+data:
+  application.yml: |
+    spring:
+      profiles:
+        active: production-enterprise,azure
+      
+      cloud:
+        azure:
+          keyvault:
+            enabled: true
+            uri: "https://file-transfer-kv-ENVIRONMENT.vault.azure.net/"
+          
+          storage:
+            blob:
+              account-name: "filetransferENVIRONMENT"
+              container-name: "file-storage"
+          
+          servicebus:
+            connection-string: "${AZURE_SERVICEBUS_CONNECTION_STRING}"
+    
+    # Azure Application Insights integration
+    azure:
+      application-insights:
+        instrumentation-key: "${APPLICATIONINSIGHTS_INSTRUMENTATION_KEY}"
+        connection-string: "${APPLICATIONINSIGHTS_CONNECTION_STRING}"
+        
+    # Enterprise performance configuration for Azure
+    performance:
+      thread-pool:
+        core-size: 100
+        max-size: 1000
+        queue-capacity: 50000
+      
+      azure:
+        blob-storage:
+          connection-pool-size: 50
+          timeout: 300000
+        
+        service-bus:
+          prefetch-count: 1000
+          max-concurrent-calls: 100
+
+---
+# Azure Network Policy for Security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: file-transfer-network-policy
+  namespace: NAMESPACE
+spec:
+  podSelector:
+    matchLabels:
+      component: web-application
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: azure-system
+    - podSelector:
+        matchLabels:
+          component: frontend-application
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          component: batch-application
+    ports:
+    - protocol: TCP
+      port: 8082
+  - to: []  # Allow all outbound for external services
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 5432  # PostgreSQL
+    - protocol: TCP
+      port: 6379  # Redis

@@ -1,0 +1,1020 @@
+# File Transfer System - Azure DevOps Pipeline
+# Enterprise CI/CD pipeline using Azure DevOps and Azure Kubernetes Service (AKS)
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+    - release/*
+  paths:
+    exclude:
+    - docs/*
+    - README.md
+
+pr:
+  branches:
+    include:
+    - main
+    - develop
+
+variables:
+  # Global variables
+  azureSubscription: 'file-transfer-service-connection'
+  containerRegistry: 'filetransferregistry.azurecr.io'
+  imageRepository: 'file-transfer'
+  dockerfilePath: '$(Build.SourcesDirectory)'
+  tag: '$(Build.BuildId)'
+  
+  # Azure resources
+  resourceGroup: 'file-transfer-$(Environment)'
+  aksCluster: 'file-transfer-aks-$(Environment)'
+  keyVault: 'file-transfer-kv-$(Environment)'
+  
+  # Build configuration
+  buildConfiguration: 'Release'
+  javaVersion: '17'
+  nodeVersion: '18.x'
+  
+  # Performance and enterprise settings
+  vmImageName: 'ubuntu-latest'
+  poolName: 'Azure Pipelines'
+
+parameters:
+- name: Environment
+  displayName: 'Target Environment'
+  type: string
+  default: 'staging'
+  values:
+  - staging
+  - production
+  
+- name: DeploymentStrategy
+  displayName: 'Deployment Strategy'
+  type: string
+  default: 'blue-green'
+  values:
+  - rolling
+  - blue-green
+  - canary
+
+- name: RunPerformanceTests
+  displayName: 'Run Performance Tests'
+  type: boolean
+  default: false
+
+stages:
+# ===== STAGE 1: BUILD AND TEST =====
+- stage: BuildAndTest
+  displayName: 'Build and Test'
+  jobs:
+  
+  # Code Quality and Security Analysis
+  - job: CodeQuality
+    displayName: 'Code Quality Analysis'
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - checkout: self
+      fetchDepth: 0  # Full history for SonarQube
+      
+    - task: SonarQubePrepare@4
+      displayName: 'Prepare SonarQube Analysis'
+      inputs:
+        SonarQube: 'SonarQube-FileTransfer'
+        scannerMode: 'MSBuild'
+        projectKey: 'file-transfer-system'
+        projectName: 'File Transfer Management System'
+        
+    - task: JavaToolInstaller@0
+      displayName: 'Install Java $(javaVersion)'
+      inputs:
+        versionSpec: '$(javaVersion)'
+        jdkArchitectureOption: 'x64'
+        jdkSourceOption: 'PreInstalled'
+        
+    - task: NodeTool@0
+      displayName: 'Install Node.js $(nodeVersion)'
+      inputs:
+        versionSpec: '$(nodeVersion)'
+        
+    - task: Cache@2
+      displayName: 'Cache Maven Dependencies'
+      inputs:
+        key: 'maven | "$(Agent.OS)" | **/pom.xml'
+        restoreKeys: |
+          maven | "$(Agent.OS)"
+          maven
+        path: '$(Pipeline.Workspace)/.m2/repository'
+        
+    - task: Cache@2
+      displayName: 'Cache NPM Dependencies'
+      inputs:
+        key: 'npm | "$(Agent.OS)" | file-transfer-frontend/package-lock.json'
+        restoreKeys: |
+          npm | "$(Agent.OS)"
+          npm
+        path: 'file-transfer-frontend/node_modules'
+        
+    # Frontend code quality
+    - script: |
+        cd file-transfer-frontend
+        npm ci
+        npm run lint
+        npm run lint:fix || true
+      displayName: 'Frontend Code Quality (ESLint)'
+      
+    # Java code quality
+    - task: Maven@3
+      displayName: 'Java Code Quality (Checkstyle)'
+      inputs:
+        mavenPomFile: 'file-transfer-web/pom.xml'
+        goals: 'checkstyle:check'
+        options: '-Dcheckstyle.failOnViolation=false'
+        
+    - task: Maven@3
+      displayName: 'Batch Code Quality (Checkstyle)'
+      inputs:
+        mavenPomFile: 'file-transfer-batch/pom.xml'
+        goals: 'checkstyle:check'
+        options: '-Dcheckstyle.failOnViolation=false'
+        
+    # Security scanning
+    - task: WhiteSource@21
+      displayName: 'WhiteSource Security Scan'
+      inputs:
+        cwd: '$(Build.SourcesDirectory)'
+        
+    - task: SonarQubeAnalyze@4
+      displayName: 'Run SonarQube Analysis'
+      
+    - task: SonarQubePublish@4
+      displayName: 'Publish SonarQube Results'
+      inputs:
+        pollingTimeoutSec: '300'
+
+  # Unit Tests - Matrix Strategy
+  - job: UnitTests
+    displayName: 'Unit Tests'
+    strategy:
+      matrix:
+        WebApplication:
+          applicationName: 'web'
+          pomFile: 'file-transfer-web/pom.xml'
+          testCommand: 'mvn clean test jacoco:report'
+        BatchApplication:
+          applicationName: 'batch'
+          pomFile: 'file-transfer-batch/pom.xml'
+          testCommand: 'mvn clean test jacoco:report'
+        FrontendApplication:
+          applicationName: 'frontend'
+          pomFile: ''
+          testCommand: 'npm run test:coverage'
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - checkout: self
+      
+    - task: JavaToolInstaller@0
+      condition: ne(variables['applicationName'], 'frontend')
+      displayName: 'Install Java $(javaVersion)'
+      inputs:
+        versionSpec: '$(javaVersion)'
+        jdkArchitectureOption: 'x64'
+        jdkSourceOption: 'PreInstalled'
+        
+    - task: NodeTool@0
+      condition: eq(variables['applicationName'], 'frontend')
+      displayName: 'Install Node.js $(nodeVersion)'
+      inputs:
+        versionSpec: '$(nodeVersion)'
+        
+    - task: Cache@2
+      condition: ne(variables['applicationName'], 'frontend')
+      displayName: 'Cache Maven Dependencies'
+      inputs:
+        key: 'maven | "$(Agent.OS)" | $(applicationName) | **/pom.xml'
+        path: '$(Pipeline.Workspace)/.m2/repository'
+        
+    - task: Cache@2
+      condition: eq(variables['applicationName'], 'frontend')
+      displayName: 'Cache NPM Dependencies'
+      inputs:
+        key: 'npm | "$(Agent.OS)" | file-transfer-frontend/package-lock.json'
+        path: 'file-transfer-frontend/node_modules'
+        
+    # Java unit tests
+    - task: Maven@3
+      condition: ne(variables['applicationName'], 'frontend')
+      displayName: 'Run Java Unit Tests'
+      inputs:
+        mavenPomFile: '$(pomFile)'
+        goals: 'clean test jacoco:report'
+        options: '-Dmaven.test.failure.ignore=false'
+        testResultsFiles: '**/surefire-reports/TEST-*.xml'
+        codeCoverageToolOption: 'JaCoCo'
+        
+    # Frontend unit tests
+    - script: |
+        cd file-transfer-frontend
+        npm ci
+        npm run test:coverage
+      condition: eq(variables['applicationName'], 'frontend')
+      displayName: 'Run Frontend Unit Tests'
+      
+    - task: PublishTestResults@2
+      condition: eq(variables['applicationName'], 'frontend')
+      displayName: 'Publish Frontend Test Results'
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: 'file-transfer-frontend/coverage/junit.xml'
+        mergeTestResults: true
+        
+    - task: PublishCodeCoverageResults@1
+      displayName: 'Publish Code Coverage'
+      inputs:
+        codeCoverageTool: 'JaCoCo'
+        summaryFileLocation: |
+          file-transfer-$(applicationName)/target/site/jacoco/jacoco.xml
+          file-transfer-frontend/coverage/lcov.info
+        reportDirectory: |
+          file-transfer-$(applicationName)/target/site/jacoco/
+          file-transfer-frontend/coverage/lcov-report/
+
+  # Integration Tests
+  - job: IntegrationTests
+    displayName: 'Integration Tests'
+    dependsOn: UnitTests
+    pool:
+      vmImage: $(vmImageName)
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: filetransfer_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        ports:
+          5432:5432
+      redis:
+        image: redis:7-alpine
+        ports:
+          6379:6379
+    steps:
+    - checkout: self
+      
+    - task: JavaToolInstaller@0
+      displayName: 'Install Java $(javaVersion)'
+      inputs:
+        versionSpec: '$(javaVersion)'
+        jdkArchitectureOption: 'x64'
+        jdkSourceOption: 'PreInstalled'
+        
+    - task: Cache@2
+      displayName: 'Cache Maven Dependencies'
+      inputs:
+        key: 'maven | "$(Agent.OS)" | **/pom.xml'
+        path: '$(Pipeline.Workspace)/.m2/repository'
+        
+    - script: |
+        # Set up test environment variables
+        export SPRING_DATASOURCE_URL="jdbc:postgresql://localhost:5432/filetransfer_test"
+        export SPRING_DATASOURCE_USERNAME="test_user"
+        export SPRING_DATASOURCE_PASSWORD="test_password"
+        export SPRING_DATA_REDIS_HOST="localhost"
+        export SPRING_DATA_REDIS_PORT="6379"
+        
+        # Run comprehensive integration tests
+        ./scripts/run-all-tests.sh integration test true json true
+      displayName: 'Run Integration Tests'
+      
+    - task: PublishTestResults@2
+      displayName: 'Publish Integration Test Results'
+      condition: always()
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/target/failsafe-reports/TEST-*.xml'
+        mergeTestResults: true
+        testRunTitle: 'Integration Tests'
+
+# ===== STAGE 2: SECURITY AND COMPLIANCE =====
+- stage: SecurityCompliance
+  displayName: 'Security and Compliance'
+  dependsOn: BuildAndTest
+  jobs:
+  
+  - job: SecurityScanning
+    displayName: 'Security Scanning'
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - checkout: self
+      
+    - task: JavaToolInstaller@0
+      displayName: 'Install Java $(javaVersion)'
+      inputs:
+        versionSpec: '$(javaVersion)'
+        jdkArchitectureOption: 'x64'
+        jdkSourceOption: 'PreInstalled'
+        
+    # OWASP Dependency Check
+    - task: Maven@3
+      displayName: 'OWASP Dependency Check (Web)'
+      inputs:
+        mavenPomFile: 'file-transfer-web/pom.xml'
+        goals: 'org.owasp:dependency-check-maven:check'
+        options: '-DfailBuildOnCVSS=7'
+        
+    - task: Maven@3
+      displayName: 'OWASP Dependency Check (Batch)'
+      inputs:
+        mavenPomFile: 'file-transfer-batch/pom.xml'
+        goals: 'org.owasp:dependency-check-maven:check'
+        options: '-DfailBuildOnCVSS=7'
+        
+    # NPM Security Audit
+    - script: |
+        cd file-transfer-frontend
+        npm ci
+        npm audit --audit-level=high
+      displayName: 'NPM Security Audit'
+      
+    # Snyk Security Scan
+    - task: SnykSecurityScan@1
+      displayName: 'Snyk Security Scan'
+      inputs:
+        serviceConnectionEndpoint: 'Snyk-FileTransfer'
+        testType: 'app'
+        monitorWhen: 'always'
+        failOnIssues: true
+        
+    - task: PublishTestResults@2
+      displayName: 'Publish Security Test Results'
+      condition: always()
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/target/dependency-check-junit.xml'
+        testRunTitle: 'Security Scan Results'
+
+# ===== STAGE 3: BUILD AND PACKAGE =====
+- stage: BuildPackage
+  displayName: 'Build and Package'
+  dependsOn: SecurityCompliance
+  jobs:
+  
+  - job: BuildApplications
+    displayName: 'Build Applications'
+    strategy:
+      matrix:
+        WebApplication:
+          applicationName: 'web'
+          dockerFile: 'file-transfer-web/Dockerfile'
+          buildContext: 'file-transfer-web'
+        BatchApplication:
+          applicationName: 'batch'
+          dockerFile: 'file-transfer-batch/Dockerfile'
+          buildContext: 'file-transfer-batch'
+        FrontendApplication:
+          applicationName: 'frontend'
+          dockerFile: 'file-transfer-frontend/Dockerfile'
+          buildContext: 'file-transfer-frontend'
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - checkout: self
+      
+    - task: JavaToolInstaller@0
+      condition: ne(variables['applicationName'], 'frontend')
+      displayName: 'Install Java $(javaVersion)'
+      inputs:
+        versionSpec: '$(javaVersion)'
+        jdkArchitectureOption: 'x64'
+        jdkSourceOption: 'PreInstalled'
+        
+    - task: NodeTool@0
+      condition: eq(variables['applicationName'], 'frontend')
+      displayName: 'Install Node.js $(nodeVersion)'
+      inputs:
+        versionSpec: '$(nodeVersion)'
+        
+    # Build Java applications
+    - task: Maven@3
+      condition: ne(variables['applicationName'], 'frontend')
+      displayName: 'Build Java Application'
+      inputs:
+        mavenPomFile: '$(buildContext)/pom.xml'
+        goals: 'clean package'
+        options: '-DskipTests -Dspring.profiles.active=production-enterprise'
+        
+    # Build Frontend application
+    - script: |
+        cd file-transfer-frontend
+        npm ci
+        npm run build -- --config webpack.config.enterprise.js
+      condition: eq(variables['applicationName'], 'frontend')
+      displayName: 'Build Frontend Application'
+      env:
+        NODE_ENV: production
+        REACT_APP_ENTERPRISE_MODE: true
+        
+    # Docker build and push
+    - task: Docker@2
+      displayName: 'Build Docker Image'
+      inputs:
+        containerRegistry: 'Azure Container Registry'
+        repository: '$(imageRepository)-$(applicationName)'
+        command: 'build'
+        Dockerfile: '$(dockerFile)'
+        buildContext: '$(buildContext)'
+        tags: |
+          $(tag)
+          latest
+        arguments: '--build-arg ENVIRONMENT=${{ parameters.Environment }} --build-arg BUILD_NUMBER=$(Build.BuildNumber)'
+        
+    - task: Docker@2
+      displayName: 'Push Docker Image'
+      inputs:
+        containerRegistry: 'Azure Container Registry'
+        repository: '$(imageRepository)-$(applicationName)'
+        command: 'push'
+        tags: |
+          $(tag)
+          latest
+          
+    # Container security scanning
+    - task: AzureContainerScan@0
+      displayName: 'Container Security Scan'
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        resourceGroupName: '$(resourceGroup)'
+        acrName: 'filetransferregistry'
+        repository: '$(imageRepository)-$(applicationName)'
+        tag: '$(tag)'
+        
+    # Publish build artifacts
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Build Artifacts'
+      inputs:
+        pathToPublish: '$(buildContext)/target'
+        artifactName: '$(applicationName)-artifacts'
+        publishLocation: 'Container'
+
+# ===== STAGE 4: INFRASTRUCTURE DEPLOYMENT =====
+- stage: Infrastructure
+  displayName: 'Infrastructure Deployment'
+  dependsOn: BuildPackage
+  condition: or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+  jobs:
+  
+  - deployment: DeployInfrastructure
+    displayName: 'Deploy Infrastructure'
+    environment: '${{ parameters.Environment }}-infrastructure'
+    pool:
+      vmImage: $(vmImageName)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+            
+          - task: AzureCLI@2
+            displayName: 'Deploy Azure Infrastructure'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Set environment variables
+                export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+                export ARM_TENANT_ID=$(az account show --query tenantId -o tsv)
+                
+                # Initialize Terraform with Azure backend
+                cd terraform-azure
+                terraform init \
+                  -backend-config="resource_group_name=file-transfer-terraform-rg" \
+                  -backend-config="storage_account_name=filetransferterraform" \
+                  -backend-config="container_name=terraform-state" \
+                  -backend-config="key=${{ parameters.Environment }}.terraform.tfstate"
+                
+                # Plan infrastructure changes
+                terraform plan \
+                  -var-file="environments/${{ parameters.Environment }}.tfvars" \
+                  -var="build_number=$(Build.BuildNumber)" \
+                  -var="git_commit=$(Build.SourceVersion)" \
+                  -out=tfplan
+                
+                # Apply infrastructure changes
+                terraform apply -auto-approve tfplan
+                
+                # Output important values
+                terraform output -json > $(Agent.TempDirectory)/terraform-outputs.json
+                
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Terraform Outputs'
+            inputs:
+              pathToPublish: '$(Agent.TempDirectory)/terraform-outputs.json'
+              artifactName: 'terraform-outputs'
+
+# ===== STAGE 5: STAGING DEPLOYMENT =====
+- stage: DeployStaging
+  displayName: 'Deploy to Staging'
+  dependsOn: Infrastructure
+  condition: or(eq(variables['Build.SourceBranch'], 'refs/heads/develop'), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  
+  - deployment: StagingDeployment
+    displayName: 'Staging Deployment'
+    environment: 'staging'
+    pool:
+      vmImage: $(vmImageName)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+            
+          - task: DownloadBuildArtifacts@0
+            displayName: 'Download Terraform Outputs'
+            inputs:
+              artifactName: 'terraform-outputs'
+              downloadPath: '$(Agent.TempDirectory)'
+              
+          - task: KubectlInstaller@0
+            displayName: 'Install kubectl'
+            inputs:
+              kubectlVersion: '1.28.0'
+              
+          - task: AzureCLI@2
+            displayName: 'Deploy to AKS Staging'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Get AKS credentials
+                az aks get-credentials \
+                  --resource-group file-transfer-staging \
+                  --name file-transfer-aks-staging \
+                  --overwrite-existing
+                
+                # Set deployment variables
+                export ENVIRONMENT="staging"
+                export IMAGE_TAG="$(tag)"
+                export DEPLOYMENT_STRATEGY="${{ parameters.DeploymentStrategy }}"
+                
+                # Execute deployment
+                ./scripts/deploy-with-strategy.sh $DEPLOYMENT_STRATEGY $IMAGE_TAG $ENVIRONMENT
+                
+          - task: Bash@3
+            displayName: 'Run Smoke Tests'
+            inputs:
+              targetType: 'inline'
+              script: |
+                # Wait for deployment to stabilize
+                sleep 60
+                
+                # Run smoke tests
+                ./scripts/run-smoke-tests.sh staging 300
+                
+          - task: PublishTestResults@2
+            displayName: 'Publish Smoke Test Results'
+            condition: always()
+            inputs:
+              testResultsFormat: 'JUnit'
+              testResultsFiles: '**/smoke-test-results.xml'
+              testRunTitle: 'Staging Smoke Tests'
+
+# ===== STAGE 6: E2E AND PERFORMANCE TESTING =====
+- stage: EndToEndTesting
+  displayName: 'End-to-End Testing'
+  dependsOn: DeployStaging
+  jobs:
+  
+  - job: E2ETests
+    displayName: 'End-to-End Tests'
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - checkout: self
+      
+    - task: NodeTool@0
+      displayName: 'Install Node.js $(nodeVersion)'
+      inputs:
+        versionSpec: '$(nodeVersion)'
+        
+    - script: |
+        cd file-transfer-frontend
+        npm ci
+        npm run test:e2e -- --config baseUrl=https://staging-filetransfer.azurewebsites.net
+      displayName: 'Run Cypress E2E Tests'
+      env:
+        CYPRESS_BASE_URL: 'https://staging-filetransfer.azurewebsites.net'
+        CYPRESS_API_URL: 'https://api-staging-filetransfer.azurewebsites.net'
+        CYPRESS_BATCH_URL: 'https://batch-staging-filetransfer.azurewebsites.net'
+        
+    - task: PublishTestResults@2
+      displayName: 'Publish E2E Test Results'
+      condition: always()
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: 'file-transfer-frontend/cypress/results/junit.xml'
+        testRunTitle: 'End-to-End Tests'
+        
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish E2E Test Artifacts'
+      condition: always()
+      inputs:
+        pathToPublish: 'file-transfer-frontend/cypress'
+        artifactName: 'e2e-test-artifacts'
+
+  - job: PerformanceTests
+    displayName: 'Performance Tests'
+    condition: eq('${{ parameters.RunPerformanceTests }}', true)
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - checkout: self
+      
+    - script: |
+        # Install k6
+        sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+        echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+        sudo apt-get update
+        sudo apt-get install k6
+        
+        # Run performance tests
+        k6 run --vus 100 --duration 10m \
+          --env WEB_BASE_URL=https://staging-filetransfer.azurewebsites.net \
+          --env BATCH_BASE_URL=https://batch-staging-filetransfer.azurewebsites.net \
+          docker/k6-scripts/load-test.js
+      displayName: 'Run K6 Performance Tests'
+      
+    - task: PublishTestResults@2
+      displayName: 'Publish Performance Test Results'
+      condition: always()
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/k6-results.xml'
+        testRunTitle: 'Performance Tests'
+
+# ===== STAGE 7: PRODUCTION DEPLOYMENT =====
+- stage: DeployProduction
+  displayName: 'Deploy to Production'
+  dependsOn: EndToEndTesting
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  
+  - deployment: ProductionDeployment
+    displayName: 'Production Deployment'
+    environment: 'production'
+    pool:
+      vmImage: $(vmImageName)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+            
+          - task: AzureKeyVault@2
+            displayName: 'Get Production Secrets'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              KeyVaultName: '$(keyVault)'
+              SecretsFilter: '*'
+              RunAsPreJob: false
+              
+          - task: KubectlInstaller@0
+            displayName: 'Install kubectl'
+            inputs:
+              kubectlVersion: '1.28.0'
+              
+          - task: AzureCLI@2
+            displayName: 'Pre-Deployment Backup'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Get AKS credentials
+                az aks get-credentials \
+                  --resource-group file-transfer-production \
+                  --name file-transfer-aks-production \
+                  --overwrite-existing
+                
+                # Create pre-deployment backup
+                kubectl create job pre-deployment-backup-$(Build.BuildId) \
+                  --from=cronjob/backup-cronjob \
+                  --namespace=file-transfer-production
+                
+                # Wait for backup to complete
+                kubectl wait --for=condition=complete job/pre-deployment-backup-$(Build.BuildId) \
+                  --timeout=1800s --namespace=file-transfer-production
+                  
+          - task: AzureCLI@2
+            displayName: 'Deploy to Production'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Set deployment variables
+                export ENVIRONMENT="production"
+                export IMAGE_TAG="$(tag)"
+                export DEPLOYMENT_STRATEGY="${{ parameters.DeploymentStrategy }}"
+                export AZURE_DEPLOYMENT=true
+                
+                # Execute deployment with strategy
+                ./scripts/deploy-with-strategy-azure.sh $DEPLOYMENT_STRATEGY $IMAGE_TAG $ENVIRONMENT
+                
+          - task: Bash@3
+            displayName: 'Post-Deployment Validation'
+            inputs:
+              targetType: 'inline'
+              script: |
+                # Wait for deployment to stabilize
+                sleep 120
+                
+                # Run comprehensive validation
+                ./scripts/run-smoke-tests.sh production 600
+                ./scripts/validate-performance.sh production
+                ./scripts/validate-security.sh production
+                
+          - task: AzureCLI@2
+            displayName: 'Update Application Insights'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Record deployment in Application Insights
+                az monitor app-insights events show \
+                  --app file-transfer-insights-production \
+                  --type customEvents \
+                  --query "[?name=='Deployment']" \
+                  --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S) \
+                  --end-time $(date -u +%Y-%m-%dT%H:%M:%S)
+
+# ===== STAGE 8: POST-DEPLOYMENT MONITORING =====
+- stage: PostDeploymentMonitoring
+  displayName: 'Post-Deployment Monitoring'
+  dependsOn: DeployProduction
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  
+  - job: MonitoringAndValidation
+    displayName: 'Monitoring and Validation'
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - checkout: self
+      
+    - task: AzureCLI@2
+      displayName: 'Monitor Deployment Health'
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Monitor deployment health for 10 minutes
+          ./scripts/monitor-deployment-health-azure.sh production 600
+          
+    - task: AzureCLI@2
+      displayName: 'Validate Performance SLA'
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Validate performance meets SLA requirements
+          ./scripts/validate-performance-sla-azure.sh production
+          
+    - task: AzureCLI@2
+      displayName: 'Check Error Rates'
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Monitor error rates for anomalies
+          ./scripts/check-error-rates-azure.sh production 300
+          
+    - task: PowerShell@2
+      displayName: 'Generate Deployment Report'
+      inputs:
+        targetType: 'inline'
+        script: |
+          # Generate comprehensive deployment report
+          ./scripts/generate-deployment-report-azure.ps1 -Environment production -BuildId $(Build.BuildId)
+          
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Deployment Report'
+      inputs:
+        pathToPublish: '$(Agent.TempDirectory)/deployment-report'
+        artifactName: 'deployment-report-$(Build.BuildId)'
+
+# ===== ROLLBACK STAGE =====
+- stage: RollbackCapability
+  displayName: 'Prepare Rollback'
+  dependsOn: DeployProduction
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  
+  - job: PrepareRollback
+    displayName: 'Prepare Rollback Capability'
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - checkout: self
+      
+    - task: AzureCLI@2
+      displayName: 'Store Rollback Information'
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Get AKS credentials
+          az aks get-credentials \
+            --resource-group file-transfer-production \
+            --name file-transfer-aks-production \
+            --overwrite-existing
+          
+          # Get previous deployment information
+          PREVIOUS_REVISION=$(kubectl get deployment file-transfer-web-production \
+            -o jsonpath='{.metadata.annotations.deployment\.kubernetes\.io/revision}' \
+            --namespace=file-transfer-production)
+          
+          # Store rollback data in Azure Key Vault
+          ROLLBACK_INFO=$(cat << EOF
+          {
+            "previousRevision": "$PREVIOUS_REVISION",
+            "currentRevision": "$(Build.SourceVersion)",
+            "deploymentTime": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "deployedBy": "$(Build.RequestedFor)",
+            "buildId": "$(Build.BuildId)",
+            "environment": "production",
+            "rollbackCommand": "./scripts/rollback-deployment-azure.sh $PREVIOUS_REVISION production"
+          }
+          EOF
+          )
+          
+          # Store in Key Vault
+          az keyvault secret set \
+            --vault-name $(keyVault) \
+            --name "rollback-info-$(Build.BuildId)" \
+            --value "$ROLLBACK_INFO"
+            
+          echo "Rollback information stored for build $(Build.BuildId)"
+
+# ===== MANUAL ROLLBACK PIPELINE =====
+- stage: ManualRollback
+  displayName: 'Manual Rollback'
+  condition: eq(variables['Build.Reason'], 'Manual')
+  jobs:
+  
+  - deployment: ExecuteRollback
+    displayName: 'Execute Rollback'
+    environment: 'production-rollback'
+    pool:
+      vmImage: $(vmImageName)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+            
+          - task: AzureKeyVault@2
+            displayName: 'Get Rollback Information'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              KeyVaultName: '$(keyVault)'
+              SecretsFilter: 'rollback-info-*'
+              
+          - task: AzureCLI@2
+            displayName: 'Execute Rollback'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Get AKS credentials
+                az aks get-credentials \
+                  --resource-group file-transfer-production \
+                  --name file-transfer-aks-production \
+                  --overwrite-existing
+                
+                # Get rollback target from parameters or Key Vault
+                ROLLBACK_REVISION="${{ parameters.RollbackRevision }}"
+                if [[ -z "$ROLLBACK_REVISION" ]]; then
+                  # Get from most recent rollback info
+                  ROLLBACK_REVISION=$(echo "$(rollback-info-latest)" | jq -r '.previousRevision')
+                fi
+                
+                # Execute rollback
+                ./scripts/rollback-deployment-azure.sh $ROLLBACK_REVISION production manual
+                
+                # Verify rollback
+                ./scripts/verify-rollback-azure.sh $ROLLBACK_REVISION production
+                
+          - task: Bash@3
+            displayName: 'Post-Rollback Monitoring'
+            inputs:
+              targetType: 'inline'
+              script: |
+                # Monitor rollback stability
+                ./scripts/monitor-deployment-health-azure.sh production 600
+                
+          - task: PowerShell@2
+            displayName: 'Generate Rollback Report'
+            inputs:
+              targetType: 'inline'
+              script: |
+                # Generate rollback report
+                ./scripts/generate-rollback-report-azure.ps1 -Environment production -BuildId $(Build.BuildId)
+
+# ===== FAILURE HANDLING =====
+- stage: HandleFailure
+  displayName: 'Handle Deployment Failure'
+  dependsOn: DeployProduction
+  condition: failed()
+  jobs:
+  
+  - job: AutomaticRollback
+    displayName: 'Automatic Rollback on Failure'
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - checkout: self
+      
+    - task: AzureCLI@2
+      displayName: 'Automatic Rollback'
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Get AKS credentials
+          az aks get-credentials \
+            --resource-group file-transfer-production \
+            --name file-transfer-aks-production \
+            --overwrite-existing
+          
+          # Get previous stable revision from Key Vault
+          PREVIOUS_REVISION=$(az keyvault secret show \
+            --vault-name $(keyVault) \
+            --name "last-stable-revision" \
+            --query value -o tsv)
+          
+          if [[ -n "$PREVIOUS_REVISION" ]]; then
+            echo "🚨 Deployment failed, initiating automatic rollback to $PREVIOUS_REVISION"
+            
+            # Execute automatic rollback
+            ./scripts/rollback-deployment-azure.sh $PREVIOUS_REVISION production automatic
+            
+            # Verify rollback success
+            if ./scripts/verify-rollback-azure.sh $PREVIOUS_REVISION production; then
+              echo "✅ Automatic rollback completed successfully"
+              
+              # Update Key Vault with rollback info
+              az keyvault secret set \
+                --vault-name $(keyVault) \
+                --name "last-rollback-$(Build.BuildId)" \
+                --value "{\"status\":\"SUCCESS\",\"revision\":\"$PREVIOUS_REVISION\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
+            else
+              echo "❌ Automatic rollback failed - manual intervention required"
+              exit 1
+            fi
+          else
+            echo "❌ No previous stable revision found - manual intervention required"
+            exit 1
+          fi
+          
+    - task: PowerShell@2
+      displayName: 'Notify Failure and Rollback'
+      condition: always()
+      inputs:
+        targetType: 'inline'
+        script: |
+          # Send Teams notification about failure and rollback
+          $webhook = "$(teams-webhook-url)"
+          $body = @{
+            "@type" = "MessageCard"
+            "@context" = "http://schema.org/extensions"
+            "themeColor" = "FF0000"
+            "summary" = "🚨 Production Deployment Failed"
+            "sections" = @(
+              @{
+                "activityTitle" = "Production Deployment Failure"
+                "activitySubtitle" = "Build $(Build.BuildId) failed and automatic rollback initiated"
+                "facts" = @(
+                  @{ "name" = "Environment"; "value" = "Production" }
+                  @{ "name" = "Build ID"; "value" = "$(Build.BuildId)" }
+                  @{ "name" = "Commit"; "value" = "$(Build.SourceVersion)" }
+                  @{ "name" = "Triggered By"; "value" = "$(Build.RequestedFor)" }
+                  @{ "name" = "Rollback Status"; "value" = "${{ job.status }}" }
+                )
+              }
+            )
+          } | ConvertTo-Json -Depth 10
+          
+          Invoke-RestMethod -Uri $webhook -Method Post -Body $body -ContentType "application/json"
