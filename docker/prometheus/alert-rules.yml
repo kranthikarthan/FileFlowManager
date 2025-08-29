@@ -1,0 +1,240 @@
+# Prometheus Alert Rules for File Transfer System
+
+groups:
+  # System-level alerts
+  - name: system.rules
+    rules:
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is above 85% (current value: {{ $value }}%)"
+
+      - alert: HighDiskUsage
+        expr: (1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+          category: system
+        annotations:
+          summary: "High disk usage detected"
+          description: "Disk usage is above 90% (current value: {{ $value }}%)"
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is above 80% (current value: {{ $value }}%)"
+
+      - alert: SystemDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: critical
+          category: system
+        annotations:
+          summary: "System is down"
+          description: "{{ $labels.instance }} has been down for more than 5 minutes"
+
+  # Application-level alerts
+  - name: application.rules
+    rules:
+      - alert: ApplicationDown
+        expr: up{job=~"file-transfer-.*"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: application
+        annotations:
+          summary: "File Transfer application is down"
+          description: "{{ $labels.job }} has been down for more than 2 minutes"
+
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{job=~"file-transfer-.*"}[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is above 5 seconds (current: {{ $value }}s)"
+
+      - alert: HighErrorRate
+        expr: rate(http_server_requests_total{job=~"file-transfer-.*",status=~"5.."}[5m]) / rate(http_server_requests_total{job=~"file-transfer-.*"}[5m]) > 0.05
+        for: 3m
+        labels:
+          severity: critical
+          category: application
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is above 5% (current: {{ $value * 100 }}%)"
+
+      - alert: JVMMemoryHigh
+        expr: jvm_memory_used_bytes{job=~"file-transfer-.*",area="heap"} / jvm_memory_max_bytes{job=~"file-transfer-.*",area="heap"} > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          category: jvm
+        annotations:
+          summary: "JVM heap memory usage is high"
+          description: "JVM heap memory usage is above 85% (current: {{ $value * 100 }}%)"
+
+  # Business-specific alerts
+  - name: business.rules
+    rules:
+      - alert: HighFileTransferFailureRate
+        expr: rate(file_transfer_failures_total[10m]) / rate(file_transfer_attempts_total[10m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          category: business
+        annotations:
+          summary: "High file transfer failure rate"
+          description: "File transfer failure rate is above 10% (current: {{ $value * 100 }}%)"
+
+      - alert: HighValidationFailureRate
+        expr: rate(file_validation_failures_total[10m]) / rate(file_validation_attempts_total[10m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: "High validation failure rate"
+          description: "File validation failure rate is above 5% (current: {{ $value * 100 }}%)"
+
+      - alert: NoFileTransfersProcessed
+        expr: increase(file_transfer_attempts_total[30m]) == 0
+        for: 30m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: "No file transfers processed"
+          description: "No file transfers have been processed in the last 30 minutes"
+
+      - alert: CutoffTimeApproaching
+        expr: time() > on() (cutoff_time_next_seconds - 3600)
+        for: 1m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: "Cutoff time approaching"
+          description: "Cutoff time is approaching (less than 1 hour remaining)"
+
+      - alert: CutoffTimeExceeded
+        expr: time() > on() cutoff_time_next_seconds
+        for: 1m
+        labels:
+          severity: critical
+          category: business
+        annotations:
+          summary: "Cutoff time exceeded"
+          description: "Cutoff time has been exceeded"
+
+      - alert: HighAlertGeneration
+        expr: increase(alerts_generated_total[10m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          category: monitoring
+        annotations:
+          summary: "High alert generation rate"
+          description: "More than 10 alerts generated in the last 10 minutes"
+
+  # Database alerts
+  - name: database.rules
+    rules:
+      - alert: DatabaseConnectionPoolHigh
+        expr: hikaricp_connections_active{job=~"file-transfer-.*"} / hikaricp_connections_max{job=~"file-transfer-.*"} > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "Database connection pool usage is high"
+          description: "Database connection pool usage is above 80% (current: {{ $value * 100 }}%)"
+
+      - alert: SlowDatabaseQueries
+        expr: histogram_quantile(0.95, rate(database_query_time_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "Slow database queries detected"
+          description: "95th percentile database query time is above 2 seconds (current: {{ $value }}s)"
+
+      - alert: DatabaseDown
+        expr: up{job="postgres-exporter"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: "Database is down"
+          description: "Database has been down for more than 2 minutes"
+
+  # Security alerts
+  - name: security.rules
+    rules:
+      - alert: HighAuthenticationFailureRate
+        expr: rate(http_server_requests_total{job=~"file-transfer-.*",status="401"}[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "High authentication failure rate"
+          description: "Authentication failure rate is above 10 per minute"
+
+      - alert: SuspiciousActivityDetected
+        expr: rate(http_server_requests_total{job=~"file-transfer-.*",status=~"4.."}[5m]) > 50
+        for: 3m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "Suspicious activity detected"
+          description: "High rate of 4xx errors detected ({{ $value }} per minute)"
+
+  # File processing alerts
+  - name: file_processing.rules
+    rules:
+      - alert: FileProcessingBacklog
+        expr: file_transfer_queued > 100
+        for: 10m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: "File processing backlog detected"
+          description: "More than 100 files are queued for processing (current: {{ $value }})"
+
+      - alert: LargeFileDetected
+        expr: increase(file_transfer_size_bytes_sum[5m]) > 1e9  # 1GB
+        for: 1m
+        labels:
+          severity: info
+          category: business
+        annotations:
+          summary: "Large file detected"
+          description: "A file larger than 1GB has been processed"
+
+      - alert: FileProcessingTimeHigh
+        expr: histogram_quantile(0.95, rate(file_processing_time_seconds_bucket[10m])) > 300  # 5 minutes
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High file processing time"
+          description: "95th percentile file processing time is above 5 minutes (current: {{ $value }}s)"

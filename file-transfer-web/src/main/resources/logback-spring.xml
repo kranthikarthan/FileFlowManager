@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml" />
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml" />
+
+    <!-- Define properties -->
+    <springProfile name="!prod">
+        <property name="LOG_LEVEL" value="DEBUG"/>
+    </springProfile>
+    <springProfile name="prod">
+        <property name="LOG_LEVEL" value="INFO"/>
+    </springProfile>
+
+    <!-- Console appender with correlation IDs -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level [%X{correlationId:-},%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- File appender for application logs -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/file-transfer-web.log</file>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{correlationId:-},%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n</pattern>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>logs/file-transfer-web.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <!-- JSON structured logging for production -->
+    <springProfile name="prod">
+        <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>logs/file-transfer-web-json.log</file>
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <timestamp/>
+                    <version/>
+                    <logLevel/>
+                    <message/>
+                    <mdc/>
+                    <arguments/>
+                    <stackTrace/>
+                    <pattern>
+                        <pattern>
+                            {
+                                "application": "file-transfer-web",
+                                "environment": "${spring.profiles.active:-unknown}",
+                                "correlationId": "%X{correlationId:-}",
+                                "traceId": "%X{traceId:-}",
+                                "spanId": "%X{spanId:-}",
+                                "requestId": "%X{requestId:-}",
+                                "userId": "%X{userId:-}",
+                                "tenantId": "%X{tenantId:-}",
+                                "thread": "%thread",
+                                "logger": "%logger"
+                            }
+                        </pattern>
+                    </pattern>
+                </providers>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>logs/file-transfer-web-json.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+                <maxFileSize>100MB</maxFileSize>
+                <maxHistory>30</maxHistory>
+                <totalSizeCap>3GB</totalSizeCap>
+            </rollingPolicy>
+        </appender>
+    </springProfile>
+
+    <!-- Audit log appender for business events -->
+    <appender name="AUDIT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/audit.log</file>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp/>
+                <message/>
+                <mdc/>
+                <pattern>
+                    <pattern>
+                        {
+                            "application": "file-transfer-web",
+                            "environment": "${spring.profiles.active:-unknown}",
+                            "eventType": "audit",
+                            "correlationId": "%X{correlationId:-}",
+                            "userId": "%X{userId:-}",
+                            "tenantId": "%X{tenantId:-}",
+                            "sessionId": "%X{sessionId:-}",
+                            "ipAddress": "%X{ipAddress:-}",
+                            "userAgent": "%X{userAgent:-}"
+                        }
+                    </pattern>
+                </pattern>
+            </providers>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>logs/audit.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>365</maxHistory>
+            <totalSizeCap>10GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <!-- Performance log appender for slow operations -->
+    <appender name="PERFORMANCE_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/performance.log</file>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp/>
+                <message/>
+                <mdc/>
+                <pattern>
+                    <pattern>
+                        {
+                            "application": "file-transfer-web",
+                            "environment": "${spring.profiles.active:-unknown}",
+                            "eventType": "performance",
+                            "correlationId": "%X{correlationId:-}",
+                            "traceId": "%X{traceId:-}",
+                            "operation": "%X{operation:-}",
+                            "duration": "%X{duration:-}",
+                            "tenantId": "%X{tenantId:-}"
+                        }
+                    </pattern>
+                </pattern>
+            </providers>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>logs/performance.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <!-- Error log appender for errors and exceptions -->
+    <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/error.log</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp/>
+                <logLevel/>
+                <message/>
+                <mdc/>
+                <stackTrace/>
+                <pattern>
+                    <pattern>
+                        {
+                            "application": "file-transfer-web",
+                            "environment": "${spring.profiles.active:-unknown}",
+                            "eventType": "error",
+                            "correlationId": "%X{correlationId:-}",
+                            "traceId": "%X{traceId:-}",
+                            "userId": "%X{userId:-}",
+                            "tenantId": "%X{tenantId:-}",
+                            "logger": "%logger"
+                        }
+                    </pattern>
+                </pattern>
+            </providers>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>logs/error.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>90</maxHistory>
+            <totalSizeCap>5GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <!-- Special loggers for specific components -->
+    
+    <!-- Audit logger -->
+    <logger name="AUDIT" level="INFO" additivity="false">
+        <appender-ref ref="AUDIT_FILE"/>
+    </logger>
+
+    <!-- Performance logger -->
+    <logger name="PERFORMANCE" level="INFO" additivity="false">
+        <appender-ref ref="PERFORMANCE_FILE"/>
+    </logger>
+
+    <!-- Security logger -->
+    <logger name="org.springframework.security" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+        <springProfile name="prod">
+            <appender-ref ref="JSON_FILE"/>
+        </springProfile>
+    </logger>
+
+    <!-- Database query logger -->
+    <logger name="org.hibernate.SQL" level="DEBUG" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+        <springProfile name="prod">
+            <appender-ref ref="JSON_FILE"/>
+        </springProfile>
+    </logger>
+
+    <!-- HTTP request/response logger -->
+    <logger name="org.springframework.web.servlet.DispatcherServlet" level="DEBUG" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+        <springProfile name="prod">
+            <appender-ref ref="JSON_FILE"/>
+        </springProfile>
+    </logger>
+
+    <!-- File transfer specific loggers -->
+    <logger name="com.filetransfer.web.service.FileMonitoringService" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+        <springProfile name="prod">
+            <appender-ref ref="JSON_FILE"/>
+        </springProfile>
+    </logger>
+
+    <logger name="com.filetransfer.web.service.FileValidationService" level="DEBUG" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+        <springProfile name="prod">
+            <appender-ref ref="JSON_FILE"/>
+        </springProfile>
+    </logger>
+
+    <!-- Root logger configuration -->
+    <root level="${LOG_LEVEL}">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+        <appender-ref ref="ERROR_FILE"/>
+        <springProfile name="prod">
+            <appender-ref ref="JSON_FILE"/>
+        </springProfile>
+    </root>
+
+    <!-- Development profile: more verbose logging -->
+    <springProfile name="dev">
+        <logger name="com.filetransfer" level="DEBUG"/>
+        <logger name="org.springframework.web" level="DEBUG"/>
+        <logger name="org.hibernate" level="DEBUG"/>
+    </springProfile>
+
+    <!-- Production profile: structured logging and error focus -->
+    <springProfile name="prod">
+        <logger name="com.filetransfer" level="INFO"/>
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="org.hibernate" level="WARN"/>
+        <logger name="org.apache" level="WARN"/>
+        <logger name="ch.qos.logback" level="WARN"/>
+    </springProfile>
+
+</configuration>

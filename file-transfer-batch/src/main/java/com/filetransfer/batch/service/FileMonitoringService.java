@@ -10,6 +10,9 @@ import com.filetransfer.batch.entity.FileType;
 import com.filetransfer.batch.repository.FileTransferRecordRepository;
 import com.filetransfer.batch.repository.ServiceConfigurationRepository;
 import com.filetransfer.batch.repository.SubServiceConfigurationRepository;
+import com.filetransfer.web.service.MetricsService;
+import io.micrometer.core.annotation.Timed;
+import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +50,9 @@ public class FileMonitoringService {
     
     @Autowired
     private SubServiceConfigurationRepository subServiceConfigurationRepository;
+    
+    @Autowired
+    private MetricsService metricsService;
     
     @Autowired
     private CutOffTimeService cutOffTimeService;
@@ -215,11 +221,36 @@ public class FileMonitoringService {
                            record.getFileName(), config.getServiceName(), config.getTenantId());
                 
                 // Trigger immediate file transfer processing
+                Timer.Sample sample = metricsService.startFileProcessingTimer();
                 try {
+                    metricsService.recordFileTransferAttempt(
+                        config.getTenantId(), 
+                        config.getServiceName(), 
+                        record.getDirection().toString()
+                    );
+                    
                     fileTransferService.processFileTransfer(record);
+                    
+                    metricsService.recordFileTransferSuccess(
+                        config.getTenantId(), 
+                        config.getServiceName(), 
+                        record.getDirection().toString(),
+                        record.getFileSize()
+                    );
+                    
+                    metricsService.recordFileProcessingTime(sample, config.getTenantId(), "file_transfer");
                 } catch (Exception e) {
                     logger.error("Error processing file transfer for record {}: {}", 
                                record.getId(), e.getMessage());
+                    
+                    metricsService.recordFileTransferFailure(
+                        config.getTenantId(), 
+                        config.getServiceName(), 
+                        record.getDirection().toString(),
+                        e.getClass().getSimpleName()
+                    );
+                    
+                    metricsService.recordFileProcessingTime(sample, config.getTenantId(), "file_transfer_failed");
                 }
             });
     }
