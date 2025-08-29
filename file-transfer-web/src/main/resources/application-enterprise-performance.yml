@@ -1,0 +1,369 @@
+# Enterprise Performance Configuration
+# Optimized for 500+ concurrent users, 10,000+ files, 50MB+ file sizes
+
+spring:
+  profiles:
+    active: enterprise-performance
+
+  # Database Configuration - Enterprise Scale
+  datasource:
+    # Use PostgreSQL for enterprise (not H2)
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/filetransfer}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+    
+    # HikariCP Enterprise Configuration
+    hikari:
+      # Connection pool sizing for enterprise load
+      maximum-pool-size: ${DB_MAX_POOL_SIZE:200}        # Support 500+ concurrent users
+      minimum-idle: ${DB_MIN_IDLE:50}                   # Baseline for enterprise load
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000} # 1 minute for large operations
+      idle-timeout: ${DB_IDLE_TIMEOUT:900000}           # 15 minutes
+      max-lifetime: ${DB_MAX_LIFETIME:3600000}          # 1 hour
+      leak-detection-threshold: ${DB_LEAK_DETECTION:120000} # 2 minutes
+      
+      # Performance optimizations for enterprise
+      data-source-properties:
+        cachePrepStmts: true
+        prepStmtCacheSize: 500                          # Larger cache for enterprise
+        prepStmtCacheSqlLimit: 4096                     # Support larger queries
+        useServerPrepStmts: true
+        rewriteBatchedStatements: true
+        cacheResultSetMetadata: true
+        cacheServerConfiguration: true
+        maintainTimeStats: false                        # Disable for performance
+        tcpKeepAlive: true
+        tcpNoDelay: true
+        
+        # PostgreSQL-specific optimizations
+        defaultRowFetchSize: 1000                       # Larger fetch for bulk operations
+        logUnclosedConnections: false
+        assumeMinServerVersion: "12.0"
+
+  # JPA Configuration - Enterprise Optimized
+  jpa:
+    properties:
+      hibernate:
+        # Batch processing optimizations
+        jdbc:
+          batch_size: 1000                              # Large batch size for enterprise
+          batch_versioned_data: true
+          order_inserts: true
+          order_updates: true
+        
+        # Query optimizations
+        query:
+          in_clause_parameter_padding: true
+          fail_on_pagination_over_collection_fetch: true
+        
+        # Cache configuration
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+          region:
+            factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+        
+        # Performance tuning
+        generate_statistics: false                      # Disable for performance
+        format_sql: false                              # Disable for performance
+        use_sql_comments: false                        # Disable for performance
+        
+        # Connection handling
+        connection:
+          provider_disables_autocommit: true
+          handling_mode: delayed_acquisition_and_release_after_transaction
+
+  # Redis Configuration - Enterprise Scale
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    database: 0
+    timeout: ${REDIS_TIMEOUT:10000}                     # 10 seconds for large operations
+    
+    # Lettuce connection pool for enterprise
+    lettuce:
+      pool:
+        max-active: ${REDIS_MAX_ACTIVE:100}             # Support high concurrency
+        max-idle: ${REDIS_MAX_IDLE:50}                  # Maintain connections
+        min-idle: ${REDIS_MIN_IDLE:20}                  # Baseline connections
+        max-wait: ${REDIS_MAX_WAIT:10000}               # 10 second wait
+        time-between-eviction-runs: 30000               # 30 seconds
+        
+      # Cluster configuration for enterprise
+      cluster:
+        refresh:
+          adaptive: true
+          period: 30000                                 # 30 seconds
+      
+      # Shutdown configuration
+      shutdown-timeout: 100ms
+
+# Enterprise Thread Pool Configuration
+performance:
+  # Main async executor - Enterprise scale
+  thread-pool:
+    core-size: ${ASYNC_CORE_POOL_SIZE:50}              # 50 core threads
+    max-size: ${ASYNC_MAX_POOL_SIZE:500}               # 500 max threads for enterprise
+    queue-capacity: ${ASYNC_QUEUE_CAPACITY:10000}      # Large queue for enterprise
+    keep-alive: ${ASYNC_KEEP_ALIVE:300}                # 5 minutes
+    
+  # File processing executor - Optimized for large files
+  file-processing:
+    core-size: ${FILE_CORE_POOL_SIZE:20}               # 20 core threads
+    max-size: ${FILE_MAX_POOL_SIZE:100}                # 100 max threads
+    queue-capacity: ${FILE_QUEUE_CAPACITY:5000}        # Large queue for file processing
+    keep-alive: ${FILE_KEEP_ALIVE:600}                 # 10 minutes for large files
+    
+  # HTTP client configuration - Enterprise scale
+  http:
+    connection-timeout: ${HTTP_CONNECTION_TIMEOUT:60000} # 1 minute
+    read-timeout: ${HTTP_READ_TIMEOUT:300000}           # 5 minutes for large files
+    max-connections: ${HTTP_MAX_CONNECTIONS:500}        # Support 500 concurrent users
+    max-connections-per-route: ${HTTP_MAX_PER_ROUTE:100} # 100 per route
+    
+  # File upload configuration - Large file support
+  file-upload:
+    max-file-size: ${MAX_FILE_SIZE:104857600}          # 100MB
+    max-request-size: ${MAX_REQUEST_SIZE:209715200}     # 200MB
+    temp-directory: ${TEMP_DIRECTORY:/tmp/file-transfer}
+    cleanup-threshold: ${CLEANUP_THRESHOLD:1073741824} # 1GB
+    
+  # Caching configuration - Enterprise scale
+  caching:
+    # L1 Cache (Caffeine) - Enterprise sizing
+    local:
+      maximum-size: ${CACHE_LOCAL_MAX_SIZE:50000}       # 50K entries
+      expire-after-write: ${CACHE_LOCAL_EXPIRE:3600}    # 1 hour
+      expire-after-access: ${CACHE_LOCAL_ACCESS:1800}   # 30 minutes
+      
+    # L2 Cache (Redis) - Enterprise sizing  
+    distributed:
+      maximum-size: ${CACHE_DISTRIBUTED_MAX_SIZE:500000} # 500K entries
+      expire-after-write: ${CACHE_DISTRIBUTED_EXPIRE:7200} # 2 hours
+      
+    # Cache warming for enterprise
+    warming:
+      enabled: true
+      preload-tenants: true
+      preload-services: true
+      preload-schemas: true
+
+# JVM Configuration for Enterprise Performance
+jvm:
+  memory:
+    # Heap sizing for enterprise workloads
+    initial-heap: ${JVM_INITIAL_HEAP:4g}               # 4GB initial heap
+    max-heap: ${JVM_MAX_HEAP:16g}                      # 16GB max heap
+    
+    # Garbage collection for enterprise
+    gc:
+      algorithm: ${JVM_GC_ALGORITHM:G1GC}              # G1 for large heaps
+      max-gc-pause: ${JVM_MAX_GC_PAUSE:200}            # 200ms max pause
+      
+    # Memory areas for enterprise
+    metaspace: ${JVM_METASPACE:512m}                   # 512MB metaspace
+    direct-memory: ${JVM_DIRECT_MEMORY:2g}             # 2GB direct memory
+    
+  # Thread configuration
+  threads:
+    stack-size: ${JVM_STACK_SIZE:1m}                   # 1MB stack size
+    
+  # Performance flags
+  flags:
+    - "-XX:+UseG1GC"
+    - "-XX:MaxGCPauseMillis=200"
+    - "-XX:+UseStringDeduplication"
+    - "-XX:+OptimizeStringConcat"
+    - "-XX:+UseCompressedOops"
+    - "-XX:+UseCompressedClassPointers"
+
+# File Processing Configuration - Enterprise Scale
+file-processing:
+  # Chunk configuration for large files
+  chunk-size: ${FILE_CHUNK_SIZE:10485760}              # 10MB chunks for 50MB+ files
+  buffer-size: ${FILE_BUFFER_SIZE:1048576}             # 1MB buffer
+  
+  # Parallel processing for enterprise
+  parallel:
+    enabled: true
+    max-threads: ${FILE_PARALLEL_THREADS:20}           # 20 threads for file processing
+    queue-size: ${FILE_PARALLEL_QUEUE:1000}            # Large queue
+    
+  # Large file handling
+  large-file:
+    threshold: ${LARGE_FILE_THRESHOLD:52428800}        # 50MB threshold
+    streaming: true                                    # Stream large files
+    temp-storage: ${LARGE_FILE_TEMP:/tmp/large-files}
+    
+  # Validation configuration
+  validation:
+    async: true                                        # Async validation for performance
+    batch-size: ${VALIDATION_BATCH_SIZE:100}           # Validate in batches
+    timeout: ${VALIDATION_TIMEOUT:300000}              # 5 minutes for large files
+
+# Database Query Optimization
+database:
+  query:
+    # Fetch size optimization
+    default-fetch-size: ${DB_FETCH_SIZE:1000}          # Large fetch for enterprise
+    max-fetch-size: ${DB_MAX_FETCH_SIZE:5000}          # Maximum fetch size
+    
+    # Query timeout for enterprise operations
+    query-timeout: ${DB_QUERY_TIMEOUT:300}             # 5 minutes
+    
+    # Batch operations
+    batch-size: ${DB_BATCH_SIZE:1000}                  # Large batch size
+    
+  # Indexing strategy
+  indexing:
+    # Composite indexes for enterprise queries
+    tenant-service-index: true
+    date-range-index: true
+    status-index: true
+    file-size-index: true
+    
+  # Partitioning for enterprise data volumes
+  partitioning:
+    enabled: true
+    partition-by: tenant_id                            # Tenant-based partitioning
+    partition-size: ${DB_PARTITION_SIZE:1000000}       # 1M records per partition
+
+# Monitoring Configuration - Enterprise Scale
+monitoring:
+  metrics:
+    # High-frequency metrics for enterprise monitoring
+    export-interval: ${METRICS_EXPORT_INTERVAL:10}     # 10 seconds
+    
+    # Memory and performance monitoring
+    jvm-metrics: true
+    system-metrics: true
+    database-metrics: true
+    cache-metrics: true
+    thread-metrics: true
+    
+    # Custom business metrics
+    business-metrics:
+      file-processing-rate: true
+      tenant-activity: true
+      error-rates: true
+      throughput: true
+
+# Logging Configuration - Enterprise Performance
+logging:
+  # Async logging for performance
+  async:
+    enabled: true
+    buffer-size: ${LOG_BUFFER_SIZE:8192}               # 8KB buffer
+    queue-size: ${LOG_QUEUE_SIZE:1000}                 # Large queue
+    
+  # Log levels optimized for performance
+  level:
+    com.filetransfer: INFO                             # Reduce debug logging
+    org.springframework: WARN                          # Reduce framework logging
+    org.hibernate: WARN                                # Reduce ORM logging
+    
+  # File appender configuration
+  file:
+    max-file-size: ${LOG_MAX_FILE_SIZE:100MB}          # Large log files
+    max-history: ${LOG_MAX_HISTORY:30}                 # 30 days retention
+    total-size-cap: ${LOG_TOTAL_SIZE:5GB}              # 5GB total log size
+
+# Server Configuration - Enterprise Tuned
+server:
+  # Tomcat configuration for enterprise
+  tomcat:
+    # Thread configuration
+    threads:
+      max: ${SERVER_MAX_THREADS:500}                   # 500 threads for enterprise
+      min-spare: ${SERVER_MIN_SPARE:50}                # 50 minimum threads
+      
+    # Connection configuration  
+    max-connections: ${SERVER_MAX_CONNECTIONS:10000}   # 10K connections
+    accept-count: ${SERVER_ACCEPT_COUNT:1000}          # 1K accept queue
+    
+    # Performance tuning
+    connection-timeout: ${SERVER_CONNECTION_TIMEOUT:60000} # 1 minute
+    keep-alive-timeout: ${SERVER_KEEP_ALIVE:60000}     # 1 minute keep-alive
+    max-keep-alive-requests: ${SERVER_MAX_KEEP_ALIVE:1000} # 1K keep-alive requests
+    
+    # Large file support
+    max-http-post-size: ${SERVER_MAX_POST_SIZE:209715200} # 200MB
+    max-http-header-size: ${SERVER_MAX_HEADER_SIZE:65536} # 64KB headers
+    
+  # Compression for enterprise
+  compression:
+    enabled: true
+    mime-types:
+      - application/json
+      - application/xml
+      - text/plain
+      - text/xml
+    min-response-size: 1024                            # Compress > 1KB responses
+
+---
+# Production Enterprise Profile
+spring:
+  profiles: production-enterprise
+
+# Enterprise JVM Settings
+jvm:
+  memory:
+    initial-heap: 8g                                   # 8GB initial heap
+    max-heap: 32g                                      # 32GB max heap for enterprise
+    
+performance:
+  thread-pool:
+    core-size: 100                                     # 100 core threads
+    max-size: 1000                                     # 1000 max threads
+    queue-capacity: 50000                              # 50K queue capacity
+    
+database:
+  query:
+    default-fetch-size: 5000                           # Large fetch for enterprise
+    batch-size: 5000                                   # Large batch operations
+    
+file-processing:
+  chunk-size: 52428800                                 # 50MB chunks
+  parallel:
+    max-threads: 50                                    # 50 parallel threads
+    
+server:
+  tomcat:
+    threads:
+      max: 1000                                        # 1000 server threads
+    max-connections: 20000                             # 20K connections
+
+---
+# High Availability Enterprise Profile  
+spring:
+  profiles: ha-enterprise
+
+# HA Enterprise JVM Settings
+jvm:
+  memory:
+    initial-heap: 16g                                  # 16GB initial heap
+    max-heap: 64g                                      # 64GB max heap for HA
+    
+performance:
+  thread-pool:
+    core-size: 200                                     # 200 core threads
+    max-size: 2000                                     # 2000 max threads
+    queue-capacity: 100000                             # 100K queue capacity
+    
+database:
+  query:
+    default-fetch-size: 10000                          # Very large fetch
+    batch-size: 10000                                  # Very large batches
+    
+file-processing:
+  chunk-size: 104857600                                # 100MB chunks
+  parallel:
+    max-threads: 100                                   # 100 parallel threads
+    
+server:
+  tomcat:
+    threads:
+      max: 2000                                        # 2000 server threads
+    max-connections: 50000                             # 50K connections

@@ -1,0 +1,264 @@
+# Batch Application Enterprise Performance Configuration
+# Optimized for 10,000+ files, 50MB+ file sizes, high-volume batch processing
+
+spring:
+  profiles:
+    active: enterprise-performance
+
+  # Database Configuration - Enterprise Batch Scale
+  datasource:
+    url: ${BATCH_DATABASE_URL:jdbc:postgresql://localhost:5432/filetransfer_batch}
+    username: ${BATCH_DATABASE_USERNAME:postgres}
+    password: ${BATCH_DATABASE_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+    
+    # HikariCP Enterprise Batch Configuration
+    hikari:
+      # Large connection pool for batch processing
+      maximum-pool-size: ${BATCH_DB_MAX_POOL_SIZE:100}     # 100 connections for batch
+      minimum-idle: ${BATCH_DB_MIN_IDLE:30}                # 30 minimum for batch load
+      connection-timeout: ${BATCH_DB_CONNECTION_TIMEOUT:120000} # 2 minutes for large batch operations
+      idle-timeout: ${BATCH_DB_IDLE_TIMEOUT:1800000}      # 30 minutes
+      max-lifetime: ${BATCH_DB_MAX_LIFETIME:7200000}      # 2 hours
+      leak-detection-threshold: ${BATCH_DB_LEAK_DETECTION:300000} # 5 minutes
+      
+      # Batch-specific optimizations
+      data-source-properties:
+        cachePrepStmts: true
+        prepStmtCacheSize: 1000                          # Large cache for batch operations
+        prepStmtCacheSqlLimit: 8192                      # Support very large queries
+        useServerPrepStmts: true
+        rewriteBatchedStatements: true                   # Critical for batch performance
+        cacheResultSetMetadata: true
+        maintainTimeStats: false
+        
+        # PostgreSQL batch optimizations
+        defaultRowFetchSize: 10000                      # Very large fetch for batch
+        binaryTransfer: true                            # Binary transfer for performance
+        logUnclosedConnections: false
+        tcpKeepAlive: true
+        
+        # Batch-specific settings
+        autosave: conservative                          # Conservative autosave for batch
+        reWriteBatchedInserts: true                     # Rewrite for performance
+        batchMode: true                                 # Enable batch mode
+
+  # JPA Configuration - Batch Optimized
+  jpa:
+    properties:
+      hibernate:
+        # Batch processing optimizations
+        jdbc:
+          batch_size: 10000                            # Very large batch size
+          batch_versioned_data: true
+          order_inserts: true
+          order_updates: true
+          
+        # Query optimizations for batch
+        query:
+          in_clause_parameter_padding: true
+          plan_cache_max_size: 2048                    # Large query plan cache
+          
+        # Disable features not needed for batch
+        generate_statistics: false
+        format_sql: false
+        use_sql_comments: false
+        
+        # Batch-specific settings
+        connection:
+          provider_disables_autocommit: true
+        
+        # Second-level cache for batch metadata
+        cache:
+          use_second_level_cache: true
+          region:
+            factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+
+  # Spring Batch Configuration - Enterprise Scale
+  batch:
+    job:
+      enabled: true
+      
+    # Job repository configuration for enterprise
+    jdbc:
+      initialize-schema: always
+      isolation-level-for-create: read_committed
+      
+      # Table prefix for batch tables
+      table-prefix: BATCH_
+      
+      # Enterprise batch repository settings
+      max-varchar-length: 10000                       # Support large job parameters
+      
+    # Chunk processing configuration
+    chunk:
+      completion-policy:
+        # Process in large chunks for enterprise
+        chunk-size: ${BATCH_ENTERPRISE_CHUNK_SIZE:5000} # 5000 items per chunk
+        timeout: ${BATCH_CHUNK_TIMEOUT:600000}         # 10 minutes per chunk
+        
+    # Step configuration
+    step:
+      # Skip policy for enterprise resilience
+      skip-policy:
+        skip-limit: ${BATCH_SKIP_LIMIT:1000}           # Allow 1000 skips
+        
+      # Retry policy for enterprise reliability
+      retry-policy:
+        max-attempts: ${BATCH_RETRY_ATTEMPTS:5}        # 5 retry attempts
+        backoff-period: ${BATCH_RETRY_BACKOFF:5000}    # 5 second backoff
+
+# Enterprise Batch Processing Configuration
+batch:
+  processing:
+    # Thread pool configuration - Enterprise scale
+    thread-pool-size: ${BATCH_THREAD_POOL_SIZE:50}    # 50 processing threads
+    max-threads: ${BATCH_MAX_THREADS:200}              # 200 max threads
+    queue-capacity: ${BATCH_QUEUE_CAPACITY:10000}      # Large processing queue
+    
+    # Partition configuration for parallel processing
+    partition-size: ${BATCH_PARTITION_SIZE:20}         # 20 partitions for enterprise
+    partition-handler:
+      grid-size: ${BATCH_GRID_SIZE:20}                 # 20 workers
+      
+    # Chunk configuration for large datasets
+    chunk-size: ${BATCH_CHUNK_SIZE:5000}               # 5000 items per chunk
+    commit-interval: ${BATCH_COMMIT_INTERVAL:1000}     # Commit every 1000 items
+    
+    # File processing configuration
+    file-processing:
+      max-file-size: ${BATCH_MAX_FILE_SIZE:104857600}  # 100MB
+      buffer-size: ${BATCH_BUFFER_SIZE:10485760}       # 10MB buffer
+      read-buffer-size: ${BATCH_READ_BUFFER:1048576}   # 1MB read buffer
+      write-buffer-size: ${BATCH_WRITE_BUFFER:1048576} # 1MB write buffer
+      
+    # Enterprise processing modes
+    enterprise-mode:
+      enabled: true
+      high-throughput: true
+      parallel-processing: true
+      async-validation: true
+      bulk-operations: true
+      
+    # Performance monitoring
+    monitoring:
+      enabled: true
+      collect-detailed-metrics: true
+      performance-profiling: true
+
+# Remote Chunking Configuration - Enterprise Scale
+remote-chunking:
+  # Manager configuration
+  manager:
+    # Large chunk sizes for enterprise
+    chunk-size: ${REMOTE_CHUNK_SIZE:10000}             # 10K items per remote chunk
+    throttle-limit: ${REMOTE_THROTTLE_LIMIT:50}        # 50 concurrent chunks
+    
+    # Queue configuration
+    queue:
+      capacity: ${REMOTE_QUEUE_CAPACITY:10000}         # Large queue for enterprise
+      
+  # Worker configuration  
+  worker:
+    # Multiple workers for enterprise scale
+    concurrency: ${REMOTE_WORKER_CONCURRENCY:20}       # 20 concurrent workers
+    prefetch-count: ${REMOTE_WORKER_PREFETCH:100}      # 100 prefetch count
+    
+    # Worker thread configuration
+    thread-pool:
+      core-size: 10
+      max-size: 50
+      queue-capacity: 1000
+
+# Message Queue Configuration - Enterprise Scale
+spring:
+  rabbitmq:
+    # Connection configuration for enterprise
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    
+    # Connection factory configuration
+    connection-timeout: ${RABBITMQ_CONNECTION_TIMEOUT:60000} # 1 minute
+    requested-heartbeat: ${RABBITMQ_HEARTBEAT:60}      # 60 seconds
+    
+    # Channel configuration for high throughput
+    cache:
+      channel:
+        size: ${RABBITMQ_CHANNEL_CACHE_SIZE:100}       # 100 cached channels
+        checkout-timeout: ${RABBITMQ_CHECKOUT_TIMEOUT:30000} # 30 seconds
+      connection:
+        mode: channel                                  # Channel caching mode
+        size: ${RABBITMQ_CONNECTION_CACHE_SIZE:10}     # 10 cached connections
+    
+    # Listener configuration for enterprise
+    listener:
+      simple:
+        # Concurrency for enterprise throughput
+        concurrency: ${RABBITMQ_LISTENER_CONCURRENCY:20-100} # 20-100 listeners
+        max-concurrency: ${RABBITMQ_MAX_CONCURRENCY:100}
+        
+        # Prefetch for enterprise performance
+        prefetch: ${RABBITMQ_PREFETCH:1000}            # 1000 prefetch count
+        
+        # Batch listener configuration
+        batch-size: ${RABBITMQ_BATCH_SIZE:100}         # Process 100 messages at once
+        receive-timeout: ${RABBITMQ_RECEIVE_TIMEOUT:30000} # 30 seconds
+        
+        # Error handling for enterprise resilience
+        retry:
+          enabled: true
+          max-attempts: 5
+          initial-interval: 2000
+          multiplier: 2.0
+          max-interval: 30000
+          
+        # Dead letter configuration
+        dead-letter-enabled: true
+        dead-letter-exchange: batch.dlx
+        dead-letter-routing-key: batch.failed
+
+# Enterprise Environment Profiles
+
+---
+# Production Enterprise Profile
+spring:
+  profiles: production-enterprise
+
+# Enterprise production settings
+jvm:
+  memory:
+    initial-heap: 16g                                  # 16GB initial for production
+    max-heap: 64g                                      # 64GB max for production enterprise
+    
+batch:
+  processing:
+    thread-pool-size: 100                              # 100 threads for production
+    max-threads: 500                                   # 500 max threads
+    chunk-size: 10000                                  # 10K chunk size
+    partition-size: 50                                 # 50 partitions
+    
+database:
+  query:
+    default-fetch-size: 10000                          # Large fetch for production
+    batch-size: 10000                                  # Large batch for production
+
+---
+# High Availability Enterprise Profile
+spring:
+  profiles: ha-enterprise
+
+# HA enterprise settings
+jvm:
+  memory:
+    initial-heap: 32g                                  # 32GB initial for HA
+    max-heap: 128g                                     # 128GB max for HA enterprise
+    
+batch:
+  processing:
+    thread-pool-size: 200                              # 200 threads for HA
+    max-threads: 1000                                  # 1000 max threads for HA
+    chunk-size: 20000                                  # 20K chunk size for HA
+    partition-size: 100                                # 100 partitions for HA
