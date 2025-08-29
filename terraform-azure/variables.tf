@@ -61,7 +61,7 @@ variable "appgw_subnet_cidr" {
   default     = "10.0.3.0/24"
 }
 
-# Database Configuration
+# Database Configuration - PostgreSQL
 variable "db_sku_name" {
   description = "PostgreSQL Flexible Server SKU name"
   type        = string
@@ -82,6 +82,91 @@ variable "db_storage_mb" {
     condition     = var.db_storage_mb >= 32768 && var.db_storage_mb <= 33554432
     error_message = "DB storage must be between 32 GB and 32 TB."
   }
+}
+
+# Database Configuration - SQL Managed Instance
+variable "use_sql_mi" {
+  description = "Use Azure SQL Managed Instance instead of PostgreSQL"
+  type        = bool
+  default     = false
+}
+
+variable "sql_mi_sku_name" {
+  description = "SQL Managed Instance SKU name"
+  type        = string
+  default     = "GP_Gen5"  # General Purpose, Gen5
+  
+  validation {
+    condition = contains([
+      "GP_Gen4", "GP_Gen5", "BC_Gen4", "BC_Gen5"
+    ], var.sql_mi_sku_name)
+    error_message = "SQL MI SKU must be one of: GP_Gen4, GP_Gen5, BC_Gen4, BC_Gen5."
+  }
+}
+
+variable "sql_mi_vcores" {
+  description = "SQL Managed Instance vCores"
+  type        = number
+  default     = 16  # Enterprise: 16 vCores
+  
+  validation {
+    condition = contains([
+      4, 8, 16, 24, 32, 40, 64, 80
+    ], var.sql_mi_vcores)
+    error_message = "SQL MI vCores must be one of: 4, 8, 16, 24, 32, 40, 64, 80."
+  }
+}
+
+variable "sql_mi_storage_gb" {
+  description = "SQL Managed Instance storage in GB"
+  type        = number
+  default     = 2048  # 2TB for enterprise
+  
+  validation {
+    condition     = var.sql_mi_storage_gb >= 32 && var.sql_mi_storage_gb <= 16384
+    error_message = "SQL MI storage must be between 32 GB and 16 TB."
+  }
+}
+
+variable "sql_mi_license_type" {
+  description = "SQL Managed Instance license type"
+  type        = string
+  default     = "LicenseIncluded"
+  
+  validation {
+    condition     = contains(["LicenseIncluded", "BasePrice"], var.sql_mi_license_type)
+    error_message = "SQL MI license type must be LicenseIncluded or BasePrice."
+  }
+}
+
+variable "sql_mi_admin_login" {
+  description = "SQL Managed Instance administrator login"
+  type        = string
+  default     = "filetransferadmin"
+}
+
+variable "sql_mi_admin_password" {
+  description = "SQL Managed Instance administrator password"
+  type        = string
+  sensitive   = true
+}
+
+variable "sql_mi_subnet_cidr" {
+  description = "CIDR block for SQL MI subnet"
+  type        = string
+  default     = "10.0.4.0/24"
+}
+
+variable "enable_sql_mi_failover" {
+  description = "Enable SQL MI failover group for DR"
+  type        = bool
+  default     = false
+}
+
+variable "enable_sql_mi_security_features" {
+  description = "Enable SQL MI advanced security features"
+  type        = bool
+  default     = true
 }
 
 # Redis Configuration

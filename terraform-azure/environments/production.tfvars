@@ -10,9 +10,22 @@ aks_subnet_cidr = "10.0.1.0/24"
 database_subnet_cidr = "10.0.2.0/24"
 appgw_subnet_cidr = "10.0.3.0/24"
 
-# Database Configuration - Enterprise Scale
+# Database Configuration - Choose PostgreSQL or SQL MI
+# PostgreSQL Configuration
 db_sku_name = "GP_Standard_D16s_v3" # 16 vCPU, 64 GB RAM
 db_storage_mb = 2097152              # 2 TB storage
+
+# Azure SQL Managed Instance Configuration (Alternative)
+use_sql_mi = false                   # Set to true to use SQL MI instead of PostgreSQL
+sql_mi_sku_name = "GP_Gen5"         # General Purpose Gen5
+sql_mi_vcores = 32                  # 32 vCores for enterprise
+sql_mi_storage_gb = 4096            # 4 TB storage for enterprise
+sql_mi_license_type = "LicenseIncluded"
+sql_mi_admin_login = "filetransferadmin"
+sql_mi_admin_password = "ComplexP@ssw0rd123!"  # Should be stored in Key Vault
+sql_mi_subnet_cidr = "10.0.4.0/24"
+enable_sql_mi_failover = true       # Enable failover group for DR
+enable_sql_mi_security_features = true
 
 # Redis Configuration - Enterprise Scale
 redis_capacity = 6                   # 26 GB cache
