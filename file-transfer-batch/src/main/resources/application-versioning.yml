@@ -1,0 +1,222 @@
+# Batch API Versioning Configuration
+
+# Batch API Versioning Settings
+batch:
+  api:
+    versioning:
+      # Default version when none specified
+      default-version: "2.0"
+      
+      # Current production version
+      current-version: "2.0"
+      
+      # Minimum supported version
+      minimum-supported-version: "1.0"
+      
+      # Default versioning strategy
+      default-strategy: URL_PATH
+      
+      # Version resolution settings
+      header-name: "X-Batch-API-Version"
+      accept-header-name: "Accept-Version"
+      query-parameter: "version"
+      media-type-prefix: "application/vnd.filetransfer.batch"
+      
+      # Strict mode (require version for all endpoints)
+      strict-mode: false
+      
+      # Deprecation and sunset settings
+      deprecation-notice-period-days: 90
+      sunset-period-days: 180
+      
+      # Batch-specific version settings
+      job-versioning:
+        enabled: true
+        track-job-versions: true
+        version-job-parameters: true
+        backward-compatible-jobs: true
+      
+      # Response headers
+      include-version-headers: true
+      include-deprecation-warnings: true
+      include-job-version-info: true
+      
+      # Supported versions configuration
+      versions:
+        "1.0":
+          semantic-version: "1.0.0"
+          status: "DEPRECATED"
+          release-date: "2023-01-01T00:00:00"
+          deprecated: true
+          deprecation-message: "Batch API v1.0 is deprecated. Please migrate to v2.0"
+          sunset-date: "2024-06-01T00:00:00"
+          features:
+            - "basic-job-execution"
+            - "simple-status-checking"
+          limitations:
+            - "no-advanced-controls"
+            - "limited-monitoring"
+            - "basic-error-handling"
+        
+        "1.1":
+          semantic-version: "1.1.0"
+          status: "DEPRECATED"
+          release-date: "2023-03-01T00:00:00"
+          deprecated: true
+          deprecation-message: "Batch API v1.1 is deprecated. Please migrate to v2.0"
+          sunset-date: "2024-06-01T00:00:00"
+          features:
+            - "basic-job-execution"
+            - "simple-status-checking"
+            - "job-stopping"
+          limitations:
+            - "limited-job-control"
+            - "basic-monitoring"
+        
+        "1.2":
+          semantic-version: "1.2.0"
+          status: "SUNSET"
+          release-date: "2023-06-01T00:00:00"
+          deprecated: true
+          deprecation-message: "Batch API v1.2 will be sunset soon. Please migrate to v2.0"
+          sunset-date: "2024-03-01T00:00:00"
+          features:
+            - "basic-job-execution"
+            - "simple-status-checking"
+            - "job-stopping"
+            - "basic-statistics"
+          limitations:
+            - "limited-metrics"
+        
+        "2.0":
+          semantic-version: "2.0.0"
+          status: "CURRENT"
+          release-date: "2023-09-01T00:00:00"
+          deprecated: false
+          features:
+            - "enhanced-job-execution"
+            - "advanced-job-control"
+            - "comprehensive-monitoring"
+            - "detailed-statistics"
+            - "pagination-support"
+            - "filtering-capabilities"
+            - "job-restart-functionality"
+            - "step-level-metrics"
+          breaking-changes:
+            - description: "Tenant ID is now required for all job operations"
+              endpoint: "POST /api/batch/v2/jobs/start"
+              change-type: "ADDED_REQUIRED"
+              mitigation: "Include tenantId field in job request"
+        
+        "2.1":
+          semantic-version: "2.1.0"
+          status: "BETA"
+          release-date: "2023-11-01T00:00:00"
+          deprecated: false
+          features:
+            - "enhanced-job-execution"
+            - "advanced-job-control"
+            - "comprehensive-monitoring"
+            - "detailed-statistics"
+            - "pagination-support"
+            - "filtering-capabilities"
+            - "job-restart-functionality"
+            - "step-level-metrics"
+            - "performance-analytics"
+            - "job-scheduling"
+            - "batch-chains"
+
+# Spring Batch Configuration for Versioning
+spring:
+  batch:
+    job:
+      enabled: true
+    initialize-schema: always
+
+# Content negotiation for batch API versioning
+spring:
+  mvc:
+    contentnegotiation:
+      favor-parameter: true
+      parameter-name: format
+      media-types:
+        json: application/json
+        xml: application/xml
+        batch-v1-json: application/vnd.filetransfer.batch.v1+json
+        batch-v2-json: application/vnd.filetransfer.batch.v2+json
+
+# Logging configuration for batch versioning
+logging:
+  level:
+    com.filetransfer.batch.versioning: DEBUG
+    com.filetransfer.batch.controller: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{batchApiVersion},%X{jobExecutionId}] %logger{36} - %msg%n"
+
+# Actuator endpoints for batch version monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,batch,versions
+  endpoint:
+    batch:
+      enabled: true
+    versions:
+      enabled: true
+  metrics:
+    tags:
+      batch-api-version: ${batch.api.versioning.current-version}
+    export:
+      prometheus:
+        enabled: true
+
+---
+# Development Profile
+spring:
+  profiles: development
+
+batch:
+  api:
+    versioning:
+      strict-mode: false
+      deprecation-notice-period-days: 30
+      sunset-period-days: 60
+      job-versioning:
+        track-job-versions: true
+
+logging:
+  level:
+    com.filetransfer.batch.versioning: DEBUG
+
+---
+# Production Profile
+spring:
+  profiles: production
+
+batch:
+  api:
+    versioning:
+      strict-mode: false
+      deprecation-notice-period-days: 90
+      sunset-period-days: 180
+      job-versioning:
+        track-job-versions: true
+        version-job-parameters: true
+
+logging:
+  level:
+    com.filetransfer.batch.versioning: INFO
+
+---
+# Testing Profile
+spring:
+  profiles: test
+
+batch:
+  api:
+    versioning:
+      default-version: "2.0"
+      strict-mode: true
+      deprecation-notice-period-days: 7
+      sunset-period-days: 14
