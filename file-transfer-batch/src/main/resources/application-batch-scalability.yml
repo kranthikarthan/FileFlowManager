@@ -127,20 +127,49 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus,batch
+        include: health,info,metrics,prometheus,batch,trace,httptrace,loggers,auditevents
+      base-path: /actuator
   endpoint:
     health:
       show-details: always
+      show-components: always
     batch:
+      enabled: true
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+    httptrace:
+      enabled: true
+    auditevents:
+      enabled: true
+    loggers:
       enabled: true
   metrics:
     export:
       prometheus:
         enabled: true
+        step: 10s
+        descriptions: true
     distribution:
       percentiles-histogram:
         batch.job.duration: true
         batch.step.duration: true
+        batch.file.processing.time: true
+        batch.database.operation.duration: true
+      percentiles:
+        batch.job.duration: 0.5, 0.75, 0.95, 0.99
+        batch.step.duration: 0.5, 0.75, 0.95, 0.99
+    tags:
+      application: file-transfer-batch
+      environment: ${SPRING_PROFILES_ACTIVE:development}
+  tracing:
+    sampling:
+      probability: 1.0
+    zipkin:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
+      service:
+        name: file-transfer-batch
 
 # Logging Configuration
 logging:
@@ -170,6 +199,25 @@ resilience4j:
         exponential-backoff-multiplier: 1.5
 
 # Performance Tuning
+# Security Configuration
+batch:
+  security:
+    cors:
+      allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080,http://localhost:8081}
+    jwt:
+      secret: ${JWT_SECRET:batch-super-secret-key-2023-change-in-production}
+      expiration: ${JWT_EXPIRATION:86400000}  # 24 hours
+    rate-limiting:
+      enabled: ${RATE_LIMITING_ENABLED:true}
+      requests-per-minute: ${RATE_LIMIT_RPM:30}
+      burst-capacity: ${RATE_LIMIT_BURST:10}
+    encryption:
+      master-key: ${ENCRYPTION_MASTER_KEY:batch-encryption-key-2023-change-in-production}
+    validation:
+      max-request-size: ${MAX_REQUEST_SIZE:10485760}  # 10MB
+      sanitize-html: true
+      strict-validation: true
+
 performance:
   batch:
     # JVM tuning recommendations
