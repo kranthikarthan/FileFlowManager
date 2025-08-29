@@ -1,0 +1,47 @@
+[
+  {
+    "id": 1,
+    "tenantId": 1,
+    "name": "New Year Day",
+    "date": "2024-01-01",
+    "type": "NATIONAL",
+    "recurring": true,
+    "recurrencePattern": "ANNUAL",
+    "affectsProcessing": true,
+    "processingAction": "SKIP_PROCESSING",
+    "description": "New Year's Day national holiday",
+    "active": true,
+    "createdAt": "2023-01-01T00:00:00",
+    "createdBy": "admin"
+  },
+  {
+    "id": 2,
+    "tenantId": 1,
+    "name": "Independence Day",
+    "date": "2024-07-04",
+    "type": "NATIONAL",
+    "recurring": true,
+    "recurrencePattern": "ANNUAL",
+    "affectsProcessing": true,
+    "processingAction": "DELAY_TO_NEXT_BUSINESS_DAY",
+    "description": "Independence Day national holiday",
+    "active": true,
+    "createdAt": "2023-01-01T00:00:00",
+    "createdBy": "admin"
+  },
+  {
+    "id": 3,
+    "tenantId": 1,
+    "name": "Thanksgiving",
+    "date": "2024-11-28",
+    "type": "FLOATING",
+    "recurring": true,
+    "recurrencePattern": "FOURTH_THURSDAY_NOVEMBER",
+    "affectsProcessing": true,
+    "processingAction": "DELAY_TO_NEXT_BUSINESS_DAY",
+    "description": "Thanksgiving Day floating holiday",
+    "active": true,
+    "createdAt": "2023-01-01T00:00:00",
+    "createdBy": "admin"
+  }
+]
