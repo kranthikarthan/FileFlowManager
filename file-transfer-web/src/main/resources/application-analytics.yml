@@ -1,0 +1,379 @@
+# Advanced Analytics and Business Intelligence Configuration
+
+analytics:
+  # Core analytics configuration
+  enabled: true
+  
+  # Real-time analytics processing
+  real-time:
+    enabled: true
+    processing-interval-seconds: 300  # Process events every 5 minutes
+    batch-size: 1000                  # Process 1000 events at a time
+    max-processing-threads: 4         # Parallel processing threads
+    event-retention-hours: 72         # Keep unprocessed events for 72 hours
+    
+  # Data warehouse configuration
+  data-warehouse:
+    enabled: true
+    daily-etl-enabled: true
+    etl-schedule: "0 0 2 * * *"       # Daily at 2:00 AM
+    data-retention-years: 2           # Keep analytics data for 2 years
+    cleanup-schedule: "0 0 4 * * SUN" # Weekly cleanup on Sunday at 4:00 AM
+    
+    # ETL performance settings
+    etl:
+      batch-size: 10000               # ETL batch size for large datasets
+      parallel-processing: true       # Enable parallel ETL processing
+      max-parallel-tenants: 5         # Process up to 5 tenants in parallel
+      transaction-timeout-minutes: 30 # ETL transaction timeout
+      
+  # Business Intelligence configuration
+  business-intelligence:
+    enabled: true
+    
+    # Report generation settings
+    reports:
+      auto-generation-enabled: true
+      generation-schedule: "0 0 2 * * *"  # Daily at 2:00 AM
+      max-generation-threads: 3            # Parallel report generation
+      report-timeout-minutes: 60           # Report generation timeout
+      
+      # Report retention policy
+      retention:
+        daily-reports-days: 30             # Keep daily reports for 30 days
+        weekly-reports-days: 90            # Keep weekly reports for 90 days
+        monthly-reports-days: 365          # Keep monthly reports for 1 year
+        quarterly-reports-days: 1095       # Keep quarterly reports for 3 years
+        annual-reports-days: 1825          # Keep annual reports for 5 years
+        custom-reports-days: 90            # Keep custom reports for 90 days
+      
+      # Report size limits
+      max-report-size-mb: 100              # Maximum report size
+      max-report-generation-time-minutes: 30 # Maximum generation time
+      
+    # Predictive analytics settings
+    predictive:
+      enabled: true
+      default-forecast-days: 30           # Default forecast period
+      max-forecast-days: 365              # Maximum forecast period
+      historical-data-months: 6           # Use 6 months of historical data
+      confidence-interval: 0.95           # 95% confidence interval
+      
+      # Machine learning models
+      models:
+        volume-prediction: true            # Enable volume prediction
+        performance-prediction: true       # Enable performance prediction
+        anomaly-detection: true            # Enable anomaly detection
+        cost-prediction: true              # Enable cost prediction
+        
+    # Capacity planning settings
+    capacity-planning:
+      enabled: true
+      default-planning-months: 6          # Default planning period
+      max-planning-months: 24             # Maximum planning period
+      growth-analysis-months: 12          # Analyze growth over 12 months
+      resource-recommendation: true       # Enable resource recommendations
+      
+  # Performance optimization
+  performance:
+    # Caching configuration
+    cache:
+      enabled: true
+      provider: redis                     # Use Redis for caching
+      ttl-seconds: 3600                   # Cache TTL: 1 hour
+      max-cache-size-mb: 512              # Maximum cache size
+      
+      # Cache keys configuration
+      summary-data-ttl: 1800              # Summary data cache: 30 minutes
+      trend-data-ttl: 3600                # Trend data cache: 1 hour
+      real-time-data-ttl: 300             # Real-time data cache: 5 minutes
+      report-data-ttl: 7200               # Report data cache: 2 hours
+      
+    # Database query optimization
+    database:
+      connection-pool-size: 20            # Analytics database connection pool
+      query-timeout-seconds: 300          # Query timeout: 5 minutes
+      batch-fetch-size: 5000              # Large batch fetch size
+      enable-query-cache: true            # Enable database query cache
+      
+    # Async processing configuration
+    async:
+      core-pool-size: 4                   # Core async thread pool size
+      max-pool-size: 16                   # Maximum async thread pool size
+      queue-capacity: 1000                # Async task queue capacity
+      thread-name-prefix: "analytics-"    # Thread name prefix
+      
+  # Data quality and validation
+  data-quality:
+    enabled: true
+    
+    # Validation rules
+    validation:
+      completeness-threshold: 0.95        # 95% data completeness required
+      consistency-checks: true            # Enable consistency checks
+      accuracy-sample-rate: 0.05          # Check 5% of data for accuracy
+      
+    # Data quality alerts
+    alerts:
+      enabled: true
+      completeness-alert-threshold: 0.90  # Alert if completeness < 90%
+      consistency-alert-enabled: true     # Alert on consistency issues
+      accuracy-alert-threshold: 0.95      # Alert if accuracy < 95%
+      
+  # Security and compliance
+  security:
+    # Data encryption
+    encryption:
+      enabled: true
+      algorithm: "AES-GCM"                # Encryption algorithm
+      key-rotation-days: 90               # Rotate keys every 90 days
+      
+    # Access control
+    access-control:
+      role-based: true                    # Enable role-based access
+      tenant-isolation: true              # Ensure tenant data isolation
+      audit-logging: true                 # Enable audit logging
+      
+    # Data privacy
+    privacy:
+      anonymization: false                # Disable anonymization (configurable)
+      data-masking: false                 # Disable data masking (configurable)
+      gdpr-compliance: true               # Enable GDPR compliance features
+      
+  # Integration configuration
+  integration:
+    # External systems
+    external-systems:
+      enabled: false                      # Disable external integrations by default
+      
+    # API configuration
+    api:
+      rate-limiting: true                 # Enable API rate limiting
+      max-requests-per-minute: 1000       # Max 1000 requests per minute per tenant
+      timeout-seconds: 30                 # API timeout
+      
+    # Export configuration
+    export:
+      enabled: true
+      max-export-records: 100000          # Maximum records per export
+      supported-formats: ["csv", "json", "xlsx"] # Supported export formats
+      
+  # Monitoring and alerting
+  monitoring:
+    enabled: true
+    
+    # Metrics collection
+    metrics:
+      collection-interval-seconds: 60     # Collect metrics every minute
+      retention-days: 30                  # Keep metrics for 30 days
+      
+      # Custom metrics
+      custom-metrics:
+        processing-lag: true              # Track processing lag
+        data-quality-score: true          # Track data quality score
+        report-generation-time: true      # Track report generation time
+        cache-hit-ratio: true             # Track cache performance
+        
+    # Health checks
+    health:
+      enabled: true
+      check-interval-seconds: 300         # Health checks every 5 minutes
+      
+      # Health check components
+      checks:
+        database-connectivity: true       # Check database connectivity
+        cache-connectivity: true          # Check cache connectivity
+        processing-pipeline: true         # Check processing pipeline health
+        data-freshness: true              # Check data freshness
+        
+    # Alerting configuration
+    alerts:
+      enabled: true
+      
+      # Alert thresholds
+      thresholds:
+        processing-lag-minutes: 30        # Alert if processing lag > 30 minutes
+        data-quality-score: 0.85          # Alert if quality score < 85%
+        report-generation-failure: true   # Alert on report generation failures
+        system-health-degradation: true   # Alert on health degradation
+        
+      # Alert channels
+      channels:
+        email: true                       # Enable email alerts
+        slack: false                      # Disable Slack alerts (configurable)
+        webhook: false                    # Disable webhook alerts (configurable)
+
+# Spring configuration for analytics
+spring:
+  # JPA configuration for analytics entities
+  jpa:
+    properties:
+      hibernate:
+        # Batch processing optimization
+        jdbc:
+          batch_size: 1000
+          batch_versioned_data: true
+        
+        # Query optimization
+        query:
+          in_clause_parameter_padding: true
+          
+        # Statistics and caching
+        generate_statistics: true
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+          
+  # Task execution for async analytics processing
+  task:
+    execution:
+      pool:
+        core-size: 4
+        max-size: 16
+        queue-capacity: 1000
+      thread-name-prefix: "analytics-task-"
+      
+    # Task scheduling for periodic jobs
+    scheduling:
+      pool:
+        size: 8
+      thread-name-prefix: "analytics-scheduler-"
+
+# Logging configuration for analytics
+logging:
+  level:
+    com.filetransfer.web.analytics: INFO
+    
+    # Enable debug logging for development
+    # com.filetransfer.web.analytics.service: DEBUG
+    # com.filetransfer.web.analytics.repository: DEBUG
+    
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{tenantId},%X{analyticsContext}] %logger{36} - %msg%n"
+
+# Management endpoints for analytics monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,analytics
+        
+  endpoint:
+    analytics:
+      enabled: true
+      
+  metrics:
+    tags:
+      service: analytics
+      
+    export:
+      prometheus:
+        enabled: true
+      
+    distribution:
+      percentiles:
+        analytics.processing.time: 0.5,0.9,0.95,0.99
+        analytics.query.time: 0.5,0.9,0.95,0.99
+        analytics.report.generation.time: 0.5,0.9,0.95,0.99
+
+---
+# Development profile for analytics
+spring:
+  profiles: development
+
+analytics:
+  # Development-specific settings
+  real-time:
+    processing-interval-seconds: 60     # Process more frequently in development
+    
+  data-warehouse:
+    etl-schedule: "0 */6 * * *"         # ETL every 6 hours in development
+    
+  business-intelligence:
+    reports:
+      generation-schedule: "0 0 */6 * * *" # Generate reports every 6 hours
+      
+  performance:
+    cache:
+      ttl-seconds: 300                  # Shorter cache TTL in development
+      
+  monitoring:
+    metrics:
+      collection-interval-seconds: 30   # More frequent metrics collection
+
+logging:
+  level:
+    com.filetransfer.web.analytics: DEBUG # Enable debug logging
+
+---
+# Production profile for analytics
+spring:
+  profiles: production
+
+analytics:
+  # Production-specific settings
+  real-time:
+    processing-interval-seconds: 300    # Standard processing interval
+    max-processing-threads: 8           # More threads in production
+    
+  data-warehouse:
+    etl:
+      max-parallel-tenants: 10          # More parallel processing in production
+      
+  business-intelligence:
+    reports:
+      max-generation-threads: 6         # More report generation threads
+      
+  performance:
+    cache:
+      max-cache-size-mb: 2048           # Larger cache in production
+      
+    database:
+      connection-pool-size: 50          # Larger connection pool
+      
+    async:
+      max-pool-size: 32                 # Larger async pool
+
+  monitoring:
+    alerts:
+      enabled: true                     # Enable all alerts in production
+      channels:
+        email: true
+        slack: true                     # Enable Slack in production
+
+logging:
+  level:
+    com.filetransfer.web.analytics: WARN # Reduce logging in production
+    
+---
+# High availability profile for analytics
+spring:
+  profiles: ha
+
+analytics:
+  # High availability settings
+  real-time:
+    max-processing-threads: 16          # Maximum threads for HA
+    
+  data-warehouse:
+    etl:
+      max-parallel-tenants: 20          # Maximum parallel processing
+      transaction-timeout-minutes: 60   # Longer timeout for HA
+      
+  performance:
+    cache:
+      max-cache-size-mb: 4096           # Very large cache for HA
+      
+    database:
+      connection-pool-size: 100         # Very large connection pool
+      
+    async:
+      max-pool-size: 64                 # Very large async pool
+      
+  monitoring:
+    health:
+      check-interval-seconds: 60        # More frequent health checks
+      
+    alerts:
+      thresholds:
+        processing-lag-minutes: 15      # Stricter thresholds for HA
