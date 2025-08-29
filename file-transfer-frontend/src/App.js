@@ -12,6 +12,8 @@ import { Login } from './components/Login';
 import TenantManagement from './components/TenantManagement';
 import HolidayManagement from './components/HolidayManagement';
 import AlertManagement from './components/AlertManagement';
+import SubServiceManagement from './components/SubServiceManagement';
+import CutOffExtensionManagement from './components/CutOffExtensionManagement';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -106,6 +108,8 @@ function App() {
           <Route path="/tenants" element={<TenantManagement />} />
           <Route path="/holidays" element={<HolidayManagement />} />
           <Route path="/alerts" element={<AlertManagement />} />
+          <Route path="/sub-services" element={<SubServiceManagement tenantId={user?.tenantId || 'default'} />} />
+          <Route path="/cutoff-extensions" element={<CutOffExtensionManagement tenantId={user?.tenantId || 'default'} />} />
         </Routes>
       </Container>
     </Box>

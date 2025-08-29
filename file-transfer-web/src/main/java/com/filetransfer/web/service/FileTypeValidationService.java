@@ -28,6 +28,12 @@ public class FileTypeValidationService {
     @Autowired
     private FileSchemaService fileSchemaService;
     
+    @Autowired
+    private FileNamingConventionService fileNamingConventionService;
+    
+    @Autowired
+    private FileTypeSpecificValidator fileTypeSpecificValidator;
+    
     /**
      * Detect file type from content and filename
      */
@@ -76,6 +82,21 @@ public class FileTypeValidationService {
             
             SubServiceConfiguration config = configOpt.get();
             
+            // First, validate file naming convention
+            FileNamingConventionService.NamingValidationResult namingResult = 
+                validateFileNamingConvention(fileName, config, result);
+            
+            // Add naming validation results to main result
+            result.getNamingResult().addAll(namingResult.getErrors());
+            result.getNamingWarnings().addAll(namingResult.getWarnings());
+            result.getNamingInfo().addAll(namingResult.getInfo());
+            
+            if (!namingResult.isValid()) {
+                result.setValid(false);
+                result.addError("File naming convention validation failed");
+                return result;
+            }
+            
             // Check if validation is required for this file type
             if (!config.requiresSchemaValidation(fileType)) {
                 result.setValid(true);
@@ -111,7 +132,21 @@ public class FileTypeValidationService {
             result.setSchemaId(schemaId);
             result.setSchemaName(schema.getSchemaName());
             
-            // Perform file type specific validation
+            // First, perform comprehensive file type specific validation
+            FileTypeSpecificValidator.FileTypeValidationResult typeValidationResult = 
+                fileTypeSpecificValidator.validateFileContent(fileType, content, fileName);
+            
+            // Add type-specific validation results
+            result.getErrors().addAll(typeValidationResult.getErrors());
+            result.getWarnings().addAll(typeValidationResult.getWarnings());
+            result.getNamingInfo().addAll(typeValidationResult.getInfo());
+            
+            if (!typeValidationResult.isValid()) {
+                result.setValid(false);
+                return result;
+            }
+            
+            // Then perform schema-based validation
             switch (fileType) {
                 case BINARY_FILE:
                     result = validateBinaryFile(fileName, content, config, result);
@@ -410,6 +445,9 @@ public class FileTypeValidationService {
         private String schemaName;
         private java.util.List<String> errors = new java.util.ArrayList<>();
         private java.util.List<String> warnings = new java.util.ArrayList<>();
+        private java.util.List<String> namingResult = new java.util.ArrayList<>();
+        private java.util.List<String> namingWarnings = new java.util.ArrayList<>();
+        private java.util.List<String> namingInfo = new java.util.ArrayList<>();
         
         // Getters and setters
         public String getFileName() { return fileName; }
@@ -444,5 +482,34 @@ public class FileTypeValidationService {
         
         public void addError(String error) { this.errors.add(error); }
         public void addWarning(String warning) { this.warnings.add(warning); }
+        
+        public java.util.List<String> getNamingResult() { return namingResult; }
+        public void setNamingResult(java.util.List<String> namingResult) { this.namingResult = namingResult; }
+        
+        public java.util.List<String> getNamingWarnings() { return namingWarnings; }
+        public void setNamingWarnings(java.util.List<String> namingWarnings) { this.namingWarnings = namingWarnings; }
+        
+        public java.util.List<String> getNamingInfo() { return namingInfo; }
+        public void setNamingInfo(java.util.List<String> namingInfo) { this.namingInfo = namingInfo; }
+    }
+    
+    /**
+     * Validate file naming convention
+     */
+    private FileNamingConventionService.NamingValidationResult validateFileNamingConvention(
+            String fileName, SubServiceConfiguration config, ValidationResult mainResult) {
+        
+        // Determine file name type based on file name
+        FileNamingConventionService.FileNameType nameType;
+        
+        if (fileName.startsWith(config.getStartMarkerPrefix())) {
+            nameType = FileNamingConventionService.FileNameType.SOT;
+        } else if (fileName.startsWith(config.getEndMarkerPrefix())) {
+            nameType = FileNamingConventionService.FileNameType.EOT;
+        } else {
+            nameType = FileNamingConventionService.FileNameType.DATA;
+        }
+        
+        return fileNamingConventionService.validateFileName(fileName, config, nameType);
     }
 }

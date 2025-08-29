@@ -41,6 +41,9 @@ public class FileSchemaService {
     @Autowired
     private SchemaUsageLogRepository usageLogRepository;
     
+    @Autowired
+    private CobolCopybookParser cobolCopybookParser;
+    
     // Schema Management
     public FileSchemaDto createSchema(FileSchemaDto schemaDto, String createdBy) {
         FileSchema schema = new FileSchema();
@@ -178,6 +181,12 @@ public class FileSchemaService {
             
             // Read file content for validation
             String content = readFileContent(fileContent);
+            
+            // Special handling for COBOL copybook validation
+            if ("COBOL".equalsIgnoreCase(schema.getSchemaType()) || 
+                "COBOL_FLAT_FILE".equalsIgnoreCase(fileType)) {
+                return validateCobolFile(schema, content, fileName, fileSize);
+            }
             
             // Apply validation rules
             for (SchemaValidationRule rule : rules) {
@@ -549,6 +558,43 @@ public class FileSchemaService {
         dto.setCreatedAt(field.getCreatedAt());
         dto.setUpdatedAt(field.getUpdatedAt());
         return dto;
+    }
+    
+    /**
+     * Validate COBOL flat file using copybook schema
+     */
+    private ValidationResult validateCobolFile(FileSchema schema, String content, String fileName, Long fileSize) {
+        try {
+            // Parse the copybook schema definition
+            CobolCopybookParser.CobolSchema cobolSchema = cobolCopybookParser.parseCopybook(schema.getSchemaDefinition());
+            
+            // Validate the file content
+            CobolCopybookParser.ValidationResult cobolResult = cobolCopybookParser.validateData(cobolSchema, content);
+            
+            ValidationResult result = new ValidationResult(cobolResult.isValid(), 
+                cobolResult.isValid() ? "COBOL validation passed" : "COBOL validation failed");
+            
+            if (!cobolResult.isValid()) {
+                // Combine all error messages
+                String errorMessage = String.join("; ", cobolResult.getErrors());
+                result.setMessage("COBOL validation errors: " + errorMessage);
+            } else if (!cobolResult.getWarnings().isEmpty()) {
+                // Include warnings in successful validation
+                String warningMessage = String.join("; ", cobolResult.getWarnings());
+                result.setMessage("COBOL validation passed with warnings: " + warningMessage);
+            }
+            
+            // Log validation result
+            logValidationResult(schema, result, fileName, fileSize);
+            
+            return result;
+            
+        } catch (Exception e) {
+            logger.error("Error during COBOL validation for file {}: {}", fileName, e.getMessage(), e);
+            ValidationResult result = new ValidationResult(false, "COBOL validation error: " + e.getMessage());
+            logValidationResult(schema, result, fileName, fileSize);
+            return result;
+        }
     }
     
     // Validation result class
