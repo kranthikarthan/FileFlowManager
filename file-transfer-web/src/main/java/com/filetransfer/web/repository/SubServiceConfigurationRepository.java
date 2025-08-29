@@ -42,6 +42,18 @@ public interface SubServiceConfigurationRepository extends JpaRepository<SubServ
                                                            @Param("serviceName") String serviceName,
                                                            @Param("subServiceName") String subServiceName);
     
+    // Performance optimization queries
+    @Query("SELECT ssc FROM SubServiceConfiguration ssc WHERE ssc.tenantId = :tenantId AND ssc.enabled = true ORDER BY ssc.serviceName, ssc.subServiceName")
+    List<SubServiceConfiguration> findEnabledConfigsForBatchProcessing(@Param("tenantId") String tenantId);
+    
+    @Query("SELECT ssc FROM SubServiceConfiguration ssc WHERE ssc.tenantId = :tenantId ORDER BY ssc.createdAt DESC")
+    List<SubServiceConfiguration> findMostFrequentlyUsedConfigs(@Param("tenantId") String tenantId, @Param("limit") int limit);
+    
+    @Query("SELECT COUNT(ssc) > 0 FROM SubServiceConfiguration ssc WHERE ssc.tenantId = :tenantId AND ssc.serviceName = :serviceName AND ssc.subServiceName = :subServiceName")
+    boolean existsByTenantIdAndServiceNameAndSubServiceName(@Param("tenantId") String tenantId, 
+                                                          @Param("serviceName") String serviceName, 
+                                                          @Param("subServiceName") String subServiceName);
+    
     // For validation purposes
     boolean existsByTenantIdAndServiceNameAndSubServiceName(String tenantId, String serviceName, String subServiceName);
     

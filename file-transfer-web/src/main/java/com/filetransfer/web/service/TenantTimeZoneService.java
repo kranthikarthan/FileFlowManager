@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.Cacheable;
 
 import java.time.*;
 import java.time.format.DateTimeFormatter;
@@ -20,8 +21,9 @@ public class TenantTimeZoneService {
     private TenantRepository tenantRepository;
     
     /**
-     * Get tenant's timezone or default to system timezone
+     * Get tenant's timezone or default to system timezone (cached)
      */
+    @Cacheable(value = "tenantTimezones", key = "#tenantId")
     public ZoneId getTenantTimeZone(String tenantId) {
         try {
             Optional<Tenant> tenantOpt = tenantRepository.findByTenantId(tenantId);

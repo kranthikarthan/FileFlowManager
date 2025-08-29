@@ -10,6 +10,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -41,16 +44,20 @@ public class SubServiceConfigurationService {
     private TenantTimeZoneService tenantTimeZoneService;
     
     /**
-     * Get all sub-services for a tenant
+     * Get all sub-services for a tenant (cached)
      */
+    @Cacheable(value = "subServiceConfigs", key = "'tenant_' + #tenantId")
     public List<SubServiceConfiguration> getSubServicesForTenant(String tenantId) {
+        logger.debug("Loading sub-services for tenant: {}", tenantId);
         return subServiceConfigRepository.findByTenantId(tenantId);
     }
     
     /**
-     * Get enabled sub-services for a tenant
+     * Get enabled sub-services for a tenant (cached)
      */
+    @Cacheable(value = "subServiceConfigs", key = "'tenant_enabled_' + #tenantId")
     public List<SubServiceConfiguration> getEnabledSubServicesForTenant(String tenantId) {
+        logger.debug("Loading enabled sub-services for tenant: {}", tenantId);
         return subServiceConfigRepository.findByTenantIdAndEnabled(tenantId, true);
     }
     
@@ -71,6 +78,7 @@ public class SubServiceConfigurationService {
     /**
      * Create a new sub-service configuration
      */
+    @CacheEvict(value = "subServiceConfigs", allEntries = true)
     public SubServiceConfiguration createSubService(SubServiceConfiguration subServiceConfig) {
         // Validate unique constraint
         if (subServiceConfigRepository.existsByTenantIdAndServiceNameAndSubServiceName(
