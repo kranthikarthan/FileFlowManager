@@ -1,0 +1,420 @@
+---
+# File Transfer Web Application Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: file-transfer-web-ENVIRONMENT_SUFFIX
+  namespace: NAMESPACE
+  labels:
+    app: file-transfer-web
+    version: ENVIRONMENT_SUFFIX
+    component: web-application
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: file-transfer-web
+      version: ENVIRONMENT_SUFFIX
+  template:
+    metadata:
+      labels:
+        app: file-transfer-web
+        version: ENVIRONMENT_SUFFIX
+        component: web-application
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      containers:
+      - name: web-container
+        image: ghcr.io/file-transfer-system/file-transfer-web:IMAGE_TAG
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "production-enterprise"
+        - name: SPRING_DATASOURCE_URL
+          valueFrom:
+            secretKeyRef:
+              name: database-credentials
+              key: url
+        - name: SPRING_DATASOURCE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: database-credentials
+              key: username
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-credentials
+              key: password
+        - name: JAVA_OPTS
+          value: "-Xms4g -Xmx16g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "1000m"
+          limits:
+            memory: "18Gi"
+            cpu: "4000m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        volumeMounts:
+        - name: app-data
+          mountPath: /app/data
+        - name: logs
+          mountPath: /var/log
+      volumes:
+      - name: app-data
+        persistentVolumeClaim:
+          claimName: file-transfer-web-data
+      - name: logs
+        emptyDir: {}
+
+---
+# File Transfer Batch Application Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: file-transfer-batch-ENVIRONMENT_SUFFIX
+  namespace: NAMESPACE
+  labels:
+    app: file-transfer-batch
+    version: ENVIRONMENT_SUFFIX
+    component: batch-application
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: file-transfer-batch
+      version: ENVIRONMENT_SUFFIX
+  template:
+    metadata:
+      labels:
+        app: file-transfer-batch
+        version: ENVIRONMENT_SUFFIX
+        component: batch-application
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8082"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      containers:
+      - name: batch-container
+        image: ghcr.io/file-transfer-system/file-transfer-batch:IMAGE_TAG
+        ports:
+        - containerPort: 8082
+          name: http
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "production-enterprise,batch-scalability"
+        - name: SPRING_DATASOURCE_URL
+          valueFrom:
+            secretKeyRef:
+              name: database-credentials
+              key: batch-url
+        - name: SPRING_DATASOURCE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: database-credentials
+              key: username
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-credentials
+              key: password
+        - name: JAVA_OPTS
+          value: "-Xms8g -Xmx32g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+        resources:
+          requests:
+            memory: "8Gi"
+            cpu: "2000m"
+          limits:
+            memory: "36Gi"
+            cpu: "8000m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8082
+          initialDelaySeconds: 180
+          periodSeconds: 30
+          timeoutSeconds: 15
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8082
+          initialDelaySeconds: 120
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 3
+        volumeMounts:
+        - name: batch-data
+          mountPath: /app/batch-data
+        - name: logs
+          mountPath: /var/log
+      volumes:
+      - name: batch-data
+        persistentVolumeClaim:
+          claimName: file-transfer-batch-data
+      - name: logs
+        emptyDir: {}
+
+---
+# File Transfer Frontend Application Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: file-transfer-frontend-ENVIRONMENT_SUFFIX
+  namespace: NAMESPACE
+  labels:
+    app: file-transfer-frontend
+    version: ENVIRONMENT_SUFFIX
+    component: frontend-application
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: file-transfer-frontend
+      version: ENVIRONMENT_SUFFIX
+  template:
+    metadata:
+      labels:
+        app: file-transfer-frontend
+        version: ENVIRONMENT_SUFFIX
+        component: frontend-application
+    spec:
+      containers:
+      - name: frontend-container
+        image: ghcr.io/file-transfer-system/file-transfer-frontend:IMAGE_TAG
+        ports:
+        - containerPort: 80
+          name: http
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: REACT_APP_API_BASE_URL
+          value: "https://api-ENVIRONMENT_SUFFIX.filetransfer.example.com"
+        - name: REACT_APP_BATCH_API_URL
+          value: "https://batch-ENVIRONMENT_SUFFIX.filetransfer.example.com"
+        - name: REACT_APP_VERSION
+          value: "IMAGE_TAG"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: frontend-nginx-config
+
+---
+# Services
+apiVersion: v1
+kind: Service
+metadata:
+  name: file-transfer-web-ENVIRONMENT_SUFFIX
+  namespace: NAMESPACE
+  labels:
+    app: file-transfer-web
+    version: ENVIRONMENT_SUFFIX
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: file-transfer-web
+    version: ENVIRONMENT_SUFFIX
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: file-transfer-batch-ENVIRONMENT_SUFFIX
+  namespace: NAMESPACE
+  labels:
+    app: file-transfer-batch
+    version: ENVIRONMENT_SUFFIX
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8082
+    targetPort: 8082
+    protocol: TCP
+    name: http
+  selector:
+    app: file-transfer-batch
+    version: ENVIRONMENT_SUFFIX
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: file-transfer-frontend-ENVIRONMENT_SUFFIX
+  namespace: NAMESPACE
+  labels:
+    app: file-transfer-frontend
+    version: ENVIRONMENT_SUFFIX
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: file-transfer-frontend
+    version: ENVIRONMENT_SUFFIX
+
+---
+# Persistent Volume Claims
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: file-transfer-web-data
+  namespace: NAMESPACE
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: fast-ssd
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: file-transfer-batch-data
+  namespace: NAMESPACE
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Gi
+  storageClassName: fast-ssd
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: file-transfer-web-hpa
+  namespace: NAMESPACE
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: file-transfer-web-ENVIRONMENT_SUFFIX
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: file-transfer-batch-hpa
+  namespace: NAMESPACE
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: file-transfer-batch-ENVIRONMENT_SUFFIX
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 80
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 85
