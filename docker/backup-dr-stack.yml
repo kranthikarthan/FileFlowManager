@@ -1,0 +1,482 @@
+version: '3.8'
+
+name: file-transfer-backup-dr
+
+services:
+  # Primary Application Stack
+  file-transfer-app:
+    build:
+      context: ../file-transfer-web
+      dockerfile: Dockerfile
+    container_name: file-transfer-app-primary
+    environment:
+      - SERVER_PORT=8080
+      - SPRING_PROFILES_ACTIVE=production,backup
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-primary:5432/filetransfer
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=password
+      - BACKUP_LOCATION=/var/backups/file-transfer
+      - BACKUP_DATABASE_ENABLED=true
+      - BACKUP_FILES_ENABLED=true
+      - BACKUP_REMOTE_ENABLED=true
+      - BACKUP_COMPRESSION_ENABLED=true
+      - BACKUP_ENCRYPTION_ENABLED=true
+      - DR_ENABLED=true
+      - DR_PRIMARY_REGION=us-east-1
+      - DR_SECONDARY_REGION=us-west-2
+    volumes:
+      - app-data:/app/data
+      - backup-data:/var/backups/file-transfer
+      - backup-logs:/var/log
+    depends_on:
+      - postgres-primary
+      - redis-primary
+    networks:
+      - backup-dr
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Secondary Application Stack (DR)
+  file-transfer-app-secondary:
+    build:
+      context: ../file-transfer-web
+      dockerfile: Dockerfile
+    container_name: file-transfer-app-secondary
+    environment:
+      - SERVER_PORT=8080
+      - SPRING_PROFILES_ACTIVE=production,backup
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-secondary:5432/filetransfer
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=password
+      - BACKUP_LOCATION=/var/backups/file-transfer
+      - DR_ENABLED=true
+      - DR_PRIMARY_REGION=us-west-2
+      - DR_SECONDARY_REGION=us-east-1
+    volumes:
+      - app-data-secondary:/app/data
+      - backup-data-secondary:/var/backups/file-transfer
+      - backup-logs-secondary:/var/log
+    depends_on:
+      - postgres-secondary
+      - redis-secondary
+    networks:
+      - backup-dr
+    restart: unless-stopped
+    profiles:
+      - disaster-recovery
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Primary Database
+  postgres-primary:
+    image: postgres:15
+    container_name: postgres-primary
+    environment:
+      POSTGRES_DB: filetransfer
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - postgres-primary-data:/var/lib/postgresql/data
+      - postgres-backups:/backups
+      - ./postgres/init-primary.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - backup-dr
+    restart: unless-stopped
+    command: |
+      postgres
+      -c wal_level=replica
+      -c max_wal_senders=3
+      -c max_replication_slots=3
+      -c archive_mode=on
+      -c archive_command='test ! -f /backups/archive/%f && cp %p /backups/archive/%f'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d filetransfer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Secondary Database (DR)
+  postgres-secondary:
+    image: postgres:15
+    container_name: postgres-secondary
+    environment:
+      POSTGRES_DB: filetransfer
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      PGUSER: postgres
+    volumes:
+      - postgres-secondary-data:/var/lib/postgresql/data
+      - postgres-backups-secondary:/backups
+    ports:
+      - "5433:5432"
+    networks:
+      - backup-dr
+    restart: unless-stopped
+    profiles:
+      - disaster-recovery
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d filetransfer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Primary Redis
+  redis-primary:
+    image: redis:7-alpine
+    container_name: redis-primary
+    command: redis-server --appendonly yes --replica-read-only no
+    volumes:
+      - redis-primary-data:/data
+      - redis-backups:/backups
+    ports:
+      - "6379:6379"
+    networks:
+      - backup-dr
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Secondary Redis (DR)
+  redis-secondary:
+    image: redis:7-alpine
+    container_name: redis-secondary
+    command: redis-server --appendonly yes --replicaof redis-primary 6379
+    volumes:
+      - redis-secondary-data:/data
+      - redis-backups-secondary:/backups
+    ports:
+      - "6380:6379"
+    networks:
+      - backup-dr
+    restart: unless-stopped
+    profiles:
+      - disaster-recovery
+    depends_on:
+      - redis-primary
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Backup Service
+  backup-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.backup
+    container_name: backup-service
+    environment:
+      - BACKUP_SCHEDULE_FULL=0 2 * * *
+      - BACKUP_SCHEDULE_INCREMENTAL=0 */4 * * *
+      - BACKUP_RETENTION_DAYS=30
+      - BACKUP_COMPRESSION=true
+      - BACKUP_ENCRYPTION=true
+      - BACKUP_REMOTE_ENABLED=true
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+    volumes:
+      - app-data:/source/app-data:ro
+      - postgres-backups:/source/postgres-backups:ro
+      - redis-backups:/source/redis-backups:ro
+      - backup-data:/backups
+      - backup-logs:/var/log
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - postgres-primary
+      - redis-primary
+    networks:
+      - backup-dr
+    restart: unless-stopped
+
+  # Backup Monitor
+  backup-monitor:
+    image: alpine:latest
+    container_name: backup-monitor
+    environment:
+      - MONITOR_INTERVAL=300  # 5 minutes
+      - ALERT_EMAIL=${ALERT_EMAIL:-admin@company.com}
+    volumes:
+      - backup-data:/backups:ro
+      - backup-logs:/var/log:ro
+      - ./monitoring/backup-monitor.sh:/usr/local/bin/backup-monitor.sh
+    command: |
+      sh -c "
+        apk add --no-cache curl mailx &&
+        chmod +x /usr/local/bin/backup-monitor.sh &&
+        while true; do
+          /usr/local/bin/backup-monitor.sh
+          sleep $${MONITOR_INTERVAL}
+        done
+      "
+    networks:
+      - backup-dr
+    restart: unless-stopped
+
+  # Disaster Recovery Coordinator
+  dr-coordinator:
+    build:
+      context: .
+      dockerfile: Dockerfile.dr
+    container_name: dr-coordinator
+    environment:
+      - DR_CHECK_INTERVAL=30
+      - DR_AUTO_FAILOVER=false
+      - DR_PRIMARY_ENDPOINT=http://file-transfer-app:8080
+      - DR_SECONDARY_ENDPOINT=http://file-transfer-app-secondary:8080
+      - NOTIFICATION_WEBHOOK=${DR_NOTIFICATION_WEBHOOK}
+    volumes:
+      - dr-plans:/dr/plans
+      - dr-logs:/var/log
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - file-transfer-app
+    networks:
+      - backup-dr
+    restart: unless-stopped
+
+  # Load Balancer for DR
+  haproxy-dr:
+    image: haproxy:2.8
+    container_name: haproxy-dr
+    ports:
+      - "80:80"
+      - "8404:8404"  # Stats page
+    volumes:
+      - ./haproxy/haproxy-dr.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      - file-transfer-app
+      - file-transfer-app-secondary
+    networks:
+      - backup-dr
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8404/stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus for Backup/DR Monitoring
+  prometheus-backup:
+    image: prom/prometheus:latest
+    container_name: prometheus-backup
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus-backup.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules/backup-rules.yml:/etc/prometheus/rules/backup-rules.yml:ro
+      - prometheus-backup-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--storage.tsdb.retention.time=90d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    networks:
+      - backup-dr
+    restart: unless-stopped
+
+  # Grafana for Backup/DR Dashboards
+  grafana-backup:
+    image: grafana/grafana:latest
+    container_name: grafana-backup
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-backup-data:/var/lib/grafana
+      - ./grafana/provisioning/datasources/backup-datasources.yml:/etc/grafana/provisioning/datasources/backup-datasources.yml:ro
+      - ./grafana/provisioning/dashboards/backup-dashboards.yml:/etc/grafana/provisioning/dashboards/backup-dashboards.yml:ro
+      - ./grafana/dashboards/backup-dashboard.json:/var/lib/grafana/dashboards/backup-dashboard.json:ro
+      - ./grafana/dashboards/dr-dashboard.json:/var/lib/grafana/dashboards/dr-dashboard.json:ro
+    depends_on:
+      - prometheus-backup
+    networks:
+      - backup-dr
+    restart: unless-stopped
+
+  # AlertManager for Backup/DR Alerts
+  alertmanager-backup:
+    image: prom/alertmanager:latest
+    container_name: alertmanager-backup
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager/alertmanager-backup.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-backup-data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+    depends_on:
+      - prometheus-backup
+    networks:
+      - backup-dr
+    restart: unless-stopped
+
+  # MinIO for S3-compatible backup storage (alternative to AWS S3)
+  minio:
+    image: minio/minio:latest
+    container_name: minio-backup
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - backup-dr
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # MinIO Client for backup automation
+  minio-client:
+    image: minio/mc:latest
+    container_name: minio-client
+    environment:
+      MC_HOST_local: http://minioadmin:minioadmin123@minio:9000
+    volumes:
+      - backup-data:/backups:ro
+    depends_on:
+      - minio
+    networks:
+      - backup-dr
+    entrypoint: |
+      sh -c "
+        mc alias set local http://minio:9000 minioadmin minioadmin123
+        mc mb local/filetransfer-backups --ignore-existing
+        mc policy set download local/filetransfer-backups
+        echo 'MinIO setup completed'
+        tail -f /dev/null
+      "
+    restart: unless-stopped
+
+  # File System Backup with Restic
+  restic-backup:
+    image: restic/restic:latest
+    container_name: restic-backup
+    environment:
+      RESTIC_REPOSITORY: /backups/restic
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD:-changeme123}
+      BACKUP_CRON: ${BACKUP_CRON:-0 3 * * *}
+    volumes:
+      - app-data:/source/app-data:ro
+      - backup-data:/backups
+      - restic-cache:/root/.cache/restic
+    command: |
+      sh -c "
+        # Initialize repository if it doesn't exist
+        restic init || true
+        
+        # Install cron
+        apk add --no-cache dcron
+        
+        # Create backup script
+        cat > /usr/local/bin/backup.sh << 'EOF'
+      #!/bin/sh
+      echo 'Starting restic backup...'
+      restic backup /source --tag automated
+      restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 12 --prune
+      echo 'Restic backup completed'
+      EOF
+        chmod +x /usr/local/bin/backup.sh
+        
+        # Setup cron job
+        echo '$BACKUP_CRON /usr/local/bin/backup.sh >> /var/log/backup.log 2>&1' > /var/spool/cron/crontabs/root
+        
+        # Start cron daemon
+        crond -f
+      "
+    networks:
+      - backup-dr
+    restart: unless-stopped
+
+volumes:
+  # Application Data
+  app-data:
+    driver: local
+  app-data-secondary:
+    driver: local
+
+  # Database Data
+  postgres-primary-data:
+    driver: local
+  postgres-secondary-data:
+    driver: local
+  postgres-backups:
+    driver: local
+  postgres-backups-secondary:
+    driver: local
+
+  # Redis Data
+  redis-primary-data:
+    driver: local
+  redis-secondary-data:
+    driver: local
+  redis-backups:
+    driver: local
+  redis-backups-secondary:
+    driver: local
+
+  # Backup Data
+  backup-data:
+    driver: local
+  backup-data-secondary:
+    driver: local
+  backup-logs:
+    driver: local
+  backup-logs-secondary:
+    driver: local
+
+  # Disaster Recovery
+  dr-plans:
+    driver: local
+  dr-logs:
+    driver: local
+
+  # Monitoring Data
+  prometheus-backup-data:
+    driver: local
+  grafana-backup-data:
+    driver: local
+  alertmanager-backup-data:
+    driver: local
+
+  # Object Storage
+  minio-data:
+    driver: local
+  restic-cache:
+    driver: local
+
+networks:
+  backup-dr:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
