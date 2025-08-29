@@ -86,4 +86,14 @@ public interface DailyFileCountTrackerRepository extends JpaRepository<DailyFile
     // Count total discrepancies for a period
     @Query("SELECT SUM(dfc.discrepancyCount) FROM DailyFileCountTracker dfc WHERE dfc.tenantId = :tenantId AND dfc.processingDate BETWEEN :startDate AND :endDate AND dfc.discrepancyCount IS NOT NULL")
     Long sumDiscrepanciesForPeriod(@Param("tenantId") String tenantId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+    
+    // MISSING METHODS - Added for processing control
+    
+    // Find trackers by tenant, service and date
+    @Query("SELECT dfc FROM DailyFileCountTracker dfc WHERE dfc.tenantId = :tenantId AND dfc.serviceName = :serviceName AND dfc.processingDate = :processingDate")
+    List<DailyFileCountTracker> findByTenantAndServiceAndDate(@Param("tenantId") String tenantId, @Param("serviceName") String serviceName, @Param("processingDate") LocalDate processingDate);
+    
+    // Find trackers by tenant, service, sub-service and date
+    @Query("SELECT dfc FROM DailyFileCountTracker dfc WHERE dfc.tenantId = :tenantId AND dfc.serviceName = :serviceName AND dfc.subServiceName = :subServiceName AND dfc.processingDate = :processingDate")
+    List<DailyFileCountTracker> findByTenantAndServiceAndSubServiceAndDate(@Param("tenantId") String tenantId, @Param("serviceName") String serviceName, @Param("subServiceName") String subServiceName, @Param("processingDate") LocalDate processingDate);
 }
