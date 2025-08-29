@@ -1,0 +1,325 @@
+version: '3.8'
+
+name: file-transfer-test
+
+services:
+  # Test Database
+  postgres-test:
+    image: postgres:15
+    container_name: postgres-test
+    environment:
+      POSTGRES_DB: filetransfer_test
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_INITDB_ARGS: "--auth-host=md5"
+    volumes:
+      - postgres-test-data:/var/lib/postgresql/data
+      - ./postgres/init-test.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5433:5432"
+    networks:
+      - test-network
+    restart: "no"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d filetransfer_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Test Redis
+  redis-test:
+    image: redis:7-alpine
+    container_name: redis-test
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-test-data:/data
+    ports:
+      - "6380:6379"
+    networks:
+      - test-network
+    restart: "no"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Test RabbitMQ (for batch testing)
+  rabbitmq-test:
+    image: rabbitmq:3.12-management
+    container_name: rabbitmq-test
+    environment:
+      RABBITMQ_DEFAULT_USER: test_user
+      RABBITMQ_DEFAULT_PASS: test_password
+      RABBITMQ_DEFAULT_VHOST: test_vhost
+    volumes:
+      - rabbitmq-test-data:/var/lib/rabbitmq
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    networks:
+      - test-network
+    restart: "no"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Test Web Application
+  file-transfer-web-test:
+    build:
+      context: ../file-transfer-web
+      dockerfile: Dockerfile
+    container_name: file-transfer-web-test
+    environment:
+      - SERVER_PORT=8080
+      - SPRING_PROFILES_ACTIVE=test,integration
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-test:5432/filetransfer_test
+      - SPRING_DATASOURCE_USERNAME=test_user
+      - SPRING_DATASOURCE_PASSWORD=test_password
+      - SPRING_DATA_REDIS_HOST=redis-test
+      - SPRING_DATA_REDIS_PORT=6379
+      - API_VERSIONING_DEFAULT_VERSION=2.0
+      - BACKUP_ENABLED=true
+      - MONITORING_ENABLED=true
+    volumes:
+      - test-data:/app/data
+      - test-logs:/var/log
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    networks:
+      - test-network
+    restart: "no"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    profiles:
+      - integration-tests
+
+  # Test Batch Application
+  file-transfer-batch-test:
+    build:
+      context: ../file-transfer-batch
+      dockerfile: Dockerfile
+    container_name: file-transfer-batch-test
+    environment:
+      - SERVER_PORT=8082
+      - SPRING_PROFILES_ACTIVE=test,integration,batch-scalability
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-test:5432/filetransfer_test
+      - SPRING_DATASOURCE_USERNAME=test_user
+      - SPRING_DATASOURCE_PASSWORD=test_password
+      - SPRING_DATA_REDIS_HOST=redis-test
+      - SPRING_DATA_REDIS_PORT=6379
+      - SPRING_RABBITMQ_HOST=rabbitmq-test
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=test_user
+      - SPRING_RABBITMQ_PASSWORD=test_password
+      - BATCH_API_VERSIONING_DEFAULT_VERSION=2.0
+      - BATCH_BACKUP_ENABLED=true
+    volumes:
+      - batch-test-data:/app/batch-data
+      - test-logs:/var/log
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      rabbitmq-test:
+        condition: service_healthy
+    ports:
+      - "8082:8082"
+    networks:
+      - test-network
+    restart: "no"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    profiles:
+      - integration-tests
+
+  # Test Frontend Application
+  file-transfer-frontend-test:
+    build:
+      context: ../file-transfer-frontend
+      dockerfile: Dockerfile
+    container_name: file-transfer-frontend-test
+    environment:
+      - NODE_ENV=test
+      - REACT_APP_API_BASE_URL=http://file-transfer-web-test:8080
+      - REACT_APP_BATCH_API_URL=http://file-transfer-batch-test:8082
+      - REACT_APP_API_VERSION=2.0
+      - REACT_APP_VERSION_STRATEGY=URL_PATH
+      - REACT_APP_BACKUP_ENABLED=true
+      - CI=true
+    volumes:
+      - frontend-test-dist:/usr/share/nginx/html
+      - test-logs:/var/log/nginx
+    depends_on:
+      file-transfer-web-test:
+        condition: service_healthy
+      file-transfer-batch-test:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+    networks:
+      - test-network
+    restart: "no"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    profiles:
+      - integration-tests
+
+  # Test Load Balancer (for testing failover)
+  haproxy-test:
+    image: haproxy:2.8
+    container_name: haproxy-test
+    ports:
+      - "8081:80"
+      - "8405:8404"
+    volumes:
+      - ./haproxy/haproxy-test.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      - file-transfer-web-test
+      - file-transfer-batch-test
+    networks:
+      - test-network
+    restart: "no"
+    profiles:
+      - integration-tests
+
+  # Test Monitoring Stack
+  prometheus-test:
+    image: prom/prometheus:latest
+    container_name: prometheus-test
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./prometheus/prometheus-test.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-test-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=1d'
+      - '--web.enable-lifecycle'
+    networks:
+      - test-network
+    restart: "no"
+    profiles:
+      - integration-tests
+
+  # Test Results Collector
+  test-results-collector:
+    image: alpine:latest
+    container_name: test-results-collector
+    environment:
+      - TEST_REPORT_PATH=/test-reports
+      - TEST_RESULTS_FORMAT=json,html,xml
+    volumes:
+      - test-reports:/test-reports
+      - test-logs:/test-logs:ro
+      - ./test-scripts/collect-results.sh:/usr/local/bin/collect-results.sh
+    command: |
+      sh -c "
+        apk add --no-cache curl jq &&
+        chmod +x /usr/local/bin/collect-results.sh &&
+        /usr/local/bin/collect-results.sh
+      "
+    depends_on:
+      - file-transfer-web-test
+      - file-transfer-batch-test
+      - file-transfer-frontend-test
+    networks:
+      - test-network
+    restart: "no"
+    profiles:
+      - integration-tests
+
+  # Performance Test Runner
+  performance-test-runner:
+    image: loadimpact/k6:latest
+    container_name: performance-test-runner
+    environment:
+      - K6_WEB_DASHBOARD=true
+      - K6_WEB_DASHBOARD_EXPORT=/test-reports/performance-report.html
+    volumes:
+      - ./k6-scripts:/scripts:ro
+      - test-reports:/test-reports
+    command: run --out web-dashboard /scripts/load-test.js
+    depends_on:
+      - file-transfer-web-test
+      - file-transfer-batch-test
+    networks:
+      - test-network
+    restart: "no"
+    profiles:
+      - performance-tests
+
+  # Security Test Scanner
+  security-scanner:
+    image: owasp/zap2docker-stable
+    container_name: security-scanner
+    environment:
+      - ZAP_BASELINE_SCAN=true
+      - ZAP_TARGET_URL=http://file-transfer-web-test:8080
+    volumes:
+      - test-reports:/zap/wrk:rw
+    command: |
+      sh -c "
+        zap-baseline.py -t http://file-transfer-web-test:8080 -r security-report.html -x security-report.xml &&
+        zap-api-scan.py -t http://file-transfer-web-test:8080/v3/api-docs -f openapi -r api-security-report.html
+      "
+    depends_on:
+      - file-transfer-web-test
+    networks:
+      - test-network
+    restart: "no"
+    profiles:
+      - security-tests
+
+volumes:
+  # Test Database Data
+  postgres-test-data:
+    driver: local
+  redis-test-data:
+    driver: local
+  rabbitmq-test-data:
+    driver: local
+
+  # Test Application Data
+  test-data:
+    driver: local
+  batch-test-data:
+    driver: local
+  frontend-test-dist:
+    driver: local
+
+  # Test Reports and Logs
+  test-reports:
+    driver: local
+  test-logs:
+    driver: local
+  prometheus-test-data:
+    driver: local
+
+networks:
+  test-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
