@@ -35,27 +35,115 @@ const WEB_BASE_URL = 'http://file-transfer-web-test:8080';
 const BATCH_BASE_URL = 'http://file-transfer-batch-test:8082';
 const FRONTEND_BASE_URL = 'http://file-transfer-frontend-test:3000';
 
-// Test data
+// Enterprise-scale test data with realistic payloads
 const testTenant = {
-  name: `Load Test Tenant ${Math.random()}`,
-  description: 'Load testing tenant',
+  name: `Enterprise Load Test Tenant ${Math.random()}`,
+  description: 'Enterprise load testing tenant with comprehensive configuration',
   timezone: 'America/New_York',
-  contactEmail: 'loadtest@example.com',
+  contactEmail: 'enterprise-loadtest@example.com',
+  contactPhone: '+1-555-0123',
+  type: 'ENTERPRISE',
+  region: 'US-EAST',
+  currency: 'USD',
+  language: 'en',
+  configuration: {
+    fileRetentionDays: 90,
+    maxFileSize: 104857600, // 100MB
+    allowedFileTypes: ['JSON', 'XML', 'COBOL', 'CSV'],
+    enableAuditLogging: true,
+    enableNotifications: true,
+    enableBatchProcessing: true
+  },
   active: true
 };
 
 const testService = {
-  name: `Load Test Service ${Math.random()}`,
-  description: 'Load testing service',
+  name: `Enterprise Load Test Service ${Math.random()}`,
+  description: 'Enterprise load testing service with multiple file types',
+  serviceCode: `SVC${Math.floor(Math.random() * 10000)}`,
+  enableMonitoring: true,
+  enableAlerting: true,
   active: true
 };
 
+// Large batch job with enterprise parameters
 const testBatchJob = {
-  tenantId: 'load-test-tenant',
-  inputPath: '/data/test/input',
-  outputPath: '/data/test/output',
-  chunkSize: 100,
-  threadCount: 2
+  tenantId: 'enterprise-load-test-tenant',
+  inputPath: '/data/enterprise/input',
+  outputPath: '/data/enterprise/output',
+  chunkSize: 1000,      // Larger chunks for enterprise
+  threadCount: 8,       // More threads for enterprise
+  retryLimit: 3,
+  skipLimit: 50,
+  customParameters: {
+    enableValidation: true,
+    enableTransformation: true,
+    enableArchiving: true,
+    priority: 'HIGH',
+    processingMode: 'ENTERPRISE'
+  }
+};
+
+// Enterprise file processing data
+const enterpriseFileData = {
+  // Large JSON payload (~10KB)
+  largeJsonPayload: JSON.stringify({
+    transactionId: `TXN-${Math.random().toString(36).substr(2, 9)}`,
+    tenantId: 'enterprise-load-test-tenant',
+    processingDate: new Date().toISOString(),
+    transactions: Array.from({ length: 100 }, (_, i) => ({
+      id: i + 1,
+      amount: Math.floor(Math.random() * 100000) / 100,
+      currency: 'USD',
+      type: 'TRANSFER',
+      account: `ACC-${String(i).padStart(8, '0')}`,
+      timestamp: new Date().toISOString(),
+      description: `Enterprise transaction ${i + 1} for load testing with detailed metadata`,
+      metadata: {
+        channel: 'API',
+        source: 'LOAD_TEST',
+        priority: 'NORMAL',
+        tags: ['enterprise', 'load-test', 'automated']
+      }
+    }))
+  }),
+  
+  // Medium XML payload (~5KB)
+  xmlPayload: `<?xml version="1.0" encoding="UTF-8"?>
+<EnterpriseData>
+  <Header>
+    <TransactionId>TXN-${Math.random().toString(36).substr(2, 9)}</TransactionId>
+    <TenantId>enterprise-load-test-tenant</TenantId>
+    <ProcessingDate>${new Date().toISOString()}</ProcessingDate>
+    <FileType>XML</FileType>
+  </Header>
+  <Records>
+    ${Array.from({ length: 50 }, (_, i) => `
+    <Record id="${i + 1}">
+      <Amount>${Math.floor(Math.random() * 100000) / 100}</Amount>
+      <Currency>USD</Currency>
+      <Account>ACC-${String(i).padStart(8, '0')}</Account>
+      <Description>Enterprise XML record ${i + 1} for comprehensive load testing</Description>
+      <Metadata>
+        <Channel>API</Channel>
+        <Source>LOAD_TEST</Source>
+        <Priority>NORMAL</Priority>
+      </Metadata>
+    </Record>`).join('')}
+  </Records>
+</EnterpriseData>`,
+  
+  // COBOL-style fixed-width payload (~2KB)
+  cobolPayload: Array.from({ length: 10 }, (_, i) => {
+    const customerId = `CUST${String(i).padStart(6, '0')}`;
+    const customerName = `Customer Name ${i}`.padEnd(30, ' ');
+    const address = `123 Enterprise St, City ${i}`.padEnd(60, ' ');
+    const balance = String(Math.floor(Math.random() * 1000000)).padStart(10, '0') + '.00';
+    const status = 'A';
+    const filler = ' '.repeat(87);
+    
+    return customerId + customerName + address + balance + status + filler;
+  }).join('\n')
 };
 
 export default function() {
