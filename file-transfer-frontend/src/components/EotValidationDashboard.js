@@ -25,7 +25,9 @@ import {
   DialogActions,
   LinearProgress,
   IconButton,
-  Tooltip
+  Tooltip,
+  useMediaQuery,
+  useTheme as useMuiTheme,
 } from '@mui/material';
 import {
   CheckCircle as CheckCircleIcon,
@@ -39,9 +41,14 @@ import {
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { useTheme } from '../theme/themeProvider';
 import './EotValidationDashboard.css';
 
 const EotValidationDashboard = ({ tenantId }) => {
+  const { isDark } = useTheme();
+  const muiTheme = useMuiTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
+  
   const [dashboardData, setDashboardData] = useState(null);
   const [validationResults, setValidationResults] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -213,9 +220,9 @@ const EotValidationDashboard = ({ tenantId }) => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box className="eot-validation-dashboard">
+      <Box className={`eot-validation-dashboard ${isMobile ? 'mobile-container' : 'desktop-container'}`}>
         <Box className="dashboard-header">
-          <Typography variant="h4" gutterBottom>
+          <Typography variant={isMobile ? "h5" : "h4"} gutterBottom>
             EOT Validation Dashboard
           </Typography>
           <Box className="header-actions">

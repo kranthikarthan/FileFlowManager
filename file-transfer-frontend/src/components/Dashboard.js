@@ -6,7 +6,9 @@ import {
   Typography,
   Box,
   CircularProgress,
-  Alert
+  Alert,
+  useMediaQuery,
+  useTheme as useMuiTheme,
 } from '@mui/material';
 import {
   PieChart,
@@ -21,11 +23,16 @@ import {
   Tooltip,
   Legend
 } from 'recharts';
+import { useTheme } from '../theme/themeProvider';
 import { fileTransferAPI } from '../services/api';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
 export const Dashboard = () => {
+  const { isDark, colors } = useTheme();
+  const muiTheme = useMuiTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [statistics, setStatistics] = useState({

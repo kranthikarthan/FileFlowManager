@@ -29,7 +29,9 @@ import {
   Alert,
   Tab,
   Tabs,
-  Autocomplete
+  Autocomplete,
+  useMediaQuery,
+  useTheme as useMuiTheme,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -40,9 +42,13 @@ import {
   Search as SearchIcon,
   FilterList as FilterIcon
 } from '@mui/icons-material';
+import { useTheme } from '../theme/themeProvider';
 import './SharedSchemaManagement.css';
 
 const SharedSchemaManagement = ({ tenantId }) => {
+  const { isDark } = useTheme();
+  const muiTheme = useMuiTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
   const [schemas, setSchemas] = useState([]);
   const [filteredSchemas, setFilteredSchemas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -442,8 +448,8 @@ const SharedSchemaManagement = ({ tenantId }) => {
   );
 
   return (
-    <Box className="shared-schema-management">
-      <Typography variant="h4" gutterBottom>
+    <Box className={`shared-schema-management ${isMobile ? 'mobile-container' : 'desktop-container'}`}>
+      <Typography variant={isMobile ? "h5" : "h4"} gutterBottom>
         Shared Schema Management
       </Typography>
 
@@ -610,7 +616,22 @@ const SharedSchemaManagement = ({ tenantId }) => {
       </TableContainer>
 
       {/* Create Dialog */}
-      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog 
+        open={createDialogOpen} 
+        onClose={() => setCreateDialogOpen(false)} 
+        maxWidth="md" 
+        fullWidth
+        fullScreen={isMobile}
+        PaperProps={{
+          sx: {
+            borderRadius: isMobile ? 0 : 3,
+            background: isDark 
+              ? 'rgba(26, 46, 26, 0.98)'
+              : 'rgba(248, 253, 248, 0.98)',
+            backdropFilter: 'blur(20px)',
+          },
+        }}
+      >
         <DialogTitle>Create New Shared Schema</DialogTitle>
         <DialogContent>
           {renderSchemaForm()}
