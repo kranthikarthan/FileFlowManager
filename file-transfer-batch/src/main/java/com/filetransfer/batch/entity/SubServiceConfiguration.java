@@ -1,10 +1,9 @@
-package com.filetransfer.web.entity;
+package com.filetransfer.batch.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
-import java.util.Map;
 
 @Entity
 @Table(name = "sub_service_configurations")
@@ -38,7 +37,7 @@ public class SubServiceConfiguration {
     @NotNull
     private Boolean enabled = true;
     
-    // Cut-off time configuration (moved from ServiceConfiguration)
+    // Cut-off time configuration
     @Column(nullable = false)
     private String cutOffTime = "23:59:59";
     
@@ -78,18 +77,6 @@ public class SubServiceConfiguration {
     // Holiday configuration
     @Column(nullable = false)
     private Boolean allSundaysAsHolidays = false;
-    
-    // File type and direction specific schema configurations
-    @OneToMany(mappedBy = "subServiceConfiguration", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<FileTypeSchemaMapping> fileTypeSchemaMappings;
-    
-    @ElementCollection
-    @CollectionTable(name = "sub_service_direction_configs", 
-                    joinColumns = @JoinColumn(name = "sub_service_config_id"))
-    @MapKeyEnumerated(EnumType.STRING)
-    @MapKeyColumn(name = "direction")
-    @Column(name = "config_json", columnDefinition = "TEXT")
-    private Map<TransferDirection, String> directionConfigs;
     
     // SOT/EOT marker configuration
     @Column(nullable = false)
@@ -213,12 +200,6 @@ public class SubServiceConfiguration {
     public Boolean getAllSundaysAsHolidays() { return allSundaysAsHolidays; }
     public void setAllSundaysAsHolidays(Boolean allSundaysAsHolidays) { this.allSundaysAsHolidays = allSundaysAsHolidays; }
     
-    public List<FileTypeSchemaMapping> getFileTypeSchemaMappings() { return fileTypeSchemaMappings; }
-    public void setFileTypeSchemaMappings(List<FileTypeSchemaMapping> fileTypeSchemaMappings) { this.fileTypeSchemaMappings = fileTypeSchemaMappings; }
-    
-    public Map<TransferDirection, String> getDirectionConfigs() { return directionConfigs; }
-    public void setDirectionConfigs(Map<TransferDirection, String> directionConfigs) { this.directionConfigs = directionConfigs; }
-    
     public String getStartMarkerPrefix() { return startMarkerPrefix; }
     public void setStartMarkerPrefix(String startMarkerPrefix) { this.startMarkerPrefix = startMarkerPrefix; }
     
@@ -263,73 +244,4 @@ public class SubServiceConfiguration {
     
     public String getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
-    
-    /**
-     * Get schema ID for specific file type and direction
-     */
-    public Long getSchemaIdForFileType(FileType fileType, TransferDirection direction) {
-        if (fileType == FileType.BINARY_FILE && binaryFileBypass) {
-            return null; // No schema validation for binary files when bypass is enabled
-        }
-        
-        if (fileTypeSchemaMappings == null) {
-            return null;
-        }
-        
-        return fileTypeSchemaMappings.stream()
-            .filter(mapping -> mapping.getFileType() == fileType)
-            .findFirst()
-            .map(mapping -> mapping.getSchemaIdForDirection(direction))
-            .orElse(null);
-    }
-    
-    /**
-     * Check if schema validation is required for file type
-     */
-    public boolean requiresSchemaValidation(FileType fileType) {
-        if (fileType == FileType.BINARY_FILE && binaryFileBypass) {
-            return false;
-        }
-        
-        return schemaValidationEnabled && fileType.requiresSchemaValidation();
-    }
-    
-    /**
-     * Check if schema validation is required for file type and direction
-     */
-    public boolean requiresSchemaValidation(FileType fileType, TransferDirection direction) {
-        if (fileType == FileType.BINARY_FILE && binaryFileBypass) {
-            return false;
-        }
-        
-        if (!schemaValidationEnabled || !fileType.requiresSchemaValidation()) {
-            return false;
-        }
-        
-        if (fileTypeSchemaMappings == null) {
-            return false;
-        }
-        
-        return fileTypeSchemaMappings.stream()
-            .filter(mapping -> mapping.getFileType() == fileType)
-            .findFirst()
-            .map(mapping -> mapping.isValidationEnabledForDirection(direction))
-            .orElse(false);
-    }
-    
-    /**
-     * Add or update file type schema mapping
-     */
-    public void addFileTypeSchemaMapping(FileType fileType, Long inboundSchemaId, Long outboundSchemaId) {
-        if (fileTypeSchemaMappings == null) {
-            fileTypeSchemaMappings = new java.util.ArrayList<>();
-        }
-        
-        // Remove existing mapping for this file type
-        fileTypeSchemaMappings.removeIf(mapping -> mapping.getFileType() == fileType);
-        
-        // Add new mapping
-        FileTypeSchemaMapping mapping = new FileTypeSchemaMapping(this, fileType, inboundSchemaId, outboundSchemaId);
-        fileTypeSchemaMappings.add(mapping);
-    }
 }

@@ -9,6 +9,8 @@ import SecurityIcon from '@mui/icons-material/Security';
 import BusinessIcon from '@mui/icons-material/Business';
 import EventIcon from '@mui/icons-material/Event';
 import NotificationsIcon from '@mui/icons-material/Notifications';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import ScheduleIcon from '@mui/icons-material/Schedule';
 
 export const Navigation = () => {
   const navigate = useNavigate();
@@ -68,6 +70,18 @@ export const Navigation = () => {
           iconPosition="start" 
           label="Alerts" 
           value="/alerts" 
+        />
+        <Tab 
+          icon={<AccountTreeIcon />} 
+          iconPosition="start" 
+          label="Sub-Services" 
+          value="/sub-services" 
+        />
+        <Tab 
+          icon={<ScheduleIcon />} 
+          iconPosition="start" 
+          label="Cut-off Extensions" 
+          value="/cutoff-extensions" 
         />
       </Tabs>
     </Box>

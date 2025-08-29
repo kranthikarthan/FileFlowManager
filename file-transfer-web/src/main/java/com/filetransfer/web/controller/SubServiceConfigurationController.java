@@ -23,6 +23,9 @@ public class SubServiceConfigurationController {
     @Autowired
     private SubServiceConfigurationService subServiceConfigService;
     
+    @Autowired
+    private TenantTimeZoneService tenantTimeZoneService;
+    
     @GetMapping("/tenant/{tenantId}")
     public ResponseEntity<List<SubServiceConfiguration>> getSubServicesForTenant(@PathVariable String tenantId) {
         List<SubServiceConfiguration> subServices = subServiceConfigService.getSubServicesForTenant(tenantId);
@@ -202,5 +205,35 @@ public class SubServiceConfigurationController {
             )
         );
         return ResponseEntity.ok(fileTypes);
+    }
+    
+    @GetMapping("/tenant/{tenantId}/service/{serviceName}/subservice/{subServiceName}/cut-off-info")
+    public ResponseEntity<?> getCutOffInfo(@PathVariable String tenantId, 
+                                         @PathVariable String serviceName,
+                                         @PathVariable String subServiceName) {
+        try {
+            LocalTime cutOffTime = subServiceConfigService.getEffectiveCutOffTime(tenantId, serviceName, subServiceName, null);
+            boolean inProcessingWindow = subServiceConfigService.isInProcessingWindow(tenantId, serviceName, subServiceName);
+            java.time.Duration timeUntilCutOff = subServiceConfigService.getTimeUntilCutOff(tenantId, serviceName, subServiceName);
+            TenantTimeZoneService.TimeZoneInfo timezoneInfo = tenantTimeZoneService.getTenantTimeZoneInfo(tenantId);
+            
+            Map<String, Object> cutOffInfo = new java.util.HashMap<>();
+            cutOffInfo.put("cutOffTime", cutOffTime.toString());
+            cutOffInfo.put("inProcessingWindow", inProcessingWindow);
+            cutOffInfo.put("timeUntilCutOffMinutes", timeUntilCutOff.toMinutes());
+            cutOffInfo.put("timeUntilCutOffHours", timeUntilCutOff.toHours());
+            cutOffInfo.put("timeZone", timezoneInfo);
+            cutOffInfo.put("currentTenantTime", tenantTimeZoneService.getCurrentTenantTime(tenantId).toString());
+            
+            return ResponseEntity.ok(cutOffInfo);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    @GetMapping("/tenant/{tenantId}/timezone-info")
+    public ResponseEntity<TenantTimeZoneService.TimeZoneInfo> getTenantTimeZoneInfo(@PathVariable String tenantId) {
+        TenantTimeZoneService.TimeZoneInfo timezoneInfo = tenantTimeZoneService.getTenantTimeZoneInfo(tenantId);
+        return ResponseEntity.ok(timezoneInfo);
     }
 }

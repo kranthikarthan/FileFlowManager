@@ -37,6 +37,9 @@ public class SubServiceConfigurationService {
     @Autowired
     private HolidayService holidayService;
     
+    @Autowired
+    private TenantTimeZoneService tenantTimeZoneService;
+    
     /**
      * Get all sub-services for a tenant
      */
@@ -193,14 +196,18 @@ public class SubServiceConfigurationService {
             .orElseThrow(() -> new RuntimeException(
                 String.format("Sub-service not found: %s/%s for tenant %s", serviceName, subServiceName, tenantId)));
         
-        // First check for any active extensions
+        // Get the date in tenant timezone if not specified
+        LocalDate tenantDate = date != null ? date : tenantTimeZoneService.getCurrentTenantDate(tenantId);
+        
+        // First check for any active extensions (timezone-aware)
+        LocalDateTime currentTenantTime = tenantTimeZoneService.getCurrentTenantTime(tenantId);
         LocalTime effectiveTime = cutOffExtensionService.getEffectiveCutOffTime(
-            tenantId, serviceName, subServiceName, date, LocalDateTime.now());
+            tenantId, serviceName, subServiceName, tenantDate, currentTenantTime);
         
         // If no extension, use configured cut-off time
-        if (effectiveTime.equals(getConfiguredCutOffTime(config, date))) {
-            // Check if today is a holiday
-            boolean isHoliday = holidayService.isHoliday(tenantId, date);
+        if (effectiveTime.equals(getConfiguredCutOffTime(config, tenantDate))) {
+            // Check if today is a holiday in tenant timezone
+            boolean isHoliday = holidayService.isHoliday(tenantId, tenantDate);
             if (isHoliday) {
                 // Use holiday cut-off time logic if configured
                 // For now, extend by 2 hours as default holiday extension
@@ -337,6 +344,52 @@ public class SubServiceConfigurationService {
         } catch (Exception e) {
             logger.warn("Failed to parse time '{}', using default 23:59:59", timeStr);
             return LocalTime.parse("23:59:59");
+        }
+    }
+    
+    /**
+     * Check if current time is within processing window (timezone-aware)
+     */
+    public boolean isInProcessingWindow(String tenantId, String serviceName, String subServiceName) {
+        return isInProcessingWindow(tenantId, serviceName, subServiceName, null);
+    }
+    
+    /**
+     * Check if current time is within processing window for specific date (timezone-aware)
+     */
+    public boolean isInProcessingWindow(String tenantId, String serviceName, String subServiceName, LocalDate date) {
+        try {
+            LocalDate targetDate = date != null ? date : tenantTimeZoneService.getCurrentTenantDate(tenantId);
+            LocalTime cutOffTime = getEffectiveCutOffTime(tenantId, serviceName, subServiceName, targetDate);
+            
+            return tenantTimeZoneService.isInProcessingWindow(tenantId, targetDate, cutOffTime);
+            
+        } catch (Exception e) {
+            logger.error("Error checking processing window for {}/{}: {}", serviceName, subServiceName, e.getMessage());
+            return false; // Fail safe - don't process if we can't determine
+        }
+    }
+    
+    /**
+     * Get time until cut-off in tenant timezone
+     */
+    public java.time.Duration getTimeUntilCutOff(String tenantId, String serviceName, String subServiceName) {
+        return getTimeUntilCutOff(tenantId, serviceName, subServiceName, null);
+    }
+    
+    /**
+     * Get time until cut-off for specific date in tenant timezone
+     */
+    public java.time.Duration getTimeUntilCutOff(String tenantId, String serviceName, String subServiceName, LocalDate date) {
+        try {
+            LocalDate targetDate = date != null ? date : tenantTimeZoneService.getCurrentTenantDate(tenantId);
+            LocalTime cutOffTime = getEffectiveCutOffTime(tenantId, serviceName, subServiceName, targetDate);
+            
+            return tenantTimeZoneService.getTimeUntilCutOff(tenantId, targetDate, cutOffTime);
+            
+        } catch (Exception e) {
+            logger.error("Error calculating time until cut-off for {}/{}: {}", serviceName, subServiceName, e.getMessage());
+            return java.time.Duration.ZERO;
         }
     }
 }
