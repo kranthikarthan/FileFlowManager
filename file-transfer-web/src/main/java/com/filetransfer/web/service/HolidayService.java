@@ -23,6 +23,9 @@ public class HolidayService {
     @Autowired
     private HolidayRepository holidayRepository;
     
+    @Autowired
+    private SecurityContextService securityContextService;
+    
     public List<HolidayDto> getHolidaysForTenant(String tenantId) {
         return holidayRepository.findByTenantId(tenantId).stream()
                 .map(this::convertToDto)
@@ -58,7 +61,7 @@ public class HolidayService {
         
         Holiday holiday = convertToEntity(holidayDto);
         holiday.setCreatedAt(LocalDateTime.now());
-        holiday.setCreatedBy("system"); // TODO: Get from security context
+        holiday.setCreatedBy(securityContextService.getCurrentUserId());
         
         Holiday savedHoliday = holidayRepository.save(holiday);
         return convertToDto(savedHoliday);
@@ -80,7 +83,7 @@ public class HolidayService {
         existingHoliday.setHolidayName(holidayDto.getHolidayName());
         existingHoliday.setDescription(holidayDto.getDescription());
         existingHoliday.setUpdatedAt(LocalDateTime.now());
-        existingHoliday.setUpdatedBy("system"); // TODO: Get from security context
+        existingHoliday.setUpdatedBy(securityContextService.getCurrentUserId());
         
         Holiday savedHoliday = holidayRepository.save(existingHoliday);
         return convertToDto(savedHoliday);

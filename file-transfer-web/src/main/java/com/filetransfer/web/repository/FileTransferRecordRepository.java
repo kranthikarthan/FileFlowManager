@@ -46,4 +46,15 @@ public interface FileTransferRecordRepository extends JpaRepository<FileTransfer
     
     @Query("SELECT DISTINCT f.subServiceType FROM FileTransferRecord f WHERE f.tenantId = :tenantId AND f.serviceType = :serviceType AND f.subServiceType IS NOT NULL")
     List<String> findDistinctSubServiceTypesForService(@Param("tenantId") String tenantId, @Param("serviceType") String serviceType);
+    
+    @Query("SELECT COUNT(f) FROM FileTransferRecord f WHERE f.tenantId = :tenantId AND f.serviceType = :serviceType AND f.status IN (:activeStatuses)")
+    long countActiveTransfersForService(@Param("tenantId") String tenantId, 
+                                      @Param("serviceType") String serviceType,
+                                      @Param("activeStatuses") List<TransferStatus> activeStatuses);
+    
+    @Query("SELECT COUNT(f) FROM FileTransferRecord f WHERE f.tenantId = :tenantId AND f.serviceType = :serviceType AND f.subServiceType = :subServiceType AND f.status IN (:activeStatuses)")
+    long countActiveTransfersForSubService(@Param("tenantId") String tenantId,
+                                         @Param("serviceType") String serviceType,
+                                         @Param("subServiceType") String subServiceType,
+                                         @Param("activeStatuses") List<TransferStatus> activeStatuses);
 }

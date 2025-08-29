@@ -19,6 +19,9 @@ public class TenantService {
     @Autowired
     private TenantRepository tenantRepository;
     
+    @Autowired
+    private SecurityContextService securityContextService;
+    
     public List<TenantDto> getAllTenants() {
         return tenantRepository.findAll().stream()
                 .map(this::convertToDto)
@@ -53,7 +56,7 @@ public class TenantService {
         
         Tenant tenant = convertToEntity(tenantDto);
         tenant.setCreatedAt(LocalDateTime.now());
-        tenant.setCreatedBy("system"); // TODO: Get from security context
+        tenant.setCreatedBy(securityContextService.getCurrentUserId());
         
         Tenant savedTenant = tenantRepository.save(tenant);
         return convertToDto(savedTenant);
@@ -74,7 +77,7 @@ public class TenantService {
         existingTenant.setTimezone(tenantDto.getTimezone());
         existingTenant.setEnabled(tenantDto.getEnabled());
         existingTenant.setUpdatedAt(LocalDateTime.now());
-        existingTenant.setUpdatedBy("system"); // TODO: Get from security context
+        existingTenant.setUpdatedBy(securityContextService.getCurrentUserId());
         
         Tenant savedTenant = tenantRepository.save(existingTenant);
         return convertToDto(savedTenant);
