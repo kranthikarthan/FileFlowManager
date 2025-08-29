@@ -102,6 +102,81 @@ services:
           memory: 1G
           cpus: '0.5'
 
+  # Batch Processing Instance 1
+  file-transfer-batch-1:
+    build:
+      context: ../file-transfer-batch
+      dockerfile: Dockerfile
+    container_name: file-transfer-batch-1
+    environment:
+      - SERVER_PORT=8082
+      - SPRING_PROFILES_ACTIVE=production,batch-scalability
+      - BATCH_DATABASE_URL=jdbc:postgresql://postgres-primary:5432/filetransfer_batch
+      - REDIS_HOST=redis-cluster-1
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:8761/eureka/
+      - BATCH_CHUNK_SIZE=200
+      - BATCH_THREAD_POOL_SIZE=20
+      - BATCH_PARTITION_SIZE=8
+    depends_on:
+      - postgres-primary
+      - redis-cluster-1
+      - eureka
+      - rabbitmq
+    networks:
+      - scalability
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+
+  # Batch Processing Instance 2
+  file-transfer-batch-2:
+    build:
+      context: ../file-transfer-batch
+      dockerfile: Dockerfile
+    container_name: file-transfer-batch-2
+    environment:
+      - SERVER_PORT=8082
+      - SPRING_PROFILES_ACTIVE=production,batch-scalability
+      - BATCH_DATABASE_URL=jdbc:postgresql://postgres-secondary:5432/filetransfer_batch
+      - REDIS_HOST=redis-cluster-2
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:8761/eureka/
+      - BATCH_CHUNK_SIZE=200
+      - BATCH_THREAD_POOL_SIZE=20
+      - BATCH_PARTITION_SIZE=8
+    depends_on:
+      - postgres-secondary
+      - redis-cluster-2
+      - eureka
+      - rabbitmq
+    networks:
+      - scalability
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+
+  # Message Broker for Batch Coordination
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: file-transfer-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: password
+      RABBITMQ_DEFAULT_VHOST: file-transfer
+    ports:
+      - "5672:5672"
+      - "15672:15672"  # Management UI
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - scalability
+    restart: unless-stopped
+
   # Primary Database Shard
   postgres-primary:
     image: postgres:15
@@ -381,6 +456,8 @@ volumes:
   prometheus-scale-data:
     driver: local
   grafana-scale-data:
+    driver: local
+  rabbitmq-data:
     driver: local
 
 networks:
