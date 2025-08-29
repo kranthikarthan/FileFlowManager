@@ -57,6 +57,12 @@ public class FileMonitoringService {
     @Autowired
     private FileValidationService fileValidationService;
     
+    @Autowired
+    private EotValidationService eotValidationService;
+    
+    @Autowired
+    private FileNamingConventionService fileNamingConventionService;
+    
     @Scheduled(fixedDelayString = "${file-transfer.poll-interval-seconds:30}000")
     public void monitorInboundFiles() {
         if (!fileTransferConfig.isEnabled()) {
@@ -342,21 +348,27 @@ public class FileMonitoringService {
             byte[] content = Files.readAllBytes(filePath);
             FileType fileType = FileType.detectFromContent(new String(content), fileName);
             
-            // Create file transfer record
-            FileTransferRecord record = new FileTransferRecord(
-                fileName,
-                config.getServiceName(),
-                config.getSubServiceName(),
-                config.getTenantId(),
-                filePath.toString(),
-                config.getOutboundPath() + "/" + fileName,
-                TransferDirection.INBOUND,
-                fileType
-            );
-            
-            // Set file metadata
-            record.setFileSize(Files.size(filePath));
-            record.setChecksum(calculateChecksum(filePath.toString()));
+                    // Create file transfer record
+        FileTransferRecord record = new FileTransferRecord(
+            fileName,
+            config.getServiceName(),
+            config.getSubServiceName(),
+            config.getTenantId(),
+            filePath.toString(),
+            config.getOutboundPath() + "/" + fileName,
+            TransferDirection.INBOUND,
+            fileType
+        );
+
+        // Set file metadata
+        record.setFileSize(Files.size(filePath));
+        record.setChecksum(calculateChecksum(filePath.toString()));
+        
+        // Determine file name type and record for count tracking
+        LocalDate processingDate = extractProcessingDate(fileName);
+        FileNamingConventionService.FileNameType nameType = determineFileNameType(fileName, config);
+        
+        recordFileForCountTracking(config, fileName, fileType, processingDate, nameType, content);
             
             // Validate file based on type and configuration
             if (config.getSchemaValidationEnabled() && fileType.requiresSchemaValidation()) {
@@ -421,12 +433,111 @@ public class FileMonitoringService {
             
             // TODO: Add schema validation once FileTypeSchemaMapping integration is complete
             
-            return true;
-            
-        } catch (Exception e) {
-            logger.error("Error validating file {} for subservice {}/{}: {}", 
-                        fileName, config.getServiceName(), config.getSubServiceName(), e.getMessage());
-            return false;
-        }
+                    return true;
+
+    } catch (Exception e) {
+        logger.error("Error validating file {} for subservice {}/{}: {}",
+                    fileName, config.getServiceName(), config.getSubServiceName(), e.getMessage());
+        return false;
     }
+}
+
+/**
+ * Record file for count tracking and EOT validation
+ */
+private void recordFileForCountTracking(SubServiceConfiguration config, String fileName, 
+                                      FileType fileType, LocalDate processingDate, 
+                                      FileNamingConventionService.FileNameType nameType, 
+                                      byte[] content) {
+    try {
+        if (processingDate == null) {
+            processingDate = LocalDate.now(); // Fallback to today
+        }
+        
+        switch (nameType) {
+            case SOT:
+                eotValidationService.recordSotFile(
+                    config.getTenantId(),
+                    config.getServiceName(),
+                    config.getSubServiceName(),
+                    processingDate,
+                    fileType,
+                    TransferDirection.INBOUND
+                );
+                break;
+                
+            case EOT:
+                eotValidationService.processEotFile(
+                    config.getTenantId(),
+                    config.getServiceName(),
+                    config.getSubServiceName(),
+                    processingDate,
+                    fileType,
+                    TransferDirection.INBOUND,
+                    content,
+                    fileName
+                );
+                break;
+                
+            case DATA:
+                eotValidationService.recordDataFile(
+                    config.getTenantId(),
+                    config.getServiceName(),
+                    config.getSubServiceName(),
+                    processingDate,
+                    fileType,
+                    TransferDirection.INBOUND
+                );
+                break;
+        }
+        
+        logger.debug("Recorded file {} for count tracking: type={}, date={}", 
+                    fileName, nameType, processingDate);
+        
+    } catch (Exception e) {
+        logger.error("Error recording file for count tracking: {}", e.getMessage(), e);
+    }
+}
+
+/**
+ * Determine file name type based on naming conventions
+ */
+private FileNamingConventionService.FileNameType determineFileNameType(String fileName, SubServiceConfiguration config) {
+    if (fileName.startsWith(config.getStartMarkerPrefix())) {
+        return FileNamingConventionService.FileNameType.SOT;
+    } else if (fileName.startsWith(config.getEndMarkerPrefix())) {
+        return FileNamingConventionService.FileNameType.EOT;
+    } else {
+        return FileNamingConventionService.FileNameType.DATA;
+    }
+}
+
+/**
+ * Extract processing date from file name
+ */
+private LocalDate extractProcessingDate(String fileName) {
+    try {
+        // Use naming convention service to extract date
+        FileNamingConventionService.NamingValidationResult result = 
+            fileNamingConventionService.validateFileName(fileName, null, FileNamingConventionService.FileNameType.DATA);
+        
+        if (result.getExtractedDate() != null) {
+            return result.getExtractedDate();
+        }
+        
+        // Fallback: look for date patterns in filename
+        java.util.regex.Pattern datePattern = java.util.regex.Pattern.compile("\\d{8}");
+        java.util.regex.Matcher matcher = datePattern.matcher(fileName);
+        
+        if (matcher.find()) {
+            String dateStr = matcher.group();
+            return LocalDate.parse(dateStr, java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+        }
+        
+    } catch (Exception e) {
+        logger.debug("Could not extract date from filename {}: {}", fileName, e.getMessage());
+    }
+    
+    return null; // Will default to current date in caller
+}
 }

@@ -11,6 +11,8 @@ import EventIcon from '@mui/icons-material/Event';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import ScheduleIcon from '@mui/icons-material/Schedule';
+import SchemaIcon from '@mui/icons-material/Schema';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 
 export const Navigation = () => {
   const navigate = useNavigate();
@@ -82,6 +84,18 @@ export const Navigation = () => {
           iconPosition="start" 
           label="Cut-off Extensions" 
           value="/cutoff-extensions" 
+        />
+        <Tab 
+          icon={<SchemaIcon />} 
+          iconPosition="start" 
+          label="Shared Schemas" 
+          value="/shared-schemas" 
+        />
+        <Tab 
+          icon={<AssessmentIcon />} 
+          iconPosition="start" 
+          label="EOT Validation" 
+          value="/eot-validation" 
         />
       </Tabs>
     </Box>

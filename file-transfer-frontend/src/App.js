@@ -14,6 +14,8 @@ import HolidayManagement from './components/HolidayManagement';
 import AlertManagement from './components/AlertManagement';
 import SubServiceManagement from './components/SubServiceManagement';
 import CutOffExtensionManagement from './components/CutOffExtensionManagement';
+import SharedSchemaManagement from './components/SharedSchemaManagement';
+import EotValidationDashboard from './components/EotValidationDashboard';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -107,9 +109,11 @@ function App() {
           <Route path="/services" element={<ServiceManagement />} />
           <Route path="/tenants" element={<TenantManagement />} />
           <Route path="/holidays" element={<HolidayManagement />} />
-          <Route path="/alerts" element={<AlertManagement />} />
-          <Route path="/sub-services" element={<SubServiceManagement tenantId={user?.tenantId || 'default'} />} />
-          <Route path="/cutoff-extensions" element={<CutOffExtensionManagement tenantId={user?.tenantId || 'default'} />} />
+                        <Route path="/alerts" element={<AlertManagement />} />
+              <Route path="/sub-services" element={<SubServiceManagement tenantId={user?.tenantId || 'default'} />} />
+              <Route path="/cutoff-extensions" element={<CutOffExtensionManagement tenantId={user?.tenantId || 'default'} />} />
+              <Route path="/shared-schemas" element={<SharedSchemaManagement tenantId={user?.tenantId || 'default'} />} />
+              <Route path="/eot-validation" element={<EotValidationDashboard tenantId={user?.tenantId || 'default'} />} />
         </Routes>
       </Container>
     </Box>
