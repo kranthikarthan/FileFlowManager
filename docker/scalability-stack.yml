@@ -1,0 +1,391 @@
+# Docker Compose for Scalability Stack
+# Includes Redis Cluster, Database Shards, Load Balancer, and Multiple App Instances
+
+version: '3.8'
+
+services:
+  # Load Balancer (HAProxy)
+  load-balancer:
+    image: haproxy:2.8
+    container_name: file-transfer-load-balancer
+    ports:
+      - "80:80"
+      - "8404:8404"  # HAProxy stats
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      - file-transfer-app-1
+      - file-transfer-app-2
+      - file-transfer-app-3
+    networks:
+      - scalability
+    restart: unless-stopped
+
+  # Application Instance 1
+  file-transfer-app-1:
+    build:
+      context: ../file-transfer-web
+      dockerfile: Dockerfile
+    container_name: file-transfer-app-1
+    environment:
+      - SERVER_PORT=8080
+      - SPRING_PROFILES_ACTIVE=production,scalability,sharding
+      - SPRING_DATASOURCE_PRIMARY_URL=jdbc:postgresql://postgres-primary:5432/filetransfer_primary
+      - SPRING_DATASOURCE_SECONDARY_URL=jdbc:postgresql://postgres-secondary:5432/filetransfer_secondary
+      - REDIS_HOST=redis-cluster-1
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:8761/eureka/
+    depends_on:
+      - postgres-primary
+      - postgres-secondary
+      - redis-cluster-1
+      - eureka
+    networks:
+      - scalability
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+
+  # Application Instance 2
+  file-transfer-app-2:
+    build:
+      context: ../file-transfer-web
+      dockerfile: Dockerfile
+    container_name: file-transfer-app-2
+    environment:
+      - SERVER_PORT=8080
+      - SPRING_PROFILES_ACTIVE=production,scalability,sharding
+      - SPRING_DATASOURCE_PRIMARY_URL=jdbc:postgresql://postgres-primary:5432/filetransfer_primary
+      - SPRING_DATASOURCE_SECONDARY_URL=jdbc:postgresql://postgres-secondary:5432/filetransfer_secondary
+      - REDIS_HOST=redis-cluster-2
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:8761/eureka/
+    depends_on:
+      - postgres-primary
+      - postgres-secondary
+      - redis-cluster-2
+      - eureka
+    networks:
+      - scalability
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+
+  # Application Instance 3
+  file-transfer-app-3:
+    build:
+      context: ../file-transfer-web
+      dockerfile: Dockerfile
+    container_name: file-transfer-app-3
+    environment:
+      - SERVER_PORT=8080
+      - SPRING_PROFILES_ACTIVE=production,scalability,sharding
+      - SPRING_DATASOURCE_PRIMARY_URL=jdbc:postgresql://postgres-primary:5432/filetransfer_primary
+      - SPRING_DATASOURCE_SECONDARY_URL=jdbc:postgresql://postgres-secondary:5432/filetransfer_secondary
+      - REDIS_HOST=redis-cluster-3
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:8761/eureka/
+    depends_on:
+      - postgres-primary
+      - postgres-secondary
+      - redis-cluster-3
+      - eureka
+    networks:
+      - scalability
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+
+  # Primary Database Shard
+  postgres-primary:
+    image: postgres:15
+    container_name: file-transfer-postgres-primary
+    environment:
+      POSTGRES_DB: filetransfer_primary
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres-primary-data:/var/lib/postgresql/data
+      - ./postgres/init-primary.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    ports:
+      - "5432:5432"
+    networks:
+      - scalability
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+
+  # Secondary Database Shard
+  postgres-secondary:
+    image: postgres:15
+    container_name: file-transfer-postgres-secondary
+    environment:
+      POSTGRES_DB: filetransfer_secondary
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres-secondary-data:/var/lib/postgresql/data
+      - ./postgres/init-secondary.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    ports:
+      - "5433:5432"
+    networks:
+      - scalability
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+
+  # Redis Cluster Node 1
+  redis-cluster-1:
+    image: redis:7.2
+    container_name: file-transfer-redis-1
+    command: >
+      redis-server
+      --port 6379
+      --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-cluster-1-data:/data
+    ports:
+      - "6379:6379"
+      - "16379:16379"
+    networks:
+      - scalability
+    restart: unless-stopped
+
+  # Redis Cluster Node 2
+  redis-cluster-2:
+    image: redis:7.2
+    container_name: file-transfer-redis-2
+    command: >
+      redis-server
+      --port 6379
+      --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-cluster-2-data:/data
+    ports:
+      - "6380:6379"
+      - "16380:16379"
+    networks:
+      - scalability
+    restart: unless-stopped
+
+  # Redis Cluster Node 3
+  redis-cluster-3:
+    image: redis:7.2
+    container_name: file-transfer-redis-3
+    command: >
+      redis-server
+      --port 6379
+      --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-cluster-3-data:/data
+    ports:
+      - "6381:6379"
+      - "16381:16379"
+    networks:
+      - scalability
+    restart: unless-stopped
+
+  # Service Discovery (Eureka)
+  eureka:
+    image: springcloud/eureka
+    container_name: file-transfer-eureka
+    ports:
+      - "8761:8761"
+    environment:
+      - EUREKA_CLIENT_REGISTER_WITH_EUREKA=false
+      - EUREKA_CLIENT_FETCH_REGISTRY=false
+    networks:
+      - scalability
+    restart: unless-stopped
+
+  # Database Connection Pooler (PgBouncer)
+  pgbouncer-primary:
+    image: pgbouncer/pgbouncer:latest
+    container_name: file-transfer-pgbouncer-primary
+    environment:
+      DATABASES_HOST: postgres-primary
+      DATABASES_PORT: 5432
+      DATABASES_USER: postgres
+      DATABASES_PASSWORD: password
+      DATABASES_DBNAME: filetransfer_primary
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 100
+      DEFAULT_POOL_SIZE: 25
+    ports:
+      - "6432:5432"
+    depends_on:
+      - postgres-primary
+    networks:
+      - scalability
+    restart: unless-stopped
+
+  pgbouncer-secondary:
+    image: pgbouncer/pgbouncer:latest
+    container_name: file-transfer-pgbouncer-secondary
+    environment:
+      DATABASES_HOST: postgres-secondary
+      DATABASES_PORT: 5432
+      DATABASES_USER: postgres
+      DATABASES_PASSWORD: password
+      DATABASES_DBNAME: filetransfer_secondary
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 100
+      DEFAULT_POOL_SIZE: 25
+    ports:
+      - "6433:5432"
+    depends_on:
+      - postgres-secondary
+    networks:
+      - scalability
+    restart: unless-stopped
+
+  # Redis Sentinel for High Availability
+  redis-sentinel-1:
+    image: redis:7.2
+    container_name: file-transfer-redis-sentinel-1
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./redis/sentinel.conf:/etc/redis/sentinel.conf
+    ports:
+      - "26379:26379"
+    depends_on:
+      - redis-cluster-1
+    networks:
+      - scalability
+    restart: unless-stopped
+
+  # Metrics and Monitoring
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: file-transfer-prometheus-scale
+    ports:
+      - "9091:9090"
+    volumes:
+      - prometheus-scale-data:/prometheus
+      - ./prometheus/prometheus-scale.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    networks:
+      - scalability
+    restart: unless-stopped
+
+  # Grafana for Metrics Visualization
+  grafana-scale:
+    image: grafana/grafana:10.1.0
+    container_name: file-transfer-grafana-scale
+    ports:
+      - "3002:3000"
+    volumes:
+      - grafana-scale-data:/var/lib/grafana
+      - ./grafana/provisioning-scale:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - scalability
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  # Auto-scaler (Custom)
+  auto-scaler:
+    build:
+      context: ./auto-scaler
+      dockerfile: Dockerfile
+    container_name: file-transfer-auto-scaler
+    environment:
+      - PROMETHEUS_URL=http://prometheus:9090
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - SCALE_TARGET_SERVICE=file-transfer-app
+      - MIN_INSTANCES=2
+      - MAX_INSTANCES=10
+      - CPU_THRESHOLD=70
+      - MEMORY_THRESHOLD=80
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - prometheus
+    networks:
+      - scalability
+    restart: unless-stopped
+
+  # Cache warming service
+  cache-warmer:
+    build:
+      context: ./cache-warmer
+      dockerfile: Dockerfile
+    container_name: file-transfer-cache-warmer
+    environment:
+      - REDIS_CLUSTER_NODES=redis-cluster-1:6379,redis-cluster-2:6379,redis-cluster-3:6379
+      - APP_ENDPOINTS=http://file-transfer-app-1:8080,http://file-transfer-app-2:8080,http://file-transfer-app-3:8080
+    depends_on:
+      - redis-cluster-1
+      - redis-cluster-2
+      - redis-cluster-3
+      - file-transfer-app-1
+      - file-transfer-app-2
+      - file-transfer-app-3
+    networks:
+      - scalability
+    restart: unless-stopped
+
+volumes:
+  postgres-primary-data:
+    driver: local
+  postgres-secondary-data:
+    driver: local
+  redis-cluster-1-data:
+    driver: local
+  redis-cluster-2-data:
+    driver: local
+  redis-cluster-3-data:
+    driver: local
+  prometheus-scale-data:
+    driver: local
+  grafana-scale-data:
+    driver: local
+
+networks:
+  scalability:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

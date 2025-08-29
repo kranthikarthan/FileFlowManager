@@ -1,0 +1,356 @@
+# Scalability Configuration
+
+# Database Sharding Configuration
+sharding:
+  enabled: false  # Set to true to enable sharding
+  database:
+    count: 2      # Number of database shards
+  table:
+    count: 4      # Number of table shards per database
+  
+  # Primary database configuration
+  datasource:
+    primary:
+      url: jdbc:h2:mem:filetransfer_primary;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+      username: sa
+      password: password
+      driver-class-name: org.h2.Driver
+    
+    # Secondary database configuration (for sharding)
+    secondary:
+      url: jdbc:h2:mem:filetransfer_secondary;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+      username: sa
+      password: password
+      driver-class-name: org.h2.Driver
+
+# Load Balancing Configuration
+load-balancing:
+  algorithm: round-robin  # Options: round-robin, weighted-round-robin, least-connections, least-response-time, hash-based, random, weighted-random
+  health-check-interval: 30000  # Health check interval in milliseconds
+  max-failures: 3               # Maximum failures before marking instance unhealthy
+  
+  # Service registry
+  services:
+    file-transfer-web:
+      instances:
+        - id: instance-1
+          host: localhost
+          port: 8080
+          protocol: http
+          weight: 1
+        - id: instance-2
+          host: localhost
+          port: 8081
+          protocol: http
+          weight: 2
+    
+    file-transfer-batch:
+      instances:
+        - id: batch-1
+          host: localhost
+          port: 8082
+          protocol: http
+          weight: 1
+
+# Performance Optimization
+performance:
+  # Thread pool configuration
+  thread-pool:
+    core-size: 10
+    max-size: 50
+    queue-capacity: 1000
+    keep-alive: 60
+  
+  # HTTP client configuration
+  http:
+    connection-timeout: 30000
+    read-timeout: 30000
+    max-connections: 200
+    max-connections-per-route: 50
+  
+  # Async processing configuration
+  async:
+    enabled: true
+    file-processing-threads: 20
+    validation-threads: 15
+    database-threads: 30
+
+# Caching Configuration
+cache:
+  strategy: local  # Options: local, distributed, multi-level
+  
+  # Local cache settings (Caffeine)
+  local:
+    maximum-size: 10000
+    expire-after-write: PT10M  # ISO-8601 duration
+    record-stats: true
+  
+  # Distributed cache settings (Redis)
+  distributed:
+    ttl: PT30M  # Time to live
+    cluster: false
+    nodes:
+      - localhost:6379
+  
+  # Cache-specific configurations
+  regions:
+    tenantCache:
+      ttl: PT1H
+      max-size: 1000
+    subServiceConfigs:
+      ttl: PT30M
+      max-size: 5000
+    tenantTimezones:
+      ttl: PT6H
+      max-size: 500
+    fileSchemas:
+      ttl: PT15M
+      max-size: 2000
+    validationResults:
+      ttl: PT5M
+      max-size: 10000
+
+# Connection Pooling Configuration
+spring:
+  datasource:
+    hikari:
+      # Pool sizing
+      maximum-pool-size: 20
+      minimum-idle: 5
+      
+      # Performance tuning
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+      
+      # Connection properties
+      data-source-properties:
+        cachePrepStmts: true
+        prepStmtCacheSize: 250
+        prepStmtCacheSqlLimit: 2048
+        useServerPrepStmts: true
+        useLocalSessionState: true
+        rewriteBatchedStatements: true
+        cacheResultSetMetadata: true
+        cacheServerConfiguration: true
+        elideSetAutoCommits: true
+        maintainTimeStats: false
+
+# JPA/Hibernate Optimization
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        # Query optimization
+        jdbc:
+          batch_size: 100
+          fetch_size: 50
+        
+        # Second level cache
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+          region:
+            factory_class: org.hibernate.cache.caffeine.CaffeineCacheRegionFactory
+        
+        # Performance settings
+        order_inserts: true
+        order_updates: true
+        batch_versioned_data: true
+        generate_statistics: false  # Disable in production
+        
+        # Connection provider
+        connection:
+          provider_disables_autocommit: true
+
+# Redis Configuration (for distributed caching and rate limiting)
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    database: 0
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 20
+        max-idle: 10
+        min-idle: 2
+        max-wait: 5000ms
+      cluster:
+        refresh:
+          adaptive: true
+          period: 30s
+
+# Redisson Configuration (for advanced distributed features)
+redisson:
+  config: |
+    singleServerConfig:
+      address: "redis://${REDIS_HOST:localhost}:${REDIS_PORT:6379}"
+      password: ${REDIS_PASSWORD:null}
+      database: 0
+      connectionPoolSize: 20
+      connectionMinimumIdleSize: 5
+      idleConnectionTimeout: 10000
+      timeout: 3000
+      retryAttempts: 3
+      retryInterval: 1500
+    threads: 16
+    nettyThreads: 32
+
+# Batch Processing Configuration
+batch:
+  processing:
+    enabled: true
+    batch-size: 100
+    flush-interval: 5000  # milliseconds
+    parallel-processing: true
+    max-concurrent-batches: 5
+
+# Auto-scaling Configuration
+auto-scaling:
+  enabled: false  # Enable for cloud deployments
+  
+  # CPU-based scaling
+  cpu:
+    target-utilization: 70  # Target CPU utilization percentage
+    scale-up-threshold: 80
+    scale-down-threshold: 30
+    cooldown-period: 300    # seconds
+  
+  # Memory-based scaling
+  memory:
+    target-utilization: 75  # Target memory utilization percentage
+    scale-up-threshold: 85
+    scale-down-threshold: 40
+  
+  # Queue-based scaling
+  queue:
+    target-length: 100      # Target queue length
+    scale-up-threshold: 200
+    scale-down-threshold: 50
+  
+  # Instance limits
+  instances:
+    min: 2
+    max: 10
+    desired: 3
+
+# Monitoring and Metrics
+monitoring:
+  scalability:
+    enabled: true
+    collect-interval: 30s
+    
+    # Metrics to collect
+    metrics:
+      - jvm.memory.used
+      - jvm.threads.live
+      - process.cpu.usage
+      - system.cpu.usage
+      - hikaricp.connections.active
+      - hikaricp.connections.pending
+      - cache.gets
+      - cache.puts
+      - cache.evictions
+      - http.server.requests
+
+# Service Discovery (Eureka)
+eureka:
+  client:
+    enabled: false  # Enable for microservices architecture
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+
+# Circuit Breaker Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      fileProcessing:
+        failure-rate-threshold: 50
+        slow-call-rate-threshold: 50
+        slow-call-duration-threshold: 2s
+        wait-duration-in-open-state: 30s
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+      
+      databaseOperations:
+        failure-rate-threshold: 60
+        wait-duration-in-open-state: 60s
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+
+# Environment-specific overrides
+---
+spring:
+  profiles: development
+
+sharding:
+  enabled: false
+
+cache:
+  strategy: local
+
+performance:
+  thread-pool:
+    core-size: 5
+    max-size: 20
+
+---
+spring:
+  profiles: production
+
+sharding:
+  enabled: true
+  database:
+    count: 4
+  table:
+    count: 8
+
+cache:
+  strategy: distributed
+
+performance:
+  thread-pool:
+    core-size: 20
+    max-size: 100
+    queue-capacity: 2000
+
+auto-scaling:
+  enabled: true
+
+eureka:
+  client:
+    enabled: true
+
+---
+spring:
+  profiles: scale
+
+sharding:
+  enabled: true
+  database:
+    count: 8
+  table:
+    count: 16
+
+cache:
+  strategy: multi-level
+
+performance:
+  thread-pool:
+    core-size: 50
+    max-size: 200
+    queue-capacity: 5000
+
+batch:
+  processing:
+    batch-size: 500
+    max-concurrent-batches: 20
