@@ -37,6 +37,19 @@ public class FileTransferRecord {
     @Column(nullable = false)
     private TransferDirection direction;
     
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private FileType fileType = FileType.COBOL_FLAT_FILE;
+    
+    @Column
+    private Boolean schemaValidationPassed;
+    
+    @Column
+    private String schemaValidationErrors;
+    
+    @Column
+    private Long schemaId;
+    
     @Column
     private String errorMessage;
     
@@ -71,6 +84,20 @@ public class FileTransferRecord {
         this.sourcePath = sourcePath;
         this.targetPath = targetPath;
         this.direction = direction;
+        this.fileType = FileType.detectFromContent(null, fileName); // Auto-detect from filename
+    }
+    
+    public FileTransferRecord(String fileName, String serviceType, String subServiceType, String tenantId, 
+                            String sourcePath, String targetPath, TransferDirection direction, FileType fileType) {
+        this();
+        this.fileName = fileName;
+        this.serviceType = serviceType;
+        this.subServiceType = subServiceType;
+        this.tenantId = tenantId;
+        this.sourcePath = sourcePath;
+        this.targetPath = targetPath;
+        this.direction = direction;
+        this.fileType = fileType;
     }
     
     // Getters and Setters
@@ -100,6 +127,18 @@ public class FileTransferRecord {
     
     public TransferDirection getDirection() { return direction; }
     public void setDirection(TransferDirection direction) { this.direction = direction; }
+    
+    public FileType getFileType() { return fileType; }
+    public void setFileType(FileType fileType) { this.fileType = fileType; }
+    
+    public Boolean getSchemaValidationPassed() { return schemaValidationPassed; }
+    public void setSchemaValidationPassed(Boolean schemaValidationPassed) { this.schemaValidationPassed = schemaValidationPassed; }
+    
+    public String getSchemaValidationErrors() { return schemaValidationErrors; }
+    public void setSchemaValidationErrors(String schemaValidationErrors) { this.schemaValidationErrors = schemaValidationErrors; }
+    
+    public Long getSchemaId() { return schemaId; }
+    public void setSchemaId(Long schemaId) { this.schemaId = schemaId; }
     
     public String getErrorMessage() { return errorMessage; }
     public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
