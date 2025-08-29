@@ -1,0 +1,185 @@
+# Batch Application Backup Configuration
+
+spring:
+  profiles:
+    active: backup
+
+# Batch Backup Configuration
+batch:
+  backup:
+    enabled: ${BATCH_BACKUP_ENABLED:true}
+    location: ${BATCH_BACKUP_LOCATION:/var/backups/batch}
+    retention:
+      days: ${BATCH_BACKUP_RETENTION_DAYS:30}
+      full-backups: ${BATCH_BACKUP_RETENTION_FULL:12}
+      incremental-backups: ${BATCH_BACKUP_RETENTION_INCREMENTAL:168}
+    
+    # Spring Batch job repository backup
+    job-repository:
+      enabled: ${BATCH_JOB_REPO_BACKUP_ENABLED:true}
+      include-job-instances: true
+      include-job-executions: true
+      include-job-parameters: true
+      include-step-executions: true
+      export-format: json  # json, xml, sql
+    
+    # Batch job data backup
+    job-data:
+      enabled: ${BATCH_JOB_DATA_BACKUP_ENABLED:true}
+      source-paths:
+        - ${BATCH_DATA_PATH:/app/batch-data}
+        - ${BATCH_INPUT_PATH:/app/batch-data/input}
+        - ${BATCH_OUTPUT_PATH:/app/batch-data/output}
+        - ${BATCH_PROCESSING_PATH:/app/batch-data/processing}
+        - ${BATCH_ERROR_PATH:/app/batch-data/error}
+        - ${BATCH_ARCHIVE_PATH:/app/batch-data/archive}
+      exclude-patterns:
+        - "*.tmp"
+        - "*.lock"
+        - "temp/*"
+        - "cache/*"
+    
+    # Configuration backup
+    configuration:
+      enabled: ${BATCH_CONFIG_BACKUP_ENABLED:true}
+      source-paths:
+        - ${BATCH_CONFIG_PATH:/app/config}
+        - /app/application*.yml
+        - /app/application*.properties
+      include-environment-configs: true
+      include-job-configs: true
+      include-security-configs: true
+    
+    # Batch files backup
+    batch-files:
+      enabled: ${BATCH_FILES_BACKUP_ENABLED:true}
+      include-processing-files: true
+      include-metadata: true
+      include-statistics: true
+      include-monitoring-data: true
+    
+    # Compression settings
+    compression: ${BATCH_BACKUP_COMPRESSION:true}
+    compression-algorithm: ${BATCH_BACKUP_COMPRESSION_ALGORITHM:gzip}
+    compression-level: ${BATCH_BACKUP_COMPRESSION_LEVEL:6}
+    
+    # Encryption settings
+    encryption: ${BATCH_BACKUP_ENCRYPTION:true}
+    encryption-algorithm: ${BATCH_BACKUP_ENCRYPTION_ALGORITHM:AES-256-GCM}
+    encryption-key-file: ${BATCH_BACKUP_ENCRYPTION_KEY_FILE:/app/config/batch-backup-encryption.key}
+    
+    # Remote backup settings
+    remote:
+      enabled: ${BATCH_BACKUP_REMOTE_ENABLED:false}
+      provider: ${BATCH_BACKUP_REMOTE_PROVIDER:s3}
+      endpoint: ${BATCH_BACKUP_REMOTE_ENDPOINT:}
+      bucket: ${BATCH_BACKUP_REMOTE_BUCKET:filetransfer-batch-backups}
+      region: ${BATCH_BACKUP_REMOTE_REGION:us-east-1}
+    
+    # Backup schedules
+    schedule: ${BATCH_BACKUP_SCHEDULE:0 0 3 * * *}  # Daily at 3 AM
+    
+    # Cross-application coordination
+    cross-app:
+      enabled: ${BATCH_CROSS_APP_BACKUP_ENABLED:true}
+      web-url: ${BATCH_CROSS_APP_WEB_URL:http://file-transfer-web:8080}
+      frontend-url: ${BATCH_CROSS_APP_FRONTEND_URL:http://file-transfer-frontend:3000}
+      coordination-timeout: ${BATCH_CROSS_APP_TIMEOUT:300000}  # 5 minutes
+
+# Spring Batch Configuration for Backup Operations
+spring:
+  batch:
+    job:
+      enabled: true
+    initialize-schema: always
+    
+# Thread pool configuration for batch backup operations
+batch-backup-executor:
+  core-pool-size: ${BATCH_BACKUP_CORE_POOL_SIZE:2}
+  max-pool-size: ${BATCH_BACKUP_MAX_POOL_SIZE:5}
+  queue-capacity: ${BATCH_BACKUP_QUEUE_CAPACITY:50}
+  thread-name-prefix: "BatchBackup-"
+  keep-alive-seconds: ${BATCH_BACKUP_KEEP_ALIVE:300}
+
+# Monitoring for batch backup operations
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,batch,backup
+  endpoint:
+    batch:
+      enabled: true
+    backup:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: file-transfer-batch-backup
+      environment: ${SPRING_PROFILES_ACTIVE:development}
+
+# Logging configuration for batch backup operations
+logging:
+  level:
+    com.filetransfer.batch.service.BatchBackupService: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{backupId},%X{coordinationId}] %logger{36} - %msg%n"
+
+---
+# Development Profile
+spring:
+  profiles: development
+
+batch:
+  backup:
+    enabled: true
+    compression: false
+    encryption: false
+    remote:
+      enabled: false
+    retention:
+      days: 7
+      full-backups: 3
+      incremental-backups: 21
+
+---
+# Production Profile
+spring:
+  profiles: production
+
+batch:
+  backup:
+    enabled: true
+    compression: true
+    encryption: true
+    remote:
+      enabled: true
+    retention:
+      days: 90
+      full-backups: 24
+      incremental-backups: 336  # 2 weeks
+    cross-app:
+      enabled: true
+
+---
+# High Availability Profile
+spring:
+  profiles: ha
+
+batch:
+  backup:
+    enabled: true
+    compression: true
+    encryption: true
+    remote:
+      enabled: true
+    retention:
+      days: 180
+      full-backups: 48
+      incremental-backups: 672  # 4 weeks
+    schedule: "0 0 */3 * * *"  # Every 3 hours for HA
+    cross-app:
+      enabled: true
+      coordination-timeout: 180000  # 3 minutes for faster HA

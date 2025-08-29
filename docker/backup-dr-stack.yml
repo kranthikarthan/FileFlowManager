@@ -3,12 +3,12 @@ version: '3.8'
 name: file-transfer-backup-dr
 
 services:
-  # Primary Application Stack
-  file-transfer-app:
+  # Primary Web Application Stack
+  file-transfer-web:
     build:
       context: ../file-transfer-web
       dockerfile: Dockerfile
-    container_name: file-transfer-app-primary
+    container_name: file-transfer-web-primary
     environment:
       - SERVER_PORT=8080
       - SPRING_PROFILES_ACTIVE=production,backup
@@ -41,8 +41,80 @@ services:
       retries: 3
       start_period: 60s
 
-  # Secondary Application Stack (DR)
-  file-transfer-app-secondary:
+  # Primary Batch Application Stack
+  file-transfer-batch:
+    build:
+      context: ../file-transfer-batch
+      dockerfile: Dockerfile
+    container_name: file-transfer-batch-primary
+    environment:
+      - SERVER_PORT=8082
+      - SPRING_PROFILES_ACTIVE=production,backup,batch-scalability
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-primary:5432/filetransfer
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=password
+      - BATCH_BACKUP_ENABLED=true
+      - BATCH_BACKUP_LOCATION=/var/backups/batch
+      - BATCH_BACKUP_COMPRESSION=true
+      - BATCH_BACKUP_ENCRYPTION=true
+      - BATCH_DATA_PATH=/app/batch-data
+      - DR_ENABLED=true
+      - DR_PRIMARY_REGION=us-east-1
+      - DR_SECONDARY_REGION=us-west-2
+    volumes:
+      - batch-data:/app/batch-data
+      - batch-config:/app/config
+      - backup-data:/var/backups/batch
+      - backup-logs:/var/log
+    depends_on:
+      - postgres-primary
+      - redis-primary
+      - rabbitmq
+    networks:
+      - backup-dr
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Primary Frontend Application Stack
+  file-transfer-frontend:
+    build:
+      context: ../file-transfer-frontend
+      dockerfile: Dockerfile
+    container_name: file-transfer-frontend-primary
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_API_BASE_URL=http://file-transfer-web:8080
+      - REACT_APP_BATCH_API_URL=http://file-transfer-batch:8082
+      - REACT_APP_BACKUP_ENABLED=true
+      - REACT_APP_BACKUP_ENDPOINT=/api/frontend-backup
+      - REACT_APP_VERSION=1.2.0
+      - REACT_APP_BUILD_NUMBER=${BUILD_NUMBER:-latest}
+    volumes:
+      - frontend-dist:/usr/share/nginx/html
+      - frontend-config:/etc/nginx/conf.d
+      - frontend-logs:/var/log/nginx
+    ports:
+      - "3000:80"
+    depends_on:
+      - file-transfer-web
+      - file-transfer-batch
+    networks:
+      - backup-dr
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Secondary Web Application Stack (DR)
+  file-transfer-web-secondary:
     build:
       context: ../file-transfer-web
       dockerfile: Dockerfile
@@ -424,6 +496,30 @@ volumes:
   app-data-secondary:
     driver: local
 
+  # Batch Application Data
+  batch-data:
+    driver: local
+  batch-config:
+    driver: local
+  batch-data-secondary:
+    driver: local
+  batch-config-secondary:
+    driver: local
+
+  # Frontend Application Data
+  frontend-dist:
+    driver: local
+  frontend-config:
+    driver: local
+  frontend-logs:
+    driver: local
+  frontend-dist-secondary:
+    driver: local
+  frontend-config-secondary:
+    driver: local
+  frontend-logs-secondary:
+    driver: local
+
   # Database Data
   postgres-primary-data:
     driver: local
@@ -444,6 +540,12 @@ volumes:
   redis-backups-secondary:
     driver: local
 
+  # RabbitMQ Data
+  rabbitmq-data:
+    driver: local
+  rabbitmq-data-secondary:
+    driver: local
+
   # Backup Data
   backup-data:
     driver: local
@@ -452,6 +554,12 @@ volumes:
   backup-logs:
     driver: local
   backup-logs-secondary:
+    driver: local
+
+  # Cross-Application Backup Data
+  cross-app-backup-data:
+    driver: local
+  cross-app-metadata:
     driver: local
 
   # Disaster Recovery
