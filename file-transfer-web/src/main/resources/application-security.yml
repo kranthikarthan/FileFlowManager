@@ -1,0 +1,280 @@
+# Advanced Security Configuration
+
+security:
+  # Rate Limiting Configuration
+  rate-limiting:
+    enabled: true
+    distributed: false  # Set to true to use Redis for distributed rate limiting
+    
+    # Rate limits by endpoint type
+    api:
+      requests-per-minute: 60
+    login:
+      attempts-per-hour: 10
+    file-upload:
+      requests-per-minute: 10
+    tenant:
+      requests-per-minute: 1000
+    admin:
+      requests-per-minute: 20
+    bulk:
+      requests-per-minute: 5
+
+  # CORS Configuration
+  cors:
+    allowed-origins: 
+      - http://localhost:3000
+      - http://localhost:3001
+      - https://yourdomain.com
+    allowed-methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      - PATCH
+    allowed-headers:
+      - Authorization
+      - Content-Type
+      - X-Requested-With
+      - Accept
+      - Origin
+      - X-Tenant-ID
+      - X-Correlation-ID
+      - X-User-ID
+      - X-API-Version
+    exposed-headers:
+      - X-RateLimit-Limit
+      - X-RateLimit-Remaining
+      - X-RateLimit-Reset
+      - X-Correlation-ID
+      - X-API-Version
+    allow-credentials: true
+    max-age: 3600
+
+  # Security Headers Configuration
+  headers:
+    frame-options: DENY
+    content-type-options: nosniff
+    xss-protection: "1; mode=block"
+    hsts:
+      max-age: 31536000
+      include-subdomains: true
+      preload: true
+    referrer-policy: strict-origin-when-cross-origin
+    csp:
+      default-src: "'self'"
+      script-src: "'self' 'unsafe-inline' 'unsafe-eval'"
+      style-src: "'self' 'unsafe-inline' https://fonts.googleapis.com"
+      img-src: "'self' data: https:"
+      font-src: "'self' https://fonts.gstatic.com"
+      connect-src: "'self' https:"
+      frame-ancestors: "'none'"
+    permissions-policy:
+      geolocation: "()"
+      microphone: "()"
+      camera: "()"
+      payment: "()"
+      usb: "()"
+
+  # Encryption Configuration
+  encryption:
+    # Master encryption key (Base64 encoded)
+    # Generate using: openssl rand -base64 32
+    master-key: ${ENCRYPTION_MASTER_KEY:}
+    
+    # Key derivation salt (fallback if master key not provided)
+    key-derivation-salt: ${ENCRYPTION_SALT:FileTransferSalt2024}
+    
+    # Algorithm settings
+    algorithm: AES-GCM
+    key-length: 256
+    
+    # Enable encryption for sensitive data
+    encrypt-passwords: true
+    encrypt-api-keys: true
+    encrypt-session-data: true
+    encrypt-file-metadata: false  # Set to true for enhanced security
+
+  # Input Validation Configuration
+  input-validation:
+    enabled: true
+    max-parameter-length: 1000
+    max-header-length: 500
+    sanitize-html: true
+    check-sql-injection: true
+    check-xss: true
+    check-path-traversal: true
+
+  # Authentication Configuration
+  authentication:
+    password-policy:
+      min-length: 8
+      max-length: 128
+      require-uppercase: true
+      require-lowercase: true
+      require-digits: true
+      require-special-chars: true
+      max-consecutive-chars: 3
+      
+    session:
+      timeout-minutes: 30
+      max-concurrent-sessions: 5
+      
+    jwt:
+      secret: ${JWT_SECRET:your-jwt-secret-key-here}
+      expiration-hours: 24
+      refresh-expiration-days: 7
+      
+    oauth2:
+      enabled: ${OAUTH2_ENABLED:false}
+      providers:
+        google:
+          client-id: ${GOOGLE_CLIENT_ID:}
+          client-secret: ${GOOGLE_CLIENT_SECRET:}
+        azure:
+          client-id: ${AZURE_CLIENT_ID:}
+          client-secret: ${AZURE_CLIENT_SECRET:}
+          tenant-id: ${AZURE_TENANT_ID:}
+
+  # API Security Configuration
+  api:
+    # API versioning
+    versioning:
+      enabled: true
+      default-version: "1.0"
+      header-name: "X-API-Version"
+      
+    # Request/Response filtering
+    request-filtering:
+      max-request-size: 100MB
+      allowed-content-types:
+        - application/json
+        - application/xml
+        - multipart/form-data
+        - text/plain
+        - text/csv
+      
+    # API key authentication
+    api-keys:
+      enabled: true
+      header-name: "X-API-Key"
+      query-param-name: "apiKey"
+      validate-referrer: false
+      
+  # Audit and Logging Configuration
+  audit:
+    enabled: true
+    log-authentication: true
+    log-authorization: true
+    log-data-access: true
+    log-configuration-changes: true
+    log-security-events: true
+    
+    # Sensitive data masking
+    mask-passwords: true
+    mask-api-keys: true
+    mask-personal-data: true
+
+  # File Upload Security
+  file-upload:
+    max-file-size: 100MB
+    max-files-per-request: 10
+    allowed-extensions:
+      - .txt
+      - .csv
+      - .xml
+      - .json
+      - .dat
+      - .cob
+      - .copy
+    scan-for-malware: false  # Set to true if malware scanning is available
+    quarantine-suspicious-files: true
+
+  # Database Security
+  database:
+    encrypt-connections: true
+    connection-timeout: 30
+    query-timeout: 60
+    max-connections: 50
+    
+    # SQL injection protection
+    prepared-statements-only: true
+    escape-sql-identifiers: true
+
+# Redis Configuration for Distributed Rate Limiting
+spring:
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    database: 0
+    timeout: 2000ms
+    jedis:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+# Actuator Security
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+    enabled-by-default: false
+  endpoint:
+    health:
+      enabled: true
+    info:
+      enabled: true
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  security:
+    enabled: true
+
+# Logging Security Events
+logging:
+  level:
+    org.springframework.security: INFO
+    com.filetransfer.web.config.SecurityHeadersFilter: DEBUG
+    com.filetransfer.web.config.RateLimitingFilter: INFO
+    com.filetransfer.web.config.InputValidationFilter: WARN
+    com.filetransfer.web.service.EncryptionService: INFO
+    org.springframework.web.filter.CommonsRequestLoggingFilter: DEBUG
+
+# Environment-specific overrides
+---
+spring:
+  profiles: development
+  
+security:
+  rate-limiting:
+    api:
+      requests-per-minute: 120  # More lenient for development
+  encryption:
+    encrypt-file-metadata: false
+  headers:
+    csp:
+      script-src: "'self' 'unsafe-inline' 'unsafe-eval'"  # Allow eval for development
+
+---
+spring:
+  profiles: production
+  
+security:
+  rate-limiting:
+    distributed: true  # Use Redis in production
+    api:
+      requests-per-minute: 30  # More restrictive in production
+  encryption:
+    encrypt-file-metadata: true  # Enable all encryption in production
+  file-upload:
+    scan-for-malware: true  # Enable malware scanning in production
+  headers:
+    csp:
+      script-src: "'self'"  # Strict CSP in production
+  audit:
+    log-data-access: true  # Full audit logging in production
