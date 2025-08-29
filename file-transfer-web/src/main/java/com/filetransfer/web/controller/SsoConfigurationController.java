@@ -3,6 +3,7 @@ package com.filetransfer.web.controller;
 import com.filetransfer.web.entity.SsoConfiguration;
 import com.filetransfer.web.entity.SsoProvider;
 import com.filetransfer.web.service.SsoConfigurationService;
+import com.filetransfer.web.service.SsoTestingService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,9 @@ public class SsoConfigurationController {
     
     @Autowired
     private SsoConfigurationService ssoConfigService;
+    
+    @Autowired
+    private SsoTestingService ssoTestingService;
     
     @GetMapping
     public ResponseEntity<List<SsoConfiguration>> getAllConfigurations() {
@@ -93,12 +97,17 @@ public class SsoConfigurationController {
     @PostMapping("/{id}/test")
     public ResponseEntity<?> testSsoConnection(@PathVariable Long id) {
         try {
-            // TODO: Implement actual SSO connection test
-            // This would involve making a test OAuth request to validate the configuration
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "SSO connection test successful"
-            ));
+            SsoConfiguration ssoConfig = ssoConfigService.getConfigurationById(id)
+                .orElseThrow(() -> new RuntimeException("SSO configuration not found with id: " + id));
+            
+            Map<String, Object> testResult = ssoTestingService.testSsoConfiguration(ssoConfig);
+            
+            if ((Boolean) testResult.get("success")) {
+                return ResponseEntity.ok(testResult);
+            } else {
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(testResult);
+            }
+            
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
                 "success", false,

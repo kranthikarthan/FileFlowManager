@@ -14,11 +14,11 @@ public class FileTransferRecord {
     @Column(nullable = false)
     private String fileName;
     
-    @Column(nullable = false)
-    private String serviceType;
+    @Column(name = "service_name", nullable = false)
+    private String serviceName;
     
-    @Column
-    private String subServiceType;
+    @Column(name = "sub_service_name")
+    private String subServiceName;
     
     @Column(nullable = false)
     private String tenantId;
@@ -37,6 +37,19 @@ public class FileTransferRecord {
     @Column(nullable = false)
     private TransferDirection direction;
     
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private FileType fileType = FileType.COBOL_FLAT_FILE;
+    
+    @Column
+    private Boolean schemaValidationPassed;
+    
+    @Column
+    private String schemaValidationErrors;
+    
+    @Column
+    private Long schemaId;
+    
     @Column
     private String errorMessage;
     
@@ -45,6 +58,12 @@ public class FileTransferRecord {
     
     @Column
     private LocalDateTime processedAt;
+    
+    @Column(name = "processing_start_time")
+    private LocalDateTime processingStartTime;
+    
+    @Column(name = "processing_end_time")
+    private LocalDateTime processingEndTime;
     
     @Column
     private Long fileSize;
@@ -55,22 +74,42 @@ public class FileTransferRecord {
     @Column
     private String batchJobExecutionId;
     
+    @Column(name = "validation_result", columnDefinition = "TEXT")
+    private String validationResult;
+    
+    @Column(name = "metadata", columnDefinition = "TEXT")
+    private String metadata;
+    
     // Constructors
     public FileTransferRecord() {
         this.createdAt = LocalDateTime.now();
         this.status = TransferStatus.PENDING;
     }
     
-    public FileTransferRecord(String fileName, String serviceType, String subServiceType, String tenantId, 
+    public FileTransferRecord(String fileName, String serviceName, String subServiceName, String tenantId, 
                             String sourcePath, String targetPath, TransferDirection direction) {
         this();
         this.fileName = fileName;
-        this.serviceType = serviceType;
-        this.subServiceType = subServiceType;
+        this.serviceName = serviceName;
+        this.subServiceName = subServiceName;
         this.tenantId = tenantId;
         this.sourcePath = sourcePath;
         this.targetPath = targetPath;
         this.direction = direction;
+        this.fileType = FileType.detectFromContent(null, fileName); // Auto-detect from filename
+    }
+    
+    public FileTransferRecord(String fileName, String serviceName, String subServiceName, String tenantId, 
+                            String sourcePath, String targetPath, TransferDirection direction, FileType fileType) {
+        this();
+        this.fileName = fileName;
+        this.serviceName = serviceName;
+        this.subServiceName = subServiceName;
+        this.tenantId = tenantId;
+        this.sourcePath = sourcePath;
+        this.targetPath = targetPath;
+        this.direction = direction;
+        this.fileType = fileType;
     }
     
     // Getters and Setters
@@ -80,11 +119,11 @@ public class FileTransferRecord {
     public String getFileName() { return fileName; }
     public void setFileName(String fileName) { this.fileName = fileName; }
     
-    public String getServiceType() { return serviceType; }
-    public void setServiceType(String serviceType) { this.serviceType = serviceType; }
+    public String getServiceName() { return serviceName; }
+    public void setServiceName(String serviceName) { this.serviceName = serviceName; }
     
-    public String getSubServiceType() { return subServiceType; }
-    public void setSubServiceType(String subServiceType) { this.subServiceType = subServiceType; }
+    public String getSubServiceName() { return subServiceName; }
+    public void setSubServiceName(String subServiceName) { this.subServiceName = subServiceName; }
     
     public String getTenantId() { return tenantId; }
     public void setTenantId(String tenantId) { this.tenantId = tenantId; }
@@ -101,6 +140,18 @@ public class FileTransferRecord {
     public TransferDirection getDirection() { return direction; }
     public void setDirection(TransferDirection direction) { this.direction = direction; }
     
+    public FileType getFileType() { return fileType; }
+    public void setFileType(FileType fileType) { this.fileType = fileType; }
+    
+    public Boolean getSchemaValidationPassed() { return schemaValidationPassed; }
+    public void setSchemaValidationPassed(Boolean schemaValidationPassed) { this.schemaValidationPassed = schemaValidationPassed; }
+    
+    public String getSchemaValidationErrors() { return schemaValidationErrors; }
+    public void setSchemaValidationErrors(String schemaValidationErrors) { this.schemaValidationErrors = schemaValidationErrors; }
+    
+    public Long getSchemaId() { return schemaId; }
+    public void setSchemaId(Long schemaId) { this.schemaId = schemaId; }
+    
     public String getErrorMessage() { return errorMessage; }
     public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
     
@@ -110,6 +161,12 @@ public class FileTransferRecord {
     public LocalDateTime getProcessedAt() { return processedAt; }
     public void setProcessedAt(LocalDateTime processedAt) { this.processedAt = processedAt; }
     
+    public LocalDateTime getProcessingStartTime() { return processingStartTime; }
+    public void setProcessingStartTime(LocalDateTime processingStartTime) { this.processingStartTime = processingStartTime; }
+    
+    public LocalDateTime getProcessingEndTime() { return processingEndTime; }
+    public void setProcessingEndTime(LocalDateTime processingEndTime) { this.processingEndTime = processingEndTime; }
+    
     public Long getFileSize() { return fileSize; }
     public void setFileSize(Long fileSize) { this.fileSize = fileSize; }
     
@@ -118,4 +175,10 @@ public class FileTransferRecord {
     
     public String getBatchJobExecutionId() { return batchJobExecutionId; }
     public void setBatchJobExecutionId(String batchJobExecutionId) { this.batchJobExecutionId = batchJobExecutionId; }
+    
+    public String getValidationResult() { return validationResult; }
+    public void setValidationResult(String validationResult) { this.validationResult = validationResult; }
+    
+    public String getMetadata() { return metadata; }
+    public void setMetadata(String metadata) { this.metadata = metadata; }
 }

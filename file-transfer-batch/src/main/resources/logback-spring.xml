@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    
+    <!-- Define properties -->
+    <springProfile name="!production">
+        <property name="LOG_LEVEL" value="DEBUG"/>
+        <property name="LOG_PATH" value="logs"/>
+    </springProfile>
+    <springProfile name="production">
+        <property name="LOG_LEVEL" value="INFO"/>
+        <property name="LOG_PATH" value="/var/log/batch-app"/>
+    </springProfile>
+
+    <!-- Console Appender for Development -->
+    <springProfile name="!production">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+                <pattern>
+                    %d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId:-},%X{spanId:-}] [%X{tenantId:-}] [%X{jobId:-}] %logger{36} - %msg%n
+                </pattern>
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <!-- JSON Appender for Production -->
+    <springProfile name="production">
+        <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <timestamp/>
+                    <version/>
+                    <logLevel/>
+                    <message/>
+                    <mdc/>
+                    <arguments/>
+                    <stackTrace/>
+                    <pattern>
+                        <pattern>
+                            {
+                                "application": "file-transfer-batch",
+                                "environment": "${SPRING_PROFILES_ACTIVE:-development}",
+                                "instance": "${HOSTNAME:-localhost}",
+                                "thread": "%thread"
+                            }
+                        </pattern>
+                    </pattern>
+                </providers>
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <!-- File Appender for Application Logs -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/batch-application.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/batch-application.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp/>
+                <version/>
+                <logLevel/>
+                <message/>
+                <mdc/>
+                <arguments/>
+                <stackTrace/>
+                <pattern>
+                    <pattern>
+                        {
+                            "application": "file-transfer-batch",
+                            "environment": "${SPRING_PROFILES_ACTIVE:-development}",
+                            "instance": "${HOSTNAME:-localhost}",
+                            "thread": "%thread"
+                        }
+                    </pattern>
+                </pattern>
+            </providers>
+        </encoder>
+    </appender>
+
+    <!-- Audit Appender for Security Events -->
+    <appender name="AUDIT" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/batch-audit.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/batch-audit.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>90</maxHistory>
+            <totalSizeCap>2GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp/>
+                <version/>
+                <logLevel/>
+                <message/>
+                <mdc/>
+                <arguments/>
+                <pattern>
+                    <pattern>
+                        {
+                            "application": "file-transfer-batch",
+                            "logType": "AUDIT",
+                            "environment": "${SPRING_PROFILES_ACTIVE:-development}",
+                            "instance": "${HOSTNAME:-localhost}"
+                        }
+                    </pattern>
+                </pattern>
+            </providers>
+        </encoder>
+    </appender>
+
+    <!-- Performance Appender for Metrics -->
+    <appender name="PERFORMANCE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/batch-performance.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/batch-performance.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>200MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>5GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp/>
+                <message/>
+                <mdc/>
+                <pattern>
+                    <pattern>
+                        {
+                            "application": "file-transfer-batch",
+                            "logType": "PERFORMANCE",
+                            "environment": "${SPRING_PROFILES_ACTIVE:-development}",
+                            "instance": "${HOSTNAME:-localhost}"
+                        }
+                    </pattern>
+                </pattern>
+            </providers>
+        </encoder>
+    </appender>
+
+    <!-- Business Events Appender -->
+    <appender name="BUSINESS" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/batch-business.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/batch-business.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>60</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp/>
+                <message/>
+                <mdc/>
+                <pattern>
+                    <pattern>
+                        {
+                            "application": "file-transfer-batch",
+                            "logType": "BUSINESS",
+                            "environment": "${SPRING_PROFILES_ACTIVE:-development}",
+                            "instance": "${HOSTNAME:-localhost}"
+                        }
+                    </pattern>
+                </pattern>
+            </providers>
+        </encoder>
+    </appender>
+
+    <!-- Logger configurations -->
+    <logger name="com.filetransfer.batch" level="${LOG_LEVEL}" additivity="false">
+        <springProfile name="!production">
+            <appender-ref ref="CONSOLE"/>
+        </springProfile>
+        <springProfile name="production">
+            <appender-ref ref="STDOUT"/>
+        </springProfile>
+        <appender-ref ref="FILE"/>
+    </logger>
+
+    <!-- Audit logger -->
+    <logger name="AUDIT" level="INFO" additivity="false">
+        <appender-ref ref="AUDIT"/>
+    </logger>
+
+    <!-- Performance logger -->
+    <logger name="PERFORMANCE" level="INFO" additivity="false">
+        <appender-ref ref="PERFORMANCE"/>
+    </logger>
+
+    <!-- Business logger -->
+    <logger name="BUSINESS" level="INFO" additivity="false">
+        <appender-ref ref="BUSINESS"/>
+    </logger>
+
+    <!-- Spring Batch logging -->
+    <logger name="org.springframework.batch" level="INFO"/>
+    <logger name="org.springframework.batch.core.job.AbstractJob" level="DEBUG"/>
+    <logger name="org.springframework.batch.core.step.AbstractStep" level="DEBUG"/>
+
+    <!-- Security logging -->
+    <logger name="org.springframework.security" level="INFO"/>
+    <logger name="com.filetransfer.batch.config.BatchRateLimitingFilter" level="DEBUG"/>
+    <logger name="com.filetransfer.batch.config.BatchInputValidationFilter" level="DEBUG"/>
+
+    <!-- Database logging -->
+    <logger name="org.springframework.jdbc" level="DEBUG"/>
+    <logger name="org.hibernate.SQL" level="DEBUG"/>
+    <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="TRACE"/>
+
+    <!-- Redis logging -->
+    <logger name="org.springframework.data.redis" level="INFO"/>
+    <logger name="io.lettuce.core" level="INFO"/>
+
+    <!-- Messaging logging -->
+    <logger name="org.springframework.cloud.stream" level="INFO"/>
+    <logger name="org.springframework.amqp" level="INFO"/>
+
+    <!-- Metrics and monitoring -->
+    <logger name="io.micrometer" level="INFO"/>
+    <logger name="brave" level="INFO"/>
+
+    <!-- Root logger -->
+    <root level="INFO">
+        <springProfile name="!production">
+            <appender-ref ref="CONSOLE"/>
+        </springProfile>
+        <springProfile name="production">
+            <appender-ref ref="STDOUT"/>
+        </springProfile>
+        <appender-ref ref="FILE"/>
+    </root>
+
+</configuration>

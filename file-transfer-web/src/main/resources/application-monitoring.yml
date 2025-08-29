@@ -1,0 +1,223 @@
+# Monitoring and Observability Configuration
+
+management:
+  # Actuator endpoints configuration
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,beans,configprops,env,loggers,heapdump,threaddump
+      base-path: /actuator
+      cors:
+        allowed-origins: "*"
+        allowed-methods: GET,POST
+    enabled-by-default: true
+  
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+      probes:
+        enabled: true
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+    info:
+      enabled: true
+    beans:
+      enabled: true
+    configprops:
+      enabled: true
+      show-values: always
+    env:
+      enabled: true
+      show-values: always
+    loggers:
+      enabled: true
+    heapdump:
+      enabled: true
+    threaddump:
+      enabled: true
+
+  # Health indicators
+  health:
+    defaults:
+      enabled: true
+    db:
+      enabled: true
+    diskspace:
+      enabled: true
+      threshold: 10GB
+    ping:
+      enabled: true
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+  # Metrics configuration
+  metrics:
+    enable:
+      jvm: true
+      system: true
+      web: true
+      jdbc: true
+      hikaricp: true
+      logback: true
+      tomcat: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        file.processing.time: true
+        file.validation.time: true
+      percentiles:
+        http.server.requests: 0.5,0.9,0.95,0.99
+        file.processing.time: 0.5,0.9,0.95,0.99
+      slo:
+        http.server.requests: 50ms,100ms,200ms,500ms,1s,2s,5s
+    tags:
+      application: file-transfer-web
+      environment: ${spring.profiles.active:unknown}
+
+  # Distributed tracing
+  tracing:
+    sampling:
+      probability: 1.0  # Sample 100% for development, reduce in production
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL:http://localhost:9411/api/v2/spans}
+
+  # Application info
+  info:
+    env:
+      enabled: true
+    java:
+      enabled: true
+    os:
+      enabled: true
+    build:
+      enabled: true
+    git:
+      enabled: true
+      mode: full
+
+# Logging configuration for structured logging
+logging:
+  level:
+    com.filetransfer: DEBUG
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level [%X{correlationId:-},%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{correlationId:-},%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
+  file:
+    name: logs/file-transfer-web.log
+    max-size: 100MB
+    max-history: 30
+
+# Monitoring-specific configuration
+monitoring:
+  alerts:
+    # Alert thresholds
+    file-transfer-failure-rate: 0.1      # 10% failure rate threshold
+    validation-failure-rate: 0.05        # 5% validation failure rate threshold
+    response-time-ms: 5000                # 5 second response time threshold
+    disk-usage-percent: 90                # 90% disk usage threshold
+    memory-usage-percent: 85              # 85% memory usage threshold
+    
+    # Alert suppression (minutes)
+    suppression-minutes: 15
+    
+    # Notification settings
+    notifications:
+      email:
+        enabled: true
+        smtp-server: ${SMTP_SERVER:localhost}
+        smtp-port: ${SMTP_PORT:587}
+        username: ${SMTP_USERNAME:}
+        password: ${SMTP_PASSWORD:}
+        from: alerts@filetransfer.com
+        critical-recipients:
+          - ops-team@company.com
+          - oncall@company.com
+        high-recipients:
+          - ops-team@company.com
+        medium-recipients:
+          - dev-team@company.com
+      
+      slack:
+        enabled: ${SLACK_ENABLED:false}
+        webhook-url: ${SLACK_WEBHOOK_URL:}
+        channel: "#file-transfer-alerts"
+        
+      pagerduty:
+        enabled: ${PAGERDUTY_ENABLED:false}
+        integration-key: ${PAGERDUTY_INTEGRATION_KEY:}
+
+  # Prometheus configuration
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+    step: PT1M  # 1 minute step size
+
+  # Custom metrics configuration
+  custom-metrics:
+    enabled: true
+    tenant-specific: true
+    business-metrics: true
+    performance-metrics: true
+
+# Spring Boot Admin (if used)
+spring:
+  boot:
+    admin:
+      client:
+        enabled: ${SPRING_BOOT_ADMIN_ENABLED:false}
+        url: ${SPRING_BOOT_ADMIN_URL:http://localhost:8080}
+        instance:
+          name: File Transfer Web
+          service-host-type: ip
+          metadata:
+            tags:
+              environment: ${spring.profiles.active:unknown}
+              version: ${application.version:unknown}
+
+# JVM and system monitoring
+system:
+  monitoring:
+    gc:
+      enabled: true
+    memory:
+      enabled: true
+      heap-dump-on-oom: true
+    threads:
+      enabled: true
+    cpu:
+      enabled: true
+    disk:
+      enabled: true
+      paths:
+        - /
+        - /tmp
+        - ${user.home}
+
+# Database monitoring
+spring:
+  datasource:
+    hikari:
+      # Connection pool monitoring
+      register-mbeans: true
+      leak-detection-threshold: 60000  # 60 seconds
+      
+  jpa:
+    properties:
+      hibernate:
+        # SQL statistics
+        generate_statistics: true
+        session:
+          events:
+            log:
+              LOG_QUERIES_SLOWER_THAN_MS: 1000

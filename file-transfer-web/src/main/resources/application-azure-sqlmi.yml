@@ -1,0 +1,325 @@
+# Azure SQL Managed Instance Configuration
+# Enterprise database configuration for Azure SQL MI
+
+spring:
+  profiles:
+    active: azure-sqlmi
+
+  # Azure SQL Managed Instance Configuration
+  datasource:
+    # Azure SQL MI JDBC configuration
+    url: ${AZURE_SQLMI_JDBC_URL:jdbc:sqlserver://file-transfer-sqlmi-production.sql.azuresynapse.net:1433;database=filetransfer;encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.sql.azuresynapse.net;loginTimeout=30;}
+    username: ${AZURE_SQLMI_USERNAME:filetransferadmin}
+    password: ${AZURE_SQLMI_PASSWORD}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    
+    # HikariCP configuration optimized for Azure SQL MI
+    hikari:
+      # Enterprise connection pool for SQL MI
+      maximum-pool-size: ${AZURE_SQLMI_MAX_POOL_SIZE:100}
+      minimum-idle: ${AZURE_SQLMI_MIN_IDLE:20}
+      connection-timeout: ${AZURE_SQLMI_CONNECTION_TIMEOUT:60000}  # 1 minute
+      idle-timeout: ${AZURE_SQLMI_IDLE_TIMEOUT:900000}            # 15 minutes
+      max-lifetime: ${AZURE_SQLMI_MAX_LIFETIME:3600000}           # 1 hour
+      leak-detection-threshold: ${AZURE_SQLMI_LEAK_DETECTION:120000} # 2 minutes
+      
+      # SQL Server specific optimizations
+      data-source-properties:
+        # Connection properties for Azure SQL MI
+        encrypt: true
+        trustServerCertificate: false
+        hostNameInCertificate: "*.sql.azuresynapse.net"
+        loginTimeout: 30
+        socketTimeout: 300000  # 5 minutes for large operations
+        
+        # Performance optimizations for SQL Server
+        sendStringParametersAsUnicode: false
+        selectMethod: cursor
+        responseBuffering: adaptive
+        packetSize: 8192
+        
+        # Connection pooling optimizations
+        pooledStatements: true
+        statementPoolingCacheSize: 500
+        disableStatementPooling: false
+        
+        # Azure SQL MI specific settings
+        applicationName: "FileTransferSystem"
+        applicationIntent: "ReadWrite"
+        multiSubnetFailover: true
+        failoverPartner: ${AZURE_SQLMI_FAILOVER_PARTNER:}
+
+  # JPA Configuration for SQL Server
+  jpa:
+    database-platform: org.hibernate.dialect.SQLServerDialect
+    hibernate:
+      ddl-auto: ${AZURE_SQLMI_DDL_AUTO:validate}
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyJpaImpl
+    
+    properties:
+      hibernate:
+        # SQL Server specific optimizations
+        dialect: org.hibernate.dialect.SQLServer2016Dialect
+        
+        # Performance optimizations for SQL MI
+        jdbc:
+          batch_size: 1000                    # Large batch size for enterprise
+          batch_versioned_data: true
+          order_inserts: true
+          order_updates: true
+          
+        # Query optimizations for SQL Server
+        query:
+          in_clause_parameter_padding: true
+          fail_on_pagination_over_collection_fetch: true
+          plan_cache_max_size: 2048
+          
+        # Connection handling for Azure SQL MI
+        connection:
+          provider_disables_autocommit: true
+          handling_mode: delayed_acquisition_and_release_after_transaction
+          
+        # Cache configuration
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+          region:
+            factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+            
+        # SQL Server specific features
+        use_sql_comments: false              # Disable for performance
+        format_sql: false                   # Disable for performance
+        generate_statistics: false          # Disable for performance
+        
+        # Azure SQL MI specific settings
+        id:
+          new_generator_mappings: true      # Use new ID generators
+        
+        # Transaction settings
+        transaction:
+          jta:
+            platform: org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform
+
+# Azure Integration Configuration
+azure:
+  # Azure SQL MI specific configuration
+  sql-mi:
+    # Connection retry configuration for enterprise resilience
+    connection-retry:
+      enabled: true
+      max-attempts: 5
+      initial-interval: 2000
+      multiplier: 2.0
+      max-interval: 30000
+      
+    # Failover configuration
+    failover:
+      enabled: ${AZURE_SQLMI_FAILOVER_ENABLED:true}
+      partner-server: ${AZURE_SQLMI_FAILOVER_PARTNER:}
+      timeout: 60000                       # 1 minute failover timeout
+      
+    # Performance monitoring
+    monitoring:
+      enabled: true
+      query-store: true
+      automatic-tuning: true
+      
+    # Security configuration
+    security:
+      tde-enabled: true                    # Transparent Data Encryption
+      advanced-threat-protection: true
+      vulnerability-assessment: true
+      
+  # Azure Key Vault integration for SQL MI credentials
+  keyvault:
+    enabled: true
+    uri: ${AZURE_KEYVAULT_URI:https://file-transfer-kv-production.vault.azure.net/}
+    secret-keys:
+      - sql-mi-username
+      - sql-mi-password
+      - sql-mi-connection-string
+      
+  # Application Insights integration
+  application-insights:
+    enabled: true
+    connection-string: ${APPLICATIONINSIGHTS_CONNECTION_STRING}
+    
+    # SQL dependency tracking
+    dependency-tracking:
+      sql-enabled: true
+      collect-query-text: false           # Security: don't log query text
+      collect-query-parameters: false     # Security: don't log parameters
+
+# Database Migration Configuration
+migration:
+  # Flyway configuration for SQL Server
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/sqlserver
+    baseline-on-migrate: true
+    validate-on-migrate: true
+    
+    # SQL Server specific settings
+    sql-migration-suffixes: [".sql"]
+    placeholder-replacement: true
+    placeholders:
+      database-name: "filetransfer"
+      schema-name: "dbo"
+      
+  # Liquibase alternative configuration
+  liquibase:
+    enabled: false  # Use Flyway for SQL Server
+    
+# Performance Configuration for Azure SQL MI
+performance:
+  # Database-specific performance settings
+  database:
+    # Query timeout for large operations
+    query-timeout: ${AZURE_SQLMI_QUERY_TIMEOUT:300}    # 5 minutes
+    
+    # Batch processing configuration
+    batch-size: ${AZURE_SQLMI_BATCH_SIZE:1000}         # Large batches for SQL MI
+    fetch-size: ${AZURE_SQLMI_FETCH_SIZE:1000}         # Large fetch size
+    
+    # Connection pool tuning for SQL MI
+    connection-pool:
+      validation-query: "SELECT 1"
+      validation-interval: 30000
+      test-on-borrow: true
+      test-while-idle: true
+      
+  # Azure SQL MI specific optimizations
+  sql-mi:
+    # Query Store configuration
+    query-store:
+      enabled: true
+      capture-mode: "AUTO"
+      size-based-cleanup-mode: "AUTO"
+      
+    # Automatic tuning
+    automatic-tuning:
+      enabled: true
+      force-last-good-plan: true
+      create-index: true
+      drop-index: true
+      
+    # Resource governance
+    resource-governance:
+      max-degree-of-parallelism: 8
+      max-memory-percent: 80
+
+# Logging Configuration for Azure SQL MI
+logging:
+  level:
+    # SQL Server driver logging
+    com.microsoft.sqlserver: INFO
+    
+    # Hibernate SQL logging (disabled for performance)
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    
+    # Azure SDK logging
+    com.azure: INFO
+    
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{tenantId},%X{userId},%X{requestId}] %logger{36} - %msg%n"
+
+# Monitoring Configuration for Azure SQL MI
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,sql-mi
+  endpoint:
+    sql-mi:
+      enabled: true
+      
+  metrics:
+    export:
+      azure-monitor:
+        enabled: true
+        instrumentation-key: ${APPLICATIONINSIGHTS_INSTRUMENTATION_KEY}
+        
+    tags:
+      database-type: "azure-sql-mi"
+      environment: ${SPRING_PROFILES_ACTIVE}
+
+---
+# Development Profile for Azure SQL MI
+spring:
+  profiles: development-azure-sqlmi
+
+# Development SQL MI settings
+azure:
+  sql-mi:
+    connection-retry:
+      max-attempts: 3
+      initial-interval: 1000
+    monitoring:
+      query-store: false               # Disable for development
+      automatic-tuning: false          # Disable for development
+
+performance:
+  database:
+    query-timeout: 60                  # 1 minute for development
+    batch-size: 100                    # Smaller batches for development
+
+logging:
+  level:
+    com.microsoft.sqlserver: DEBUG     # Enable debug for development
+    org.hibernate.SQL: DEBUG           # Enable SQL logging for development
+
+---
+# Production Profile for Azure SQL MI
+spring:
+  profiles: production-azure-sqlmi
+
+# Production SQL MI settings
+azure:
+  sql-mi:
+    connection-retry:
+      max-attempts: 5
+      initial-interval: 2000
+    monitoring:
+      query-store: true                # Enable for production monitoring
+      automatic-tuning: true           # Enable for production optimization
+    security:
+      tde-enabled: true                # Enable TDE for production
+      advanced-threat-protection: true
+      vulnerability-assessment: true
+
+performance:
+  database:
+    query-timeout: 300                 # 5 minutes for production
+    batch-size: 1000                   # Large batches for production
+    fetch-size: 1000                   # Large fetch for production
+
+logging:
+  level:
+    com.microsoft.sqlserver: INFO      # Info level for production
+    org.hibernate.SQL: WARN            # Disable SQL logging for production performance
+
+---
+# High Availability Profile for Azure SQL MI
+spring:
+  profiles: ha-azure-sqlmi
+
+# HA SQL MI settings
+azure:
+  sql-mi:
+    failover:
+      enabled: true
+      timeout: 30000                   # 30 seconds for HA
+    monitoring:
+      query-store: true
+      automatic-tuning: true
+      
+performance:
+  database:
+    connection-pool:
+      maximum-pool-size: 200           # Large pool for HA
+      minimum-idle: 50                 # High baseline for HA
+    query-timeout: 600                 # 10 minutes for HA operations
+    batch-size: 5000                   # Very large batches for HA

@@ -85,7 +85,45 @@ public class ServiceConfigurationController {
         try {
             serviceConfigService.deleteService(id);
             return ResponseEntity.ok(Map.of("message", "Service deleted successfully"));
+        } catch (IllegalStateException e) {
+            // Service has active transfers - return conflict status
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of(
+                    "error", e.getMessage(),
+                    "type", "ACTIVE_TRANSFERS_EXIST"
+                ));
         } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    @GetMapping("/tenant/{tenantId}/service/{serviceName}/active-transfers")
+    public ResponseEntity<?> getActiveTransfersForService(
+            @PathVariable String tenantId, 
+            @PathVariable String serviceName) {
+        try {
+            long activeTransfers = serviceConfigService.getActiveTransfersForService(tenantId, serviceName);
+            return ResponseEntity.ok(Map.of(
+                "activeTransfers", activeTransfers,
+                "canDelete", activeTransfers == 0
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    @GetMapping("/tenant/{tenantId}/service/{serviceName}/subservice/{subServiceName}/active-transfers")
+    public ResponseEntity<?> getActiveTransfersForSubService(
+            @PathVariable String tenantId, 
+            @PathVariable String serviceName,
+            @PathVariable String subServiceName) {
+        try {
+            long activeTransfers = serviceConfigService.getActiveTransfersForSubService(tenantId, serviceName, subServiceName);
+            return ResponseEntity.ok(Map.of(
+                "activeTransfers", activeTransfers,
+                "canDelete", activeTransfers == 0
+            ));
+        } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }

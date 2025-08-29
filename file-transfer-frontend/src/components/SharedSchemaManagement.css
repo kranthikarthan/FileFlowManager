@@ -1,0 +1,202 @@
+.shared-schema-management {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.shared-schema-management .MuiCard-root {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
+.shared-schema-management .MuiTableContainer-root {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  max-height: 600px;
+}
+
+.shared-schema-management .MuiTableHead-root {
+  background-color: #f5f5f5;
+}
+
+.shared-schema-management .MuiTableHead-root .MuiTableCell-root {
+  font-weight: 600;
+  color: #333;
+}
+
+.shared-schema-management .MuiTableRow-root:hover {
+  background-color: #f9f9f9;
+}
+
+.shared-schema-management .MuiChip-root {
+  font-size: 0.75rem;
+}
+
+.shared-schema-management .MuiDialog-paper {
+  border-radius: 12px;
+}
+
+.shared-schema-management .MuiDialogTitle-root {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.shared-schema-management .MuiTextField-root {
+  margin-bottom: 8px;
+}
+
+.shared-schema-management .MuiFormControl-root {
+  margin-bottom: 8px;
+}
+
+.shared-schema-management .MuiTabs-root {
+  background-color: #f8f9fa;
+  border-radius: 8px 8px 0 0;
+}
+
+.shared-schema-management .MuiTab-root {
+  text-transform: none;
+  font-weight: 500;
+}
+
+.shared-schema-management .MuiAlert-root {
+  border-radius: 8px;
+}
+
+.shared-schema-management .schema-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.shared-schema-management .schema-definition-preview {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 12px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+.shared-schema-management .usage-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shared-schema-management .global-badge {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.shared-schema-management .count-validation-badge {
+  background-color: #e8f5e8;
+  color: #2e7d32;
+}
+
+.shared-schema-management .filters-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px;
+}
+
+.shared-schema-management .filters-section .MuiInputLabel-root {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.shared-schema-management .filters-section .MuiOutlinedInput-root {
+  color: white;
+}
+
+.shared-schema-management .filters-section .MuiOutlinedInput-notchedOutline {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.shared-schema-management .action-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.shared-schema-management .schema-name-cell {
+  min-width: 200px;
+}
+
+.shared-schema-management .schema-description {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shared-schema-management .loading-overlay {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 400px;
+}
+
+.shared-schema-management .empty-state {
+  text-align: center;
+  padding: 48px;
+  color: #666;
+}
+
+.shared-schema-management .empty-state-icon {
+  font-size: 64px;
+  color: #ccc;
+  margin-bottom: 16px;
+}
+
+.shared-schema-management .tab-content {
+  padding: 16px 0;
+}
+
+.shared-schema-management .schema-form {
+  padding-top: 16px;
+}
+
+.shared-schema-management .form-section {
+  margin-bottom: 24px;
+}
+
+.shared-schema-management .form-section-title {
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 8px;
+}
+
+.shared-schema-management .count-validation-section {
+  background-color: #f8f9fa;
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid #4caf50;
+}
+
+.shared-schema-management .field-path-examples {
+  margin-top: 8px;
+  padding: 8px;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.shared-schema-management .field-path-examples .example {
+  margin-bottom: 4px;
+}
+
+.shared-schema-management .field-path-examples .example-label {
+  font-weight: 600;
+  color: #333;
+}
+
+.shared-schema-management .field-path-examples .example-value {
+  font-family: monospace;
+  color: #666;
+}

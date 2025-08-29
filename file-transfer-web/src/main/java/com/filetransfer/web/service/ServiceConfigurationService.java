@@ -1,13 +1,16 @@
 package com.filetransfer.web.service;
 
 import com.filetransfer.web.entity.ServiceConfiguration;
+import com.filetransfer.web.entity.TransferStatus;
 import com.filetransfer.web.repository.ServiceConfigurationRepository;
+import com.filetransfer.web.repository.FileTransferRecordRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -19,6 +22,9 @@ public class ServiceConfigurationService {
     
     @Autowired
     private ServiceConfigurationRepository serviceConfigRepository;
+    
+    @Autowired
+    private FileTransferRecordRepository fileTransferRecordRepository;
     
     @Autowired
     private CutOffTimeService cutOffTimeService;
@@ -130,8 +136,52 @@ public class ServiceConfigurationService {
         ServiceConfiguration service = serviceConfigRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Service not found with id: " + id));
         
-        // TODO: Check if service has any active file transfers before deletion
+        // Check if service has any active file transfers before deletion
+        List<TransferStatus> activeStatuses = Arrays.asList(
+            TransferStatus.PENDING, 
+            TransferStatus.IN_PROGRESS, 
+            TransferStatus.PROCESSING
+        );
+        
+        long activeTransfers = fileTransferRecordRepository.countActiveTransfersForService(
+            service.getTenantId(), 
+            service.getServiceName(), 
+            activeStatuses
+        );
+        
+        if (activeTransfers > 0) {
+            throw new IllegalStateException(
+                String.format("Cannot delete service '%s'. There are %d active file transfers in progress. " +
+                             "Please wait for transfers to complete or manually complete/cancel them before deletion.",
+                             service.getServiceName(), activeTransfers)
+            );
+        }
+        
         serviceConfigRepository.delete(service);
+    }
+    
+    public long getActiveTransfersForService(String tenantId, String serviceName) {
+        List<TransferStatus> activeStatuses = Arrays.asList(
+            TransferStatus.PENDING, 
+            TransferStatus.IN_PROGRESS, 
+            TransferStatus.PROCESSING
+        );
+        
+        return fileTransferRecordRepository.countActiveTransfersForService(
+            tenantId, serviceName, activeStatuses
+        );
+    }
+    
+    public long getActiveTransfersForSubService(String tenantId, String serviceName, String subServiceName) {
+        List<TransferStatus> activeStatuses = Arrays.asList(
+            TransferStatus.PENDING, 
+            TransferStatus.IN_PROGRESS, 
+            TransferStatus.PROCESSING
+        );
+        
+        return fileTransferRecordRepository.countActiveTransfersForSubService(
+            tenantId, serviceName, subServiceName, activeStatuses
+        );
     }
     
     public ServiceConfiguration toggleServiceStatus(Long id) {

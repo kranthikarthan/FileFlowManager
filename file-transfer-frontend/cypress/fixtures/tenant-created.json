@@ -1,0 +1,47 @@
+{
+  "id": 4,
+  "name": "E2E Test Tenant",
+  "description": "Created via E2E test",
+  "timezone": "America/New_York",
+  "contactEmail": "e2e@example.com",
+  "contactPhone": null,
+  "active": true,
+  "status": "ACTIVE",
+  "type": "TRIAL",
+  "region": "US-EAST",
+  "currency": "USD",
+  "language": "en",
+  "createdAt": "2023-12-01T12:00:00",
+  "updatedAt": "2023-12-01T12:00:00",
+  "createdBy": "test-user",
+  "updatedBy": "test-user",
+  "configuration": {
+    "fileRetentionDays": 30,
+    "maxFileSize": 104857600,
+    "allowedFileTypes": ["JSON", "XML", "CSV"],
+    "enableAuditLogging": true,
+    "enableNotifications": true
+  },
+  "features": {
+    "advancedReporting": false,
+    "bulkOperations": true,
+    "apiAccess": true,
+    "customSchemas": true
+  },
+  "limits": {
+    "maxUsers": 10,
+    "maxServices": 5,
+    "maxFileSize": 104857600,
+    "monthlyTransferLimit": 1000
+  },
+  "metrics": {
+    "totalUsers": 0,
+    "activeUsers": 0,
+    "totalServices": 0,
+    "activeServices": 0,
+    "totalFileTransfers": 0,
+    "totalDataVolume": 0,
+    "successRate": 0,
+    "lastActivity": null
+  }
+}

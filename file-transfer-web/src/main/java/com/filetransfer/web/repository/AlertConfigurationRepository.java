@@ -27,4 +27,9 @@ public interface AlertConfigurationRepository extends JpaRepository<AlertConfigu
     
     @Query("SELECT ac FROM AlertConfiguration ac WHERE ac.tenantId = :tenantId AND ac.enabled = true")
     List<AlertConfiguration> findActiveAlertsForTenant(@Param("tenantId") String tenantId);
+    
+    @Query("SELECT ac FROM AlertConfiguration ac WHERE ac.tenantId = :tenantId AND ac.serviceName = :serviceType AND ac.enabled = :enabled")
+    List<AlertConfiguration> findByTenantIdAndServiceTypeAndEnabled(@Param("tenantId") String tenantId,
+                                                                   @Param("serviceType") String serviceType,
+                                                                   @Param("enabled") Boolean enabled);
 }

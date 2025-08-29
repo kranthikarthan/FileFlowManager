@@ -1,0 +1,226 @@
+# API Versioning Configuration
+
+# API Versioning Settings
+api:
+  versioning:
+    # Default version when none specified
+    default-version: "2.0"
+    
+    # Current production version
+    current-version: "2.0"
+    
+    # Minimum supported version
+    minimum-supported-version: "1.0"
+    
+    # Default versioning strategy
+    default-strategy: URL_PATH
+    
+    # Version resolution settings
+    header-name: "X-API-Version"
+    accept-header-name: "Accept-Version"
+    query-parameter: "version"
+    media-type-prefix: "application/vnd.filetransfer"
+    
+    # Strict mode (require version for all endpoints)
+    strict-mode: false
+    
+    # Deprecation and sunset settings
+    deprecation-notice-period-days: 90
+    sunset-period-days: 180
+    
+    # Version validation
+    enable-version-validation: true
+    allow-version-ranges: true
+    
+    # Backward compatibility
+    enable-backward-compatibility: true
+    auto-upgrade-minor-versions: true
+    
+    # Response headers
+    include-version-headers: true
+    include-deprecation-warnings: true
+    include-migration-hints: true
+    
+    # Documentation
+    documentation-base-url: "/docs/api"
+    changelog-base-url: "/docs/changelog"
+    
+    # Version lifecycle management
+    auto-deprecation: false
+    auto-sunset: false
+    lifecycle-check-enabled: true
+    
+    # Metrics and monitoring
+    enable-version-metrics: true
+    track-version-usage: true
+    log-version-requests: true
+    
+    # Supported versions configuration
+    versions:
+      "1.0":
+        semantic-version: "1.0.0"
+        status: "DEPRECATED"
+        release-date: "2023-01-01T00:00:00"
+        deprecated: true
+        deprecation-message: "API v1.0 is deprecated. Please migrate to v2.0"
+        sunset-date: "2024-06-01T00:00:00"
+        documentation-url: "/docs/api/v1.0"
+        changelog-url: "/docs/changelog/v1.0"
+        compatible-versions: ["1.1", "1.2"]
+        breaking-changes:
+          - description: "Date format was inconsistent"
+            endpoint: "All date fields"
+            change-type: "MODIFIED"
+            mitigation: "Use ISO 8601 format"
+      
+      "1.1":
+        semantic-version: "1.1.0"
+        status: "DEPRECATED"
+        release-date: "2023-03-01T00:00:00"
+        deprecated: true
+        deprecation-message: "API v1.1 is deprecated. Please migrate to v2.0"
+        sunset-date: "2024-06-01T00:00:00"
+        documentation-url: "/docs/api/v1.1"
+        changelog-url: "/docs/changelog/v1.1"
+        compatible-versions: ["1.0", "1.2"]
+        features:
+          - "Bulk operations support"
+          - "Enhanced error responses"
+      
+      "1.2":
+        semantic-version: "1.2.0"
+        status: "SUNSET"
+        release-date: "2023-06-01T00:00:00"
+        deprecated: true
+        deprecation-message: "API v1.2 will be sunset soon. Please migrate to v2.0"
+        sunset-date: "2024-03-01T00:00:00"
+        documentation-url: "/docs/api/v1.2"
+        changelog-url: "/docs/changelog/v1.2"
+        compatible-versions: ["1.1", "2.0"]
+        features:
+          - "Statistics endpoints"
+          - "Improved validation"
+      
+      "2.0":
+        semantic-version: "2.0.0"
+        status: "CURRENT"
+        release-date: "2023-09-01T00:00:00"
+        deprecated: false
+        documentation-url: "/docs/api/v2.0"
+        changelog-url: "/docs/changelog/v2.0"
+        compatible-versions: ["1.2", "2.1"]
+        features:
+          - "Enhanced pagination"
+          - "Improved validation"
+          - "Configuration management"
+          - "Health endpoints"
+          - "Audit trails"
+        breaking-changes:
+          - description: "Timezone is now required for tenant creation"
+            endpoint: "POST /api/v2/tenants"
+            change-type: "ADDED_REQUIRED"
+            mitigation: "Include timezone field in request body"
+          - description: "Date format standardized to ISO 8601"
+            endpoint: "All date fields"
+            change-type: "MODIFIED"
+            mitigation: "Update date format to yyyy-MM-dd'T'HH:mm:ss"
+      
+      "2.1":
+        semantic-version: "2.1.0"
+        status: "BETA"
+        release-date: "2023-11-01T00:00:00"
+        deprecated: false
+        documentation-url: "/docs/api/v2.1"
+        changelog-url: "/docs/changelog/v2.1"
+        compatible-versions: ["2.0"]
+        features:
+          - "Data export/import"
+          - "Advanced audit trails"
+          - "Enhanced metrics"
+          - "Bulk operations v2"
+
+# Content negotiation for versioning
+spring:
+  mvc:
+    contentnegotiation:
+      favor-parameter: true
+      parameter-name: format
+      media-types:
+        json: application/json
+        xml: application/xml
+        v1-json: application/vnd.filetransfer.v1+json
+        v2-json: application/vnd.filetransfer.v2+json
+        v21-json: application/vnd.filetransfer.v2.1+json
+
+# Logging configuration for versioning
+logging:
+  level:
+    com.filetransfer.web.versioning: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{apiVersion},%X{requestId}] %logger{36} - %msg%n"
+
+# Actuator endpoints for version monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,versions
+  endpoint:
+    versions:
+      enabled: true
+  metrics:
+    tags:
+      api-version: ${api.versioning.current-version}
+    export:
+      prometheus:
+        enabled: true
+
+---
+# Development Profile
+spring:
+  profiles: development
+
+api:
+  versioning:
+    strict-mode: false
+    log-version-requests: true
+    enable-version-metrics: true
+    deprecation-notice-period-days: 30
+    sunset-period-days: 60
+
+logging:
+  level:
+    com.filetransfer.web.versioning: DEBUG
+
+---
+# Production Profile
+spring:
+  profiles: production
+
+api:
+  versioning:
+    strict-mode: false
+    log-version-requests: false
+    enable-version-metrics: true
+    deprecation-notice-period-days: 90
+    sunset-period-days: 180
+    auto-deprecation: false
+    auto-sunset: false
+
+logging:
+  level:
+    com.filetransfer.web.versioning: INFO
+
+---
+# Testing Profile
+spring:
+  profiles: test
+
+api:
+  versioning:
+    default-version: "2.0"
+    strict-mode: true
+    enable-version-validation: true
+    log-version-requests: true
+    deprecation-notice-period-days: 7
+    sunset-period-days: 14

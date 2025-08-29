@@ -1,0 +1,675 @@
+name: File Transfer System - CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop, release/* ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+      deployment_strategy:
+        description: 'Deployment strategy'
+        required: true
+        default: 'blue-green'
+        type: choice
+        options:
+        - rolling
+        - blue-green
+        - canary
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  JAVA_VERSION: '17'
+  NODE_VERSION: '18'
+  
+jobs:
+  # ===== STAGE 1: BUILD AND TEST =====
+  
+  code-quality:
+    name: Code Quality Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for SonarQube
+          
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          
+      - name: Cache Maven dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+          
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: file-transfer-frontend/package-lock.json
+          
+      - name: Install frontend dependencies
+        working-directory: file-transfer-frontend
+        run: npm ci
+        
+      - name: Run ESLint (Frontend)
+        working-directory: file-transfer-frontend
+        run: npm run lint
+        
+      - name: Run Checkstyle (Java)
+        run: |
+          cd file-transfer-web
+          mvn checkstyle:check
+          cd ../file-transfer-batch
+          mvn checkstyle:check
+          
+      - name: Run SonarQube analysis
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          cd file-transfer-web
+          mvn clean verify sonar:sonar \
+            -Dsonar.projectKey=file-transfer-web \
+            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}
+            
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        application: [web, batch, frontend]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        if: matrix.application != 'frontend'
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        if: matrix.application == 'frontend'
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: file-transfer-frontend/package-lock.json
+          
+      - name: Cache dependencies
+        if: matrix.application != 'frontend'
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          
+      - name: Run unit tests (Java)
+        if: matrix.application != 'frontend'
+        run: |
+          cd file-transfer-${{ matrix.application }}
+          mvn clean test jacoco:report
+          
+      - name: Run unit tests (Frontend)
+        if: matrix.application == 'frontend'
+        working-directory: file-transfer-frontend
+        run: |
+          npm ci
+          npm run test:coverage
+          
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: |
+            file-transfer-${{ matrix.application }}/target/site/jacoco/jacoco.xml
+            file-transfer-frontend/coverage/lcov.info
+          flags: ${{ matrix.application }}
+          name: ${{ matrix.application }}-coverage
+          
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [unit-tests]
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: filetransfer_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+          
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          
+      - name: Cache Maven dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          
+      - name: Run integration tests
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/filetransfer_test
+          SPRING_DATASOURCE_USERNAME: test_user
+          SPRING_DATASOURCE_PASSWORD: test_password
+          SPRING_DATA_REDIS_HOST: localhost
+          SPRING_DATA_REDIS_PORT: 6379
+        run: |
+          ./scripts/run-all-tests.sh integration test true json true
+          
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: integration-test-results
+          path: |
+            target/test-reports/
+            **/target/surefire-reports/
+            **/target/failsafe-reports/
+            
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    needs: [code-quality]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Run Snyk security scan
+        uses: snyk/actions/maven@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+          
+      - name: Run OWASP Dependency Check
+        run: |
+          cd file-transfer-web
+          mvn org.owasp:dependency-check-maven:check
+          cd ../file-transfer-batch
+          mvn org.owasp:dependency-check-maven:check
+          
+      - name: Upload security scan results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-scan-results
+          path: |
+            **/target/dependency-check-report.html
+            
+  # ===== STAGE 2: BUILD AND PACKAGE =====
+  
+  build-applications:
+    name: Build Applications
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, security-scan]
+    strategy:
+      matrix:
+        application: [web, batch, frontend]
+    outputs:
+      web-image: ${{ steps.meta-web.outputs.tags }}
+      batch-image: ${{ steps.meta-batch.outputs.tags }}
+      frontend-image: ${{ steps.meta-frontend.outputs.tags }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Extract metadata
+        id: meta-${{ matrix.application }}
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/file-transfer-${{ matrix.application }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+            
+      - name: Build Java application
+        if: matrix.application != 'frontend'
+        run: |
+          cd file-transfer-${{ matrix.application }}
+          mvn clean package -DskipTests
+          
+      - name: Build frontend application
+        if: matrix.application == 'frontend'
+        working-directory: file-transfer-frontend
+        run: |
+          npm ci
+          npm run build
+          
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./file-transfer-${{ matrix.application }}
+          file: ./file-transfer-${{ matrix.application }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta-${{ matrix.application }}.outputs.tags }}
+          labels: ${{ steps.meta-${{ matrix.application }}.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          
+  # ===== STAGE 3: DEPLOYMENT =====
+  
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-applications]
+    if: github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
+    environment:
+      name: staging
+      url: https://staging.filetransfer.example.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+          
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > ~/.kube/config
+          kubectl config use-context staging
+          
+      - name: Deploy to staging
+        run: |
+          # Update image tags in Kubernetes manifests
+          sed -i "s|IMAGE_TAG|${{ github.sha }}|g" k8s/staging/*.yml
+          
+          # Apply Kubernetes manifests
+          kubectl apply -f k8s/namespace.yml
+          kubectl apply -f k8s/staging/
+          
+          # Wait for deployment to complete
+          kubectl rollout status deployment/file-transfer-web-staging --timeout=600s
+          kubectl rollout status deployment/file-transfer-batch-staging --timeout=600s
+          kubectl rollout status deployment/file-transfer-frontend-staging --timeout=600s
+          
+      - name: Run smoke tests
+        run: |
+          # Wait for services to be ready
+          sleep 60
+          
+          # Run smoke tests against staging
+          ./scripts/run-smoke-tests.sh staging
+          
+      - name: Notify deployment status
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        if: always()
+        
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    environment:
+      name: production
+      url: https://filetransfer.example.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+          
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > ~/.kube/config
+          kubectl config use-context production
+          
+      - name: Pre-deployment backup
+        run: |
+          # Create backup before production deployment
+          kubectl create job pre-deployment-backup-${{ github.sha }} \
+            --from=cronjob/backup-cronjob \
+            --namespace=file-transfer-production
+            
+          # Wait for backup to complete
+          kubectl wait --for=condition=complete job/pre-deployment-backup-${{ github.sha }} \
+            --timeout=1800s --namespace=file-transfer-production
+            
+      - name: Deploy with strategy
+        run: |
+          export DEPLOYMENT_STRATEGY="${{ github.event.inputs.deployment_strategy || 'blue-green' }}"
+          export IMAGE_TAG="${{ github.sha }}"
+          export ENVIRONMENT="production"
+          
+          # Execute deployment strategy
+          ./scripts/deploy-with-strategy.sh $DEPLOYMENT_STRATEGY $IMAGE_TAG $ENVIRONMENT
+          
+      - name: Post-deployment validation
+        run: |
+          # Run comprehensive post-deployment tests
+          ./scripts/run-all-tests.sh e2e production false json false
+          
+          # Performance validation
+          ./scripts/validate-performance.sh production
+          
+          # Security validation
+          ./scripts/validate-security.sh production
+          
+      - name: Update deployment status
+        run: |
+          # Record successful deployment
+          kubectl annotate deployment/file-transfer-web-production \
+            deployment.kubernetes.io/revision="${{ github.sha }}" \
+            deployment.kubernetes.io/deployed-at="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            deployment.kubernetes.io/deployed-by="${{ github.actor }}"
+            
+  # ===== STAGE 4: END-TO-END VALIDATION =====
+  
+  e2e-tests:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: file-transfer-frontend/package-lock.json
+          
+      - name: Install Cypress dependencies
+        working-directory: file-transfer-frontend
+        run: npm ci
+        
+      - name: Run Cypress E2E tests
+        working-directory: file-transfer-frontend
+        env:
+          CYPRESS_BASE_URL: https://staging.filetransfer.example.com
+          CYPRESS_API_URL: https://api-staging.filetransfer.example.com
+          CYPRESS_BATCH_URL: https://batch-staging.filetransfer.example.com
+        run: npm run test:e2e
+        
+      - name: Upload E2E test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: e2e-test-results
+          path: |
+            file-transfer-frontend/cypress/screenshots/
+            file-transfer-frontend/cypress/videos/
+            
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Run K6 performance tests
+        uses: grafana/k6-action@v0.3.0
+        with:
+          filename: docker/k6-scripts/load-test.js
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+          
+      - name: Run enterprise load tests
+        run: |
+          # Run comprehensive performance tests
+          ./scripts/run-all-tests.sh performance staging false json true
+          
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-test-results
+          path: target/test-reports/performance/
+          
+  security-tests:
+    name: Security Tests
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Run OWASP ZAP security scan
+        uses: zaproxy/action-full-scan@v0.8.0
+        with:
+          target: 'https://staging.filetransfer.example.com'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
+          
+      - name: Run API security tests
+        run: |
+          ./scripts/run-all-tests.sh security staging false json false
+          
+      - name: Upload security test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-test-results
+          path: |
+            target/test-reports/security/
+            report_html.html
+            
+  # ===== STAGE 5: ROLLBACK CAPABILITY =====
+  
+  prepare-rollback:
+    name: Prepare Rollback Capability
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Store rollback information
+        run: |
+          # Get previous deployment information
+          PREVIOUS_REVISION=$(kubectl get deployment file-transfer-web-production \
+            -o jsonpath='{.metadata.annotations.deployment\.kubernetes\.io/revision}')
+            
+          # Store rollback data
+          cat > rollback-info.json << EOF
+          {
+            "previousRevision": "$PREVIOUS_REVISION",
+            "currentRevision": "${{ github.sha }}",
+            "deploymentTime": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "deployedBy": "${{ github.actor }}",
+            "environment": "production",
+            "rollbackCommand": "./scripts/rollback-deployment.sh $PREVIOUS_REVISION production"
+          }
+          EOF
+          
+      - name: Upload rollback information
+        uses: actions/upload-artifact@v3
+        with:
+          name: rollback-info-${{ github.sha }}
+          path: rollback-info.json
+          
+  # ===== MANUAL ROLLBACK JOB =====
+  
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'rollback'
+    environment:
+      name: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+          
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > ~/.kube/config
+          kubectl config use-context production
+          
+      - name: Download rollback information
+        uses: actions/download-artifact@v3
+        with:
+          name: rollback-info-${{ github.event.inputs.rollback_revision }}
+          
+      - name: Execute rollback
+        run: |
+          # Load rollback information
+          PREVIOUS_REVISION=$(cat rollback-info.json | jq -r '.previousRevision')
+          
+          # Execute rollback
+          ./scripts/rollback-deployment.sh $PREVIOUS_REVISION production
+          
+          # Verify rollback
+          ./scripts/verify-rollback.sh $PREVIOUS_REVISION production
+          
+      - name: Notify rollback completion
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          text: |
+            🔄 Production rollback completed
+            Revision: ${{ github.event.inputs.rollback_revision }}
+            Triggered by: ${{ github.actor }}
+            
+  # ===== STAGE 6: POST-DEPLOYMENT MONITORING =====
+  
+  post-deployment-monitoring:
+    name: Post-Deployment Monitoring
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Monitor deployment health
+        run: |
+          # Monitor application health for 10 minutes
+          ./scripts/monitor-deployment-health.sh production 600
+          
+      - name: Validate performance metrics
+        run: |
+          # Check performance metrics meet SLA
+          ./scripts/validate-performance-sla.sh production
+          
+      - name: Check error rates
+        run: |
+          # Monitor error rates for anomalies
+          ./scripts/check-error-rates.sh production 300
+          
+      - name: Create deployment report
+        run: |
+          # Generate comprehensive deployment report
+          ./scripts/generate-deployment-report.sh production ${{ github.sha }}
+          
+      - name: Upload deployment report
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-report-${{ github.sha }}
+          path: target/deployment-reports/
+          
+  # ===== FAILURE HANDLING =====
+  
+  handle-deployment-failure:
+    name: Handle Deployment Failure
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: failure() && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Automatic rollback on failure
+        run: |
+          # Get previous stable revision
+          PREVIOUS_REVISION=$(kubectl get deployment file-transfer-web-production \
+            -o jsonpath='{.metadata.annotations.deployment\.kubernetes\.io/previous-revision}')
+            
+          if [ -n "$PREVIOUS_REVISION" ]; then
+            echo "🚨 Deployment failed, initiating automatic rollback to $PREVIOUS_REVISION"
+            ./scripts/rollback-deployment.sh $PREVIOUS_REVISION production
+            
+            # Verify rollback success
+            if ./scripts/verify-rollback.sh $PREVIOUS_REVISION production; then
+              echo "✅ Automatic rollback completed successfully"
+            else
+              echo "❌ Automatic rollback failed - manual intervention required"
+              exit 1
+            fi
+          else
+            echo "❌ No previous revision found - manual intervention required"
+            exit 1
+          fi
+          
+      - name: Notify deployment failure and rollback
+        uses: 8398a7/action-slack@v3
+        with:
+          status: 'failure'
+          channel: '#alerts'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          text: |
+            🚨 Production deployment FAILED and automatic rollback initiated
+            Failed revision: ${{ github.sha }}
+            Rollback status: ${{ job.status }}
+            Requires immediate attention: @channel

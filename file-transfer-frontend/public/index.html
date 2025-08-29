@@ -3,18 +3,187 @@
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="File Transfer Management System"
-    />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    
+    <!-- Viewport and mobile optimization -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, user-scalable=no, viewport-fit=cover" />
+    
+    <!-- PWA Theme Colors -->
+    <meta name="theme-color" content="#2e7d32" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#2e7d32" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#81c784" />
+    
+    <!-- SEO and Description -->
+    <meta name="description" content="Enterprise File Transfer Management System with EOT validation, schema reuse, and mobile-optimized interface" />
+    <meta name="keywords" content="file transfer, EOT validation, schema management, enterprise, mobile, PWA" />
+    <meta name="author" content="File Transfer Management System" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="/" />
+    <meta property="og:title" content="File Transfer Management System" />
+    <meta property="og:description" content="Enterprise File Transfer Management with mobile-optimized interface" />
+    <meta property="og:image" content="%PUBLIC_URL%/icon-512.png" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="/" />
+    <meta property="twitter:title" content="File Transfer Management System" />
+    <meta property="twitter:description" content="Enterprise File Transfer Management with mobile-optimized interface" />
+    <meta property="twitter:image" content="%PUBLIC_URL%/icon-512.png" />
+    
+    <!-- PWA Icons -->
+    <link rel="apple-touch-icon" sizes="192x192" href="%PUBLIC_URL%/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="%PUBLIC_URL%/icon-512.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="%PUBLIC_URL%/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="%PUBLIC_URL%/icon-512.png" />
+    
+    <!-- PWA Manifest -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <title>File Transfer Management</title>
+    
+    <!-- iOS Safari PWA Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="File Transfer" />
+    <link rel="apple-touch-startup-image" href="%PUBLIC_URL%/icon-512.png" />
+    
+    <!-- Android PWA Support -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="File Transfer" />
+    
+    <!-- Microsoft Windows/IE -->
+    <meta name="msapplication-TileImage" content="%PUBLIC_URL%/icon-192.png" />
+    <meta name="msapplication-TileColor" content="#2e7d32" />
+    <meta name="msapplication-config" content="%PUBLIC_URL%/browserconfig.xml" />
+    
+    <!-- Preload critical fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    
+    <!-- Security headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    
+    <!-- Disable automatic phone number detection -->
+    <meta name="format-detection" content="telephone=no" />
+    
+    <title>File Transfer Management System</title>
+    
+    <!-- PWA Installation Script -->
+    <script>
+      // Register service worker when page loads
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+      
+      // Handle install prompt
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        console.log('Install prompt available');
+      });
+      
+      // iOS add to home screen detection
+      function isIos() {
+        const userAgent = window.navigator.userAgent.toLowerCase();
+        return /iphone|ipad|ipod/.test(userAgent);
+      }
+      
+      function isInStandaloneMode() {
+        return ('standalone' in window.navigator) && (window.navigator.standalone);
+      }
+      
+      // Show iOS install instructions if applicable
+      if (isIos() && !isInStandaloneMode()) {
+        console.log('iOS device detected - install instructions available');
+      }
+    </script>
+    
+    <!-- Inline critical CSS for PWA -->
+    <style>
+      /* Critical loading styles */
+      #root {
+        min-height: 100vh;
+        background: #f8fdf8;
+      }
+      
+      @media (prefers-color-scheme: dark) {
+        #root {
+          background: #0d1b0d;
+        }
+      }
+      
+      /* Loading spinner */
+      .app-loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: linear-gradient(135deg, #f8fdf8 0%, #e8f5e8 100%);
+      }
+      
+      .app-loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 3px solid #e8f5e8;
+        border-top: 3px solid #2e7d32;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      @media (prefers-color-scheme: dark) {
+        .app-loading {
+          background: linear-gradient(135deg, #0d1b0d 0%, #1a2e1a 100%);
+        }
+        
+        .app-loading-spinner {
+          border-color: #4a5c4a;
+          border-top-color: #81c784;
+        }
+      }
+    </style>
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
+    <noscript>
+      <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+        <h1>JavaScript Required</h1>
+        <p>You need to enable JavaScript to run the File Transfer Management System.</p>
+        <p>Please enable JavaScript in your browser settings and reload this page.</p>
+      </div>
+    </noscript>
+    
+    <div id="root">
+      <!-- Loading state while React loads -->
+      <div class="app-loading">
+        <div class="app-loading-spinner"></div>
+      </div>
+    </div>
+    
+    <!-- PWA update notification -->
+    <script>
+      // Listen for app updates
+      let refreshing = false;
+      navigator.serviceWorker?.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          window.location.reload();
+          refreshing = true;
+        }
+      });
+    </script>
   </body>
 </html>

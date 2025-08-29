@@ -1,0 +1,313 @@
+# Batch Application Scalability Configuration
+
+spring:
+  profiles:
+    active: batch-scalability
+
+  # Batch Processing Configuration
+  batch:
+    job:
+      enabled: true
+    jdbc:
+      initialize-schema: embedded
+      
+  # Database Configuration for Batch
+  datasource:
+    url: ${BATCH_DATABASE_URL:jdbc:h2:mem:batchdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE}
+    username: ${BATCH_DATABASE_USERNAME:sa}
+    password: ${BATCH_DATABASE_PASSWORD:password}
+    driver-class-name: ${BATCH_DATABASE_DRIVER:org.h2.Driver}
+    
+    # HikariCP Configuration for Performance
+    hikari:
+      maximum-pool-size: 30
+      minimum-idle: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+      
+      # Performance optimizations
+      data-source-properties:
+        cachePrepStmts: true
+        prepStmtCacheSize: 300
+        prepStmtCacheSqlLimit: 2048
+        useServerPrepStmts: true
+        rewriteBatchedStatements: true
+        cacheResultSetMetadata: true
+        maintainTimeStats: false
+
+  # Redis Configuration for Coordination
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    database: 1  # Use different database for batch
+    timeout: 5000ms
+    lettuce:
+      pool:
+        max-active: 20
+        max-idle: 10
+        min-idle: 2
+        max-wait: 5000ms
+
+  # Cloud Stream Configuration for Messaging
+  cloud:
+    stream:
+      bindings:
+        file-processing-queue:
+          destination: file.processing.queue
+          content-type: application/json
+          group: batch-processors
+        batch-completion:
+          destination: batch.completion.topic
+          content-type: application/json
+      
+      rabbit:
+        bindings:
+          file-processing-queue:
+            consumer:
+              auto-bind-dlq: true
+              max-attempts: 3
+              back-off-initial-interval: 2000
+              back-off-multiplier: 2.0
+
+# Batch Processing Configuration
+batch:
+  processing:
+    # Chunk and partition configuration
+    chunk-size: ${BATCH_CHUNK_SIZE:100}
+    partition-size: ${BATCH_PARTITION_SIZE:4}
+    page-size: ${BATCH_PAGE_SIZE:1000}
+    
+    # Thread pool configuration
+    thread-pool-size: ${BATCH_THREAD_POOL_SIZE:10}
+    max-threads: ${BATCH_MAX_THREADS:20}
+    
+    # Batch insert configuration
+    batch-insert-size: ${BATCH_INSERT_SIZE:100}
+    
+    # Processing options
+    validation:
+      enabled: ${BATCH_VALIDATION_ENABLED:true}
+    simulation:
+      enabled: ${BATCH_SIMULATION_ENABLED:false}
+    max-file-size: ${BATCH_MAX_FILE_SIZE:104857600}  # 100MB
+    
+    # Metrics and monitoring
+    enable-metrics: true
+    
+    # Remote processing configuration
+    remote:
+      enabled: ${BATCH_REMOTE_ENABLED:false}
+      queue-name: ${BATCH_REMOTE_QUEUE:file-processing-queue}
+      result-ttl: ${BATCH_RESULT_TTL:3600}  # 1 hour
+
+# Caching Configuration
+cache:
+  caffeine:
+    spec: maximumSize=10000,expireAfterWrite=10m,recordStats
+  
+  # Cache configurations for different types
+  csv-validation-cache:
+    maximumSize: 5000
+    expireAfterWrite: 30m
+  xml-validation-cache:
+    maximumSize: 3000
+    expireAfterWrite: 20m
+  json-validation-cache:
+    maximumSize: 5000
+    expireAfterWrite: 25m
+  job-execution-cache:
+    maximumSize: 1000
+    expireAfterWrite: 5m
+
+# Monitoring and Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,batch,trace,httptrace,loggers,auditevents
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+    batch:
+      enabled: true
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+    httptrace:
+      enabled: true
+    auditevents:
+      enabled: true
+    loggers:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+        step: 10s
+        descriptions: true
+    distribution:
+      percentiles-histogram:
+        batch.job.duration: true
+        batch.step.duration: true
+        batch.file.processing.time: true
+        batch.database.operation.duration: true
+      percentiles:
+        batch.job.duration: 0.5, 0.75, 0.95, 0.99
+        batch.step.duration: 0.5, 0.75, 0.95, 0.99
+    tags:
+      application: file-transfer-batch
+      environment: ${SPRING_PROFILES_ACTIVE:development}
+  tracing:
+    sampling:
+      probability: 1.0
+    zipkin:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
+      service:
+        name: file-transfer-batch
+
+# Logging Configuration
+logging:
+  level:
+    org.springframework.batch: INFO
+    com.filetransfer.batch: DEBUG
+    org.springframework.cloud.stream: INFO
+    org.redisson: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{tenantId}] %logger{36} - %msg%n"
+  
+# Retry Configuration
+resilience4j:
+  retry:
+    instances:
+      batch-processing:
+        max-attempts: 3
+        wait-duration: 2s
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - java.sql.SQLException
+          - org.springframework.dao.DataAccessException
+      
+      remote-messaging:
+        max-attempts: 5
+        wait-duration: 1s
+        exponential-backoff-multiplier: 1.5
+
+# Performance Tuning
+# Security Configuration
+batch:
+  security:
+    cors:
+      allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080,http://localhost:8081}
+    jwt:
+      secret: ${JWT_SECRET:batch-super-secret-key-2023-change-in-production}
+      expiration: ${JWT_EXPIRATION:86400000}  # 24 hours
+    rate-limiting:
+      enabled: ${RATE_LIMITING_ENABLED:true}
+      requests-per-minute: ${RATE_LIMIT_RPM:30}
+      burst-capacity: ${RATE_LIMIT_BURST:10}
+    encryption:
+      master-key: ${ENCRYPTION_MASTER_KEY:batch-encryption-key-2023-change-in-production}
+    validation:
+      max-request-size: ${MAX_REQUEST_SIZE:10485760}  # 10MB
+      sanitize-html: true
+      strict-validation: true
+
+performance:
+  batch:
+    # JVM tuning recommendations
+    jvm:
+      initial-heap: 512m
+      max-heap: 2g
+      gc-algorithm: G1GC
+    
+    # Database tuning
+    database:
+      fetch-size: 1000
+      batch-size: 100
+      connection-pool-size: 20
+    
+    # Processing tuning
+    processing:
+      parallel-streams: true
+      async-processing: true
+      chunk-completion-policy: simple
+
+---
+# Development Profile
+spring:
+  profiles: development
+  
+batch:
+  processing:
+    chunk-size: 50
+    thread-pool-size: 5
+    max-threads: 10
+    simulation:
+      enabled: true
+    remote:
+      enabled: false
+
+logging:
+  level:
+    com.filetransfer.batch: DEBUG
+
+---
+# Production Profile  
+spring:
+  profiles: production
+
+batch:
+  processing:
+    chunk-size: 200
+    partition-size: 8
+    thread-pool-size: 20
+    max-threads: 40
+    batch-insert-size: 200
+    remote:
+      enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
+logging:
+  level:
+    com.filetransfer.batch: INFO
+    root: WARN
+
+---
+# High-Scale Profile
+spring:
+  profiles: scale
+
+batch:
+  processing:
+    chunk-size: 500
+    partition-size: 16
+    thread-pool-size: 50
+    max-threads: 100
+    batch-insert-size: 500
+    page-size: 2000
+    
+performance:
+  batch:
+    jvm:
+      max-heap: 4g
+    database:
+      connection-pool-size: 50
+      fetch-size: 2000
+      batch-size: 500
+
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 50
+      minimum-idle: 20

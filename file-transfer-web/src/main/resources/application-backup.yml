@@ -1,0 +1,338 @@
+# Backup and Disaster Recovery Configuration
+
+spring:
+  profiles:
+    active: backup
+
+# Backup Configuration
+backup:
+  # Database backup settings
+  database:
+    enabled: ${BACKUP_DATABASE_ENABLED:true}
+    type: ${DATABASE_TYPE:postgresql}
+    connection:
+      host: ${DATABASE_HOST:localhost}
+      port: ${DATABASE_PORT:5432}
+      database: ${DATABASE_NAME:filetransfer}
+      username: ${DATABASE_USERNAME:postgres}
+      password: ${DATABASE_PASSWORD:password}
+    options:
+      include-schema: true
+      include-data: true
+      include-triggers: true
+      include-functions: true
+      exclude-tables: ${BACKUP_EXCLUDE_TABLES:temp_tables,log_tables}
+
+  # File backup settings
+  files:
+    enabled: ${BACKUP_FILES_ENABLED:true}
+    source-paths:
+      - ${FILE_STORAGE_PATH:/app/data}
+      - ${CONFIG_PATH:/app/config}
+      - ${LOGS_PATH:/app/logs}
+    exclude-patterns:
+      - "*.tmp"
+      - "*.log"
+      - "cache/*"
+      - "temp/*"
+    follow-symlinks: false
+    preserve-permissions: true
+
+  # Application state backup
+  application-state:
+    enabled: ${BACKUP_APP_STATE_ENABLED:true}
+    components:
+      - configuration
+      - cache-state
+      - session-data
+      - metrics
+      - security-keys
+
+  # Backup storage locations
+  location:
+    primary: ${BACKUP_PRIMARY_LOCATION:/var/backups/file-transfer/primary}
+    secondary: ${BACKUP_SECONDARY_LOCATION:/var/backups/file-transfer/secondary}
+    remote: ${BACKUP_REMOTE_LOCATION:s3://filetransfer-backups}
+
+  # Remote backup settings
+  remote:
+    enabled: ${BACKUP_REMOTE_ENABLED:false}
+    provider: ${BACKUP_REMOTE_PROVIDER:s3}
+    endpoint: ${BACKUP_REMOTE_ENDPOINT:}
+    access-key: ${BACKUP_REMOTE_ACCESS_KEY:}
+    secret-key: ${BACKUP_REMOTE_SECRET_KEY:}
+    bucket: ${BACKUP_REMOTE_BUCKET:filetransfer-backups}
+    region: ${BACKUP_REMOTE_REGION:us-east-1}
+    encryption: true
+    storage-class: STANDARD_IA
+
+  # Backup schedules (cron expressions)
+  schedule:
+    full: ${BACKUP_SCHEDULE_FULL:0 0 2 * * *}        # Daily at 2 AM
+    incremental: ${BACKUP_SCHEDULE_INCREMENTAL:0 0 */4 * * *}  # Every 4 hours
+    cleanup: ${BACKUP_CLEANUP_SCHEDULE:0 0 3 * * *}   # Daily at 3 AM
+
+  # Retention policies
+  retention:
+    days: ${BACKUP_RETENTION_DAYS:30}
+    full-backups: ${BACKUP_RETENTION_FULL:12}         # Keep 12 full backups
+    incremental-backups: ${BACKUP_RETENTION_INCREMENTAL:168}  # Keep 168 incremental (1 week)
+    restore-points: ${BACKUP_RETENTION_RESTORE_POINTS:5}      # Keep 5 restore points
+
+  # Compression settings
+  compression:
+    enabled: ${BACKUP_COMPRESSION_ENABLED:true}
+    algorithm: ${BACKUP_COMPRESSION_ALGORITHM:gzip}    # gzip, bzip2, xz
+    level: ${BACKUP_COMPRESSION_LEVEL:6}               # 1-9 for gzip
+    
+  # Encryption settings
+  encryption:
+    enabled: ${BACKUP_ENCRYPTION_ENABLED:true}
+    algorithm: ${BACKUP_ENCRYPTION_ALGORITHM:AES-256-GCM}
+    key-file: ${BACKUP_ENCRYPTION_KEY_FILE:/app/config/backup-encryption.key}
+    key-rotation-days: ${BACKUP_KEY_ROTATION_DAYS:90}
+
+  # Verification settings
+  verification:
+    enabled: ${BACKUP_VERIFICATION_ENABLED:true}
+    checksum-algorithm: ${BACKUP_CHECKSUM_ALGORITHM:SHA-256}
+    integrity-check: true
+    restore-test-frequency: ${BACKUP_RESTORE_TEST_FREQUENCY:weekly}
+
+  # Performance settings
+  performance:
+    parallel-threads: ${BACKUP_PARALLEL_THREADS:4}
+    chunk-size: ${BACKUP_CHUNK_SIZE:64MB}
+    network-timeout: ${BACKUP_NETWORK_TIMEOUT:300}    # seconds
+    retry-attempts: ${BACKUP_RETRY_ATTEMPTS:3}
+    retry-delay: ${BACKUP_RETRY_DELAY:5}               # seconds
+
+# Disaster Recovery Configuration
+disaster-recovery:
+  enabled: ${DR_ENABLED:true}
+  
+  # Region configuration
+  primary:
+    region: ${DR_PRIMARY_REGION:us-east-1}
+    endpoint: ${DR_PRIMARY_ENDPOINT:}
+    availability-zones:
+      - ${DR_PRIMARY_AZ1:us-east-1a}
+      - ${DR_PRIMARY_AZ2:us-east-1b}
+      - ${DR_PRIMARY_AZ3:us-east-1c}
+
+  secondary:
+    region: ${DR_SECONDARY_REGION:us-west-2}
+    endpoint: ${DR_SECONDARY_ENDPOINT:}
+    availability-zones:
+      - ${DR_SECONDARY_AZ1:us-west-2a}
+      - ${DR_SECONDARY_AZ2:us-west-2b}
+      - ${DR_SECONDARY_AZ3:us-west-2c}
+
+  # Recovery objectives
+  rto:
+    critical: ${DR_RTO_CRITICAL:60}     # minutes
+    high: ${DR_RTO_HIGH:240}           # minutes
+    medium: ${DR_RTO_MEDIUM:1440}      # minutes (24 hours)
+    low: ${DR_RTO_LOW:4320}            # minutes (72 hours)
+
+  rpo:
+    critical: ${DR_RPO_CRITICAL:15}     # minutes
+    high: ${DR_RPO_HIGH:60}            # minutes
+    medium: ${DR_RPO_MEDIUM:240}       # minutes
+    low: ${DR_RPO_LOW:1440}            # minutes (24 hours)
+
+  # Health monitoring
+  health-check:
+    interval: ${DR_HEALTH_CHECK_INTERVAL:30000}       # milliseconds
+    timeout: ${DR_HEALTH_CHECK_TIMEOUT:10000}         # milliseconds
+    failure-threshold: ${DR_HEALTH_FAILURE_THRESHOLD:3}
+    success-threshold: ${DR_HEALTH_SUCCESS_THRESHOLD:2}
+
+  # Failover settings
+  failover:
+    automatic: ${DR_FAILOVER_AUTOMATIC:false}
+    confirmation-required: ${DR_FAILOVER_CONFIRMATION:true}
+    timeout: ${DR_FAILOVER_TIMEOUT:3600}               # seconds
+    rollback-enabled: ${DR_FAILOVER_ROLLBACK:true}
+
+  # Replication settings
+  replication:
+    enabled: ${DR_REPLICATION_ENABLED:true}
+    mode: ${DR_REPLICATION_MODE:async}                 # sync, async
+    frequency: ${DR_REPLICATION_FREQUENCY:900}         # seconds (15 minutes)
+    batch-size: ${DR_REPLICATION_BATCH_SIZE:1000}
+    compression: true
+    encryption: true
+
+  # Testing configuration
+  testing:
+    schedule: ${DR_TESTING_SCHEDULE:0 0 4 * * SUN}     # Weekly on Sunday at 4 AM
+    types:
+      - walkthrough
+      - tabletop
+      - simulation
+      - full-test
+    notification:
+      enabled: true
+      recipients:
+        - ${DR_NOTIFICATION_EMAIL:admin@company.com}
+
+  # Notification settings
+  notifications:
+    enabled: ${DR_NOTIFICATIONS_ENABLED:true}
+    channels:
+      email:
+        enabled: true
+        smtp-server: ${DR_SMTP_SERVER:localhost}
+        smtp-port: ${DR_SMTP_PORT:587}
+        username: ${DR_SMTP_USERNAME:}
+        password: ${DR_SMTP_PASSWORD:}
+        from: ${DR_EMAIL_FROM:noreply@company.com}
+      slack:
+        enabled: ${DR_SLACK_ENABLED:false}
+        webhook-url: ${DR_SLACK_WEBHOOK:}
+        channel: ${DR_SLACK_CHANNEL:#disaster-recovery}
+      pagerduty:
+        enabled: ${DR_PAGERDUTY_ENABLED:false}
+        integration-key: ${DR_PAGERDUTY_KEY:}
+
+# Thread pool configuration for backup/DR operations
+backup-task-executor:
+  core-pool-size: ${BACKUP_CORE_POOL_SIZE:2}
+  max-pool-size: ${BACKUP_MAX_POOL_SIZE:10}
+  queue-capacity: ${BACKUP_QUEUE_CAPACITY:100}
+  thread-name-prefix: "Backup-"
+  keep-alive-seconds: ${BACKUP_KEEP_ALIVE:300}
+
+disaster-recovery-executor:
+  core-pool-size: ${DR_CORE_POOL_SIZE:2}
+  max-pool-size: ${DR_MAX_POOL_SIZE:5}
+  queue-capacity: ${DR_QUEUE_CAPACITY:50}
+  thread-name-prefix: "DR-"
+  keep-alive-seconds: ${DR_KEEP_ALIVE:600}
+
+# Monitoring and logging
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,backup,disaster-recovery
+  endpoint:
+    backup:
+      enabled: true
+    disaster-recovery:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: file-transfer-backup
+      environment: ${SPRING_PROFILES_ACTIVE:development}
+
+# Logging configuration for backup/DR operations
+logging:
+  level:
+    com.filetransfer.web.service.BackupService: DEBUG
+    com.filetransfer.web.service.DisasterRecoveryService: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{backupId},%X{restoreId},%X{drPlanId}] %logger{36} - %msg%n"
+
+---
+# Development Profile
+spring:
+  profiles: development
+
+backup:
+  database:
+    enabled: true
+  files:
+    enabled: true
+  remote:
+    enabled: false
+  compression:
+    enabled: false
+  encryption:
+    enabled: false
+  verification:
+    enabled: false
+
+disaster-recovery:
+  enabled: false
+  failover:
+    automatic: false
+  replication:
+    enabled: false
+  testing:
+    schedule: "0 0 10 * * SAT"  # Saturday at 10 AM for testing
+
+---
+# Production Profile
+spring:
+  profiles: production
+
+backup:
+  database:
+    enabled: true
+  files:
+    enabled: true
+  remote:
+    enabled: true
+  compression:
+    enabled: true
+  encryption:
+    enabled: true
+  verification:
+    enabled: true
+  retention:
+    days: 90
+    full-backups: 24
+    incremental-backups: 336  # 2 weeks
+
+disaster-recovery:
+  enabled: true
+  failover:
+    automatic: false  # Require manual confirmation in production
+    confirmation-required: true
+  replication:
+    enabled: true
+    mode: async
+    frequency: 300  # 5 minutes for production
+  notifications:
+    enabled: true
+
+---
+# High Availability Profile
+spring:
+  profiles: ha
+
+backup:
+  remote:
+    enabled: true
+    provider: s3
+    storage-class: STANDARD
+  verification:
+    enabled: true
+    restore-test-frequency: daily
+  performance:
+    parallel-threads: 8
+    chunk-size: 128MB
+
+disaster-recovery:
+  enabled: true
+  rto:
+    critical: 30     # 30 minutes for critical systems
+    high: 120       # 2 hours for high priority
+  rpo:
+    critical: 5      # 5 minutes data loss tolerance
+    high: 15        # 15 minutes for high priority
+  failover:
+    automatic: true  # Enable automatic failover for HA
+    confirmation-required: false
+  replication:
+    enabled: true
+    mode: sync      # Synchronous replication for HA
+    frequency: 60   # 1 minute for HA
+  health-check:
+    interval: 10000  # 10 seconds
+    failure-threshold: 2

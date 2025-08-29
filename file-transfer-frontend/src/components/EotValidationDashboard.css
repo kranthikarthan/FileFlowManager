@@ -1,0 +1,277 @@
+.eot-validation-dashboard {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.eot-validation-dashboard .dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.eot-validation-dashboard .header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.eot-validation-dashboard .stat-card {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.eot-validation-dashboard .stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.eot-validation-dashboard .stat-card.success {
+  border-left: 4px solid #4caf50;
+}
+
+.eot-validation-dashboard .stat-card.error {
+  border-left: 4px solid #f44336;
+}
+
+.eot-validation-dashboard .stat-card.warning {
+  border-left: 4px solid #ff9800;
+}
+
+.eot-validation-dashboard .stat-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.eot-validation-dashboard .stat-icon {
+  font-size: 48px;
+  opacity: 0.8;
+}
+
+.eot-validation-dashboard .stat-card.success .stat-icon {
+  color: #4caf50;
+}
+
+.eot-validation-dashboard .stat-card.error .stat-icon {
+  color: #f44336;
+}
+
+.eot-validation-dashboard .stat-card.warning .stat-icon {
+  color: #ff9800;
+}
+
+.eot-validation-dashboard .percentage-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+}
+
+.eot-validation-dashboard .MuiTableContainer-root {
+  max-height: 600px;
+  border-radius: 8px;
+}
+
+.eot-validation-dashboard .MuiTableHead-root {
+  background-color: #f5f5f5;
+}
+
+.eot-validation-dashboard .MuiTableHead-root .MuiTableCell-root {
+  font-weight: 600;
+  color: #333;
+}
+
+.eot-validation-dashboard .MuiTableRow-root:hover {
+  background-color: #f9f9f9;
+}
+
+.eot-validation-dashboard .MuiChip-root {
+  font-size: 0.75rem;
+}
+
+.eot-validation-dashboard .status-matched {
+  background-color: #e8f5e8;
+  color: #2e7d32;
+}
+
+.eot-validation-dashboard .status-discrepancy {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.eot-validation-dashboard .status-pending {
+  background-color: #fff3e0;
+  color: #f57c00;
+}
+
+.eot-validation-dashboard .status-missing {
+  background-color: #fff3e0;
+  color: #f57c00;
+}
+
+.eot-validation-dashboard .status-error {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.eot-validation-dashboard .filters-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.eot-validation-dashboard .filters-card .MuiInputLabel-root {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.eot-validation-dashboard .filters-card .MuiOutlinedInput-root {
+  color: white;
+}
+
+.eot-validation-dashboard .filters-card .MuiOutlinedInput-notchedOutline {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.eot-validation-dashboard .detail-dialog .MuiDialog-paper {
+  border-radius: 12px;
+}
+
+.eot-validation-dashboard .detail-dialog .MuiDialogTitle-root {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.eot-validation-dashboard .validation-message {
+  background-color: #f8f9fa;
+  padding: 12px;
+  border-radius: 8px;
+  border-left: 4px solid #007bff;
+  margin-top: 16px;
+}
+
+.eot-validation-dashboard .discrepancy-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #f44336;
+  font-weight: bold;
+  font-size: 0.875rem;
+}
+
+.eot-validation-dashboard .trend-card {
+  height: 300px;
+  position: relative;
+}
+
+.eot-validation-dashboard .chart-container {
+  width: 100%;
+  height: 100%;
+}
+
+.eot-validation-dashboard .loading-overlay {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+}
+
+.eot-validation-dashboard .empty-state {
+  text-align: center;
+  padding: 48px;
+  color: #666;
+}
+
+.eot-validation-dashboard .empty-state-icon {
+  font-size: 64px;
+  color: #ccc;
+  margin-bottom: 16px;
+}
+
+.eot-validation-dashboard .export-button {
+  background: linear-gradient(45deg, #2196f3 30%, #21cbf3 90%);
+  border: 0;
+  border-radius: 3px;
+  box-shadow: 0 3px 5px 2px rgba(33, 203, 243, .3);
+  color: white;
+  height: 48px;
+  padding: 0 30px;
+}
+
+.eot-validation-dashboard .refresh-button {
+  border: 2px solid #2196f3;
+  color: #2196f3;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.eot-validation-dashboard .refresh-button:hover {
+  background-color: #2196f3;
+  color: white;
+}
+
+.eot-validation-dashboard .date-picker-container {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.eot-validation-dashboard .filter-section {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.eot-validation-dashboard .results-summary {
+  background-color: #f8f9fa;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border-left: 4px solid #007bff;
+}
+
+.eot-validation-dashboard .results-summary .summary-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 24px;
+}
+
+.eot-validation-dashboard .table-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.eot-validation-dashboard .status-icon {
+  margin-right: 8px;
+}
+
+.eot-validation-dashboard .count-comparison {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.eot-validation-dashboard .count-comparison .expected {
+  color: #666;
+  font-size: 0.875rem;
+}
+
+.eot-validation-dashboard .count-comparison .actual {
+  font-weight: bold;
+}
+
+.eot-validation-dashboard .count-comparison .discrepancy {
+  color: #f44336;
+  font-weight: bold;
+  background-color: #ffebee;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}

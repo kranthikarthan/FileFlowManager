@@ -29,6 +29,9 @@ public class AlertService {
     @Autowired
     private AlertHistoryRepository alertHistoryRepository;
     
+    @Autowired
+    private SecurityContextService securityContextService;
+    
     // Alert Configuration Methods
     public List<AlertConfigurationDto> getAlertConfigurationsForTenant(String tenantId) {
         return alertConfigurationRepository.findByTenantId(tenantId).stream()
@@ -56,7 +59,7 @@ public class AlertService {
     public AlertConfigurationDto createAlertConfiguration(AlertConfigurationDto alertConfigDto) {
         AlertConfiguration alertConfig = convertToEntity(alertConfigDto);
         alertConfig.setCreatedAt(LocalDateTime.now());
-        alertConfig.setCreatedBy("system"); // TODO: Get from security context
+        alertConfig.setCreatedBy(securityContextService.getCurrentUserId());
         
         AlertConfiguration savedAlertConfig = alertConfigurationRepository.save(alertConfig);
         return convertToDto(savedAlertConfig);
@@ -75,7 +78,7 @@ public class AlertService {
         existingAlertConfig.setEmailRecipients(alertConfigDto.getEmailRecipients());
         existingAlertConfig.setNotificationChannels(alertConfigDto.getNotificationChannels());
         existingAlertConfig.setUpdatedAt(LocalDateTime.now());
-        existingAlertConfig.setUpdatedBy("system"); // TODO: Get from security context
+        existingAlertConfig.setUpdatedBy(securityContextService.getCurrentUserId());
         
         AlertConfiguration savedAlertConfig = alertConfigurationRepository.save(existingAlertConfig);
         return convertToDto(savedAlertConfig);
@@ -227,14 +230,369 @@ public class AlertService {
      * Create an alert for EOT validation mismatch
      */
     public void createAlert(FileProcessingTrackingService.AlertDto alert) {
-        // In production, this would save to database and/or send notifications
-        logger.info("ALERT [{}] {} - {} at {}", 
-                   alert.getSeverity(), alert.getAlertType(), alert.getMessage(), alert.getCreatedAt());
+        try {
+            // Convert AlertDto to AlertHistory entity and save to database
+            AlertHistory alertHistory = new AlertHistory();
+            alertHistory.setTenantId(alert.getTenantId());
+            alertHistory.setServiceName(alert.getServiceType());
+            // alertHistory.setSubServiceName(null); // Could be extracted from serviceType if needed
+            
+            // Map string alert type to enum if needed
+            AlertConfiguration.AlertType alertTypeEnum = mapStringToAlertType(alert.getAlertType());
+            alertHistory.setAlertType(alertTypeEnum);
+            
+            alertHistory.setAlertMessage(alert.getMessage());
+            alertHistory.setSentAt(alert.getCreatedAt());
+            alertHistory.setAcknowledgedAt(null); // Not acknowledged initially
+            
+            // Map severity to AlertLevel enum
+            alertHistory.setAlertLevel(mapSeverityToAlertLevel(alert.getSeverity()));
+            
+            // Save to database
+            AlertHistory savedAlert = alertHistoryRepository.save(alertHistory);
+            logger.info("Alert stored in database with ID: {}", savedAlert.getId());
+            
+            // Send notifications based on alert configuration
+            sendAlertNotifications(savedAlert);
+            
+            // Log for immediate visibility
+            logger.warn("ALERT [{}] {} - {} at {}", 
+                       alert.getSeverity(), alert.getAlertType(), alert.getMessage(), alert.getCreatedAt());
+                       
+        } catch (Exception e) {
+            logger.error("Failed to create and store alert: {}", e.getMessage(), e);
+            // Fallback to logging only if storage fails
+            logger.error("FALLBACK ALERT [{}] {} - {} at {}", 
+                        alert.getSeverity(), alert.getAlertType(), alert.getMessage(), alert.getCreatedAt());
+        }
+    }
+    
+    /**
+     * Send alert notifications based on configuration
+     */
+    private void sendAlertNotifications(AlertHistory alert) {
+        try {
+            // Find alert configurations for this tenant and service type
+            List<AlertConfiguration> configs = alertConfigurationRepository
+                .findByTenantIdAndServiceTypeAndEnabled(alert.getTenantId(), alert.getServiceName(), true);
+            
+            for (AlertConfiguration config : configs) {
+                if (shouldTriggerAlert(alert, config)) {
+                    sendNotificationForConfig(alert, config);
+                }
+            }
+            
+        } catch (Exception e) {
+            logger.error("Failed to send alert notifications for alert {}: {}", alert.getId(), e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Check if alert should trigger based on configuration
+     */
+    private boolean shouldTriggerAlert(AlertHistory alert, AlertConfiguration config) {
+        // Check if alert type matches
+        if (!config.getAlertType().equals(alert.getAlertType()) && 
+            !"ALL".equals(config.getAlertType())) {
+            return false;
+        }
         
-        // TODO: Implement actual alert storage and notification
-        // - Save to alerts table
-        // - Send email/SMS notifications
-        // - Update dashboard
-        // - Trigger escalation procedures
+        // Check alert level threshold
+        AlertHistory.AlertLevel alertLevel = alert.getAlertLevel();
+        AlertConfiguration.AlertLevel configLevel = config.getAlertLevel();
+        
+        // Only trigger if alert level is at or above configured threshold
+        return isAlertLevelAtOrAboveThreshold(alertLevel, configLevel);
+    }
+    
+    private boolean isAlertLevelAtOrAboveThreshold(AlertHistory.AlertLevel alertLevel, AlertConfiguration.AlertLevel threshold) {
+        // Define severity order: INFO < WARNING < ERROR < CRITICAL
+        int alertSeverity = getSeverityValue(alertLevel);
+        int thresholdSeverity = getSeverityValue(threshold);
+        
+        return alertSeverity >= thresholdSeverity;
+    }
+    
+    private int getSeverityValue(Enum<?> level) {
+        String levelName = level.name();
+        switch (levelName) {
+            case "INFO": return 1;
+            case "WARNING": return 2;
+            case "ERROR": return 3;
+            case "CRITICAL": return 4;
+            default: return 2; // Default to WARNING
+        }
+    }
+    
+    /**
+     * Send notification for specific configuration
+     */
+    private void sendNotificationForConfig(AlertHistory alert, AlertConfiguration config) {
+        try {
+            String notificationChannels = config.getNotificationChannels();
+            
+            if (notificationChannels != null && !notificationChannels.isEmpty()) {
+                String[] channels = notificationChannels.split(",");
+                
+                for (String channel : channels) {
+                    channel = channel.trim().toUpperCase();
+                    
+                    switch (channel) {
+                        case "EMAIL":
+                            sendEmailNotification(alert, config);
+                            break;
+                        case "SMS":
+                            sendSmsNotification(alert, config);
+                            break;
+                        case "WEBHOOK":
+                            sendWebhookNotification(alert, config);
+                            break;
+                        case "DASHBOARD":
+                            updateDashboardNotification(alert, config);
+                            break;
+                        default:
+                            logger.warn("Unknown notification channel: {}", channel);
+                    }
+                }
+            }
+            
+        } catch (Exception e) {
+            logger.error("Failed to send notification for config {}: {}", config.getId(), e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Send email notification
+     */
+    private void sendEmailNotification(AlertHistory alert, AlertConfiguration config) {
+        try {
+            String emailRecipients = config.getEmailRecipients();
+            if (emailRecipients == null || emailRecipients.isEmpty()) {
+                logger.warn("No email recipients configured for alert config {}", config.getId());
+                return;
+            }
+            
+            String subject = String.format("[%s] %s Alert - %s", 
+                                         alert.getTenantId(), alert.getAlertLevel(), alert.getAlertType());
+            
+            String body = buildEmailBody(alert, config);
+            
+            // Log email details (in production, this would use actual email service)
+            logger.info("EMAIL NOTIFICATION - To: {}, Subject: {}, Body: {}", 
+                       emailRecipients, subject, body);
+            
+            // TODO: Integrate with actual email service (e.g., SendGrid, AWS SES, SMTP)
+            // emailService.sendEmail(emailRecipients.split(","), subject, body);
+            
+        } catch (Exception e) {
+            logger.error("Failed to send email notification: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Send SMS notification
+     */
+    private void sendSmsNotification(AlertHistory alert, AlertConfiguration config) {
+        try {
+            // SMS implementation would require phone numbers in config
+            String message = String.format("ALERT [%s]: %s - %s", 
+                                          alert.getAlertLevel(), alert.getAlertType(), alert.getMessage());
+            
+            logger.info("SMS NOTIFICATION - Message: {}", message);
+            
+            // TODO: Integrate with SMS service (e.g., Twilio, AWS SNS)
+            // smsService.sendSms(phoneNumbers, message);
+            
+        } catch (Exception e) {
+            logger.error("Failed to send SMS notification: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Send webhook notification
+     */
+    private void sendWebhookNotification(AlertHistory alert, AlertConfiguration config) {
+        try {
+            // Webhook URL would be stored in config or environment
+            String webhookUrl = System.getProperty("alert.webhook.url", "http://localhost:8080/api/webhooks/alerts");
+            
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("alertId", alert.getId());
+            payload.put("tenantId", alert.getTenantId());
+            payload.put("serviceType", alert.getServiceType());
+            payload.put("alertType", alert.getAlertType());
+            payload.put("severity", alert.getAlertLevel().toString());
+            payload.put("message", alert.getMessage());
+            payload.put("createdAt", alert.getCreatedAt().toString());
+            
+            logger.info("WEBHOOK NOTIFICATION - URL: {}, Payload: {}", webhookUrl, payload);
+            
+            // TODO: Use RestTemplate to send HTTP POST to webhook URL
+            // restTemplate.postForEntity(webhookUrl, payload, String.class);
+            
+        } catch (Exception e) {
+            logger.error("Failed to send webhook notification: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Update dashboard notification
+     */
+    private void updateDashboardNotification(AlertHistory alert, AlertConfiguration config) {
+        try {
+            // Dashboard update would use WebSocket or Server-Sent Events
+            logger.info("DASHBOARD NOTIFICATION - Alert ID: {}, Type: {}, Severity: {}", 
+                       alert.getId(), alert.getAlertType(), alert.getAlertLevel());
+            
+            // TODO: Implement WebSocket/SSE for real-time dashboard updates
+            // dashboardService.broadcastAlert(alert);
+            
+        } catch (Exception e) {
+            logger.error("Failed to update dashboard notification: {}", e.getMessage(), e);
+        }
+    }
+    
+    private String buildEmailBody(AlertHistory alert, AlertConfiguration config) {
+        StringBuilder body = new StringBuilder();
+        body.append("An alert has been triggered in the File Transfer Management System.\n\n");
+        body.append("Alert Details:\n");
+        body.append("- Alert ID: ").append(alert.getId()).append("\n");
+        body.append("- Tenant: ").append(alert.getTenantId()).append("\n");
+        body.append("- Service: ").append(alert.getServiceType()).append("\n");
+        body.append("- Alert Type: ").append(alert.getAlertType()).append("\n");
+        body.append("- Severity: ").append(alert.getAlertLevel()).append("\n");
+        body.append("- Message: ").append(alert.getMessage()).append("\n");
+        body.append("- Created At: ").append(alert.getCreatedAt()).append("\n\n");
+        
+        body.append("Configuration Details:\n");
+        body.append("- Configuration Name: ").append(config.getConfigName()).append("\n");
+        body.append("- Description: ").append(config.getDescription()).append("\n\n");
+        
+        body.append("Please review this alert and take appropriate action if necessary.\n");
+        body.append("You can view more details in the File Transfer Management Dashboard.");
+        
+        return body.toString();
+    }
+    
+    private AlertHistory.AlertLevel mapSeverityToAlertLevel(String severity) {
+        if (severity == null) {
+            return AlertHistory.AlertLevel.WARNING;
+        }
+        
+        try {
+            return AlertHistory.AlertLevel.valueOf(severity.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            logger.warn("Unknown severity level: {}, defaulting to WARNING", severity);
+            return AlertHistory.AlertLevel.WARNING;
+        }
+    }
+    
+    /**
+     * Mark an alert as resolved
+     */
+    public AlertHistoryDto acknowledgeAlert(Long alertId, String acknowledgmentNote) {
+        AlertHistory alert = alertHistoryRepository.findById(alertId)
+            .orElseThrow(() -> new RuntimeException("Alert not found with id: " + alertId));
+        
+        if (alert.getAcknowledgedAt() != null) {
+            throw new IllegalStateException("Alert is already acknowledged");
+        }
+        
+        alert.setAcknowledgedAt(LocalDateTime.now());
+        alert.setAcknowledgedBy(securityContextService.getCurrentUserId());
+        
+        if (acknowledgmentNote != null && !acknowledgmentNote.trim().isEmpty()) {
+            // You could add an acknowledgmentNote field to AlertHistory entity if needed
+            logger.info("Alert {} acknowledged with note: {}", alertId, acknowledgmentNote);
+        }
+        
+        AlertHistory savedAlert = alertHistoryRepository.save(alert);
+        logger.info("Alert {} acknowledged by {}", alertId, alert.getAcknowledgedBy());
+        
+        return convertAlertHistoryToDto(savedAlert);
+    }
+    
+    /**
+     * Get unacknowledged alerts for tenant
+     */
+    public List<AlertHistoryDto> getUnacknowledgedAlertsForTenant(String tenantId) {
+        return alertHistoryRepository.findByTenantIdAndAcknowledgedAtIsNull(tenantId).stream()
+                .map(this::convertAlertHistoryToDto)
+                .collect(java.util.stream.Collectors.toList());
+    }
+    
+    /**
+     * Get alerts by severity for tenant
+     */
+    public List<AlertHistoryDto> getAlertsBySeverityForTenant(String tenantId, String severity) {
+        AlertHistory.AlertLevel alertLevel;
+        try {
+            alertLevel = AlertHistory.AlertLevel.valueOf(severity.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid severity level: " + severity);
+        }
+        
+        return alertHistoryRepository.findByTenantIdAndAlertLevel(tenantId, alertLevel).stream()
+                .map(this::convertAlertHistoryToDto)
+                .collect(java.util.stream.Collectors.toList());
+    }
+    
+    /**
+     * Get alert statistics for tenant
+     */
+    public Map<String, Object> getAlertStatisticsForTenant(String tenantId) {
+        Map<String, Object> stats = new HashMap<>();
+        
+        // Total alerts
+        long totalAlerts = alertHistoryRepository.countByTenantId(tenantId);
+        stats.put("totalAlerts", totalAlerts);
+        
+        // Unacknowledged alerts
+        long unacknowledgedAlerts = alertHistoryRepository.countByTenantIdAndAcknowledgedAtIsNull(tenantId);
+        stats.put("unacknowledgedAlerts", unacknowledgedAlerts);
+        
+        // Alerts by severity
+        for (AlertHistory.AlertLevel level : AlertHistory.AlertLevel.values()) {
+            long count = alertHistoryRepository.countByTenantIdAndAlertLevel(tenantId, level);
+            stats.put(level.name().toLowerCase() + "Alerts", count);
+        }
+        
+        // Recent alerts (last 24 hours)
+        LocalDateTime yesterday = LocalDateTime.now().minusDays(1);
+        long recentAlerts = alertHistoryRepository.countByTenantIdAndSentAtAfter(tenantId, yesterday);
+        stats.put("recentAlerts", recentAlerts);
+        
+        return stats;
+    }
+    
+    private AlertConfiguration.AlertType mapStringToAlertType(String alertType) {
+        if (alertType == null) {
+            return AlertConfiguration.AlertType.SYSTEM; // Default fallback
+        }
+        
+        try {
+            // Handle common alert type mappings
+            switch (alertType.toUpperCase()) {
+                case "EOT_VALIDATION_MISMATCH":
+                case "FILE_VALIDATION":
+                case "VALIDATION":
+                    return AlertConfiguration.AlertType.FILE_VALIDATION;
+                case "FILE_TRANSFER":
+                case "TRANSFER":
+                    return AlertConfiguration.AlertType.FILE_TRANSFER;
+                case "SYSTEM":
+                case "SYSTEM_ERROR":
+                    return AlertConfiguration.AlertType.SYSTEM;
+                case "PERFORMANCE":
+                case "PERFORMANCE_ISSUE":
+                    return AlertConfiguration.AlertType.PERFORMANCE;
+                default:
+                    // Try direct enum mapping
+                    return AlertConfiguration.AlertType.valueOf(alertType.toUpperCase());
+            }
+        } catch (IllegalArgumentException e) {
+            logger.warn("Unknown alert type: {}, defaulting to SYSTEM", alertType);
+            return AlertConfiguration.AlertType.SYSTEM;
+        }
     }
 }

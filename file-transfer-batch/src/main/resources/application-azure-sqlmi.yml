@@ -1,0 +1,369 @@
+# Azure SQL Managed Instance Configuration for Batch Application
+# Enterprise batch processing with SQL Server compatibility
+
+spring:
+  profiles:
+    active: azure-sqlmi
+
+  # Azure SQL Managed Instance Configuration for Batch
+  datasource:
+    # Azure SQL MI JDBC configuration for batch processing
+    url: ${AZURE_SQLMI_BATCH_JDBC_URL:jdbc:sqlserver://file-transfer-sqlmi-production.sql.azuresynapse.net:1433;database=filetransfer_batch;encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.sql.azuresynapse.net;loginTimeout=30;}
+    username: ${AZURE_SQLMI_BATCH_USERNAME:filetransferadmin}
+    password: ${AZURE_SQLMI_BATCH_PASSWORD}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    
+    # HikariCP configuration optimized for Azure SQL MI batch processing
+    hikari:
+      # Enterprise connection pool for batch workload
+      maximum-pool-size: ${AZURE_SQLMI_BATCH_MAX_POOL_SIZE:150}     # Large pool for batch operations
+      minimum-idle: ${AZURE_SQLMI_BATCH_MIN_IDLE:30}                # High baseline for batch
+      connection-timeout: ${AZURE_SQLMI_BATCH_CONNECTION_TIMEOUT:120000} # 2 minutes for batch operations
+      idle-timeout: ${AZURE_SQLMI_BATCH_IDLE_TIMEOUT:1800000}       # 30 minutes for long batch jobs
+      max-lifetime: ${AZURE_SQLMI_BATCH_MAX_LIFETIME:7200000}       # 2 hours for batch stability
+      leak-detection-threshold: ${AZURE_SQLMI_BATCH_LEAK_DETECTION:300000} # 5 minutes for batch
+      
+      # SQL Server batch-specific optimizations
+      data-source-properties:
+        # Connection properties for Azure SQL MI batch
+        encrypt: true
+        trustServerCertificate: false
+        hostNameInCertificate: "*.sql.azuresynapse.net"
+        loginTimeout: 30
+        socketTimeout: 600000  # 10 minutes for large batch operations
+        
+        # Batch performance optimizations for SQL Server
+        sendStringParametersAsUnicode: false
+        selectMethod: cursor
+        responseBuffering: adaptive
+        packetSize: 32768      # Larger packet size for batch
+        
+        # Connection pooling optimizations for batch
+        pooledStatements: true
+        statementPoolingCacheSize: 1000    # Large cache for batch operations
+        disableStatementPooling: false
+        
+        # Azure SQL MI batch-specific settings
+        applicationName: "FileTransferBatchSystem"
+        applicationIntent: "ReadWrite"
+        multiSubnetFailover: true
+        failoverPartner: ${AZURE_SQLMI_BATCH_FAILOVER_PARTNER:}
+        
+        # Batch processing optimizations
+        useBulkCopyForBatchInsert: true
+        cancelQueryTimeout: 300            # 5 minutes cancel timeout
+
+  # JPA Configuration for SQL Server Batch Processing
+  jpa:
+    database-platform: org.hibernate.dialect.SQLServer2016Dialect
+    hibernate:
+      ddl-auto: ${AZURE_SQLMI_BATCH_DDL_AUTO:validate}
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyJpaImpl
+    
+    properties:
+      hibernate:
+        # SQL Server dialect for batch processing
+        dialect: org.hibernate.dialect.SQLServer2016Dialect
+        
+        # Batch processing optimizations for SQL MI
+        jdbc:
+          batch_size: 5000                    # Very large batch size for enterprise
+          batch_versioned_data: true
+          order_inserts: true
+          order_updates: true
+          
+        # Query optimizations for SQL Server batch
+        query:
+          in_clause_parameter_padding: true
+          fail_on_pagination_over_collection_fetch: true
+          plan_cache_max_size: 4096           # Large plan cache for batch
+          
+        # Connection handling for Azure SQL MI batch
+        connection:
+          provider_disables_autocommit: true
+          handling_mode: delayed_acquisition_and_release_after_transaction
+          
+        # Cache configuration for batch metadata
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+          region:
+            factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+            
+        # SQL Server batch-specific features
+        use_sql_comments: false              # Disable for performance
+        format_sql: false                   # Disable for performance
+        generate_statistics: false          # Disable for performance
+        
+        # Batch-specific transaction settings
+        transaction:
+          jta:
+            platform: org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform
+
+  # Spring Batch Configuration for SQL Server
+  batch:
+    job:
+      enabled: true
+      
+    # Job repository configuration for SQL MI
+    jdbc:
+      initialize-schema: always
+      isolation-level-for-create: read_committed
+      
+      # SQL Server batch repository settings
+      table-prefix: BATCH_
+      max-varchar-length: 10000             # Support large job parameters
+      
+    # Transaction configuration for batch operations
+    transaction-manager:
+      default-timeout: 3600                 # 1 hour for long batch jobs
+
+# Azure Integration Configuration for Batch
+azure:
+  # Azure SQL MI batch-specific configuration
+  sql-mi:
+    batch:
+      # Connection retry for batch resilience
+      connection-retry:
+        enabled: true
+        max-attempts: 10                    # More retries for batch
+        initial-interval: 5000              # 5 seconds initial delay
+        multiplier: 2.0
+        max-interval: 60000                 # 1 minute max interval
+        
+      # Failover configuration for batch
+      failover:
+        enabled: ${AZURE_SQLMI_BATCH_FAILOVER_ENABLED:true}
+        partner-server: ${AZURE_SQLMI_BATCH_FAILOVER_PARTNER:}
+        timeout: 120000                     # 2 minutes failover timeout for batch
+        
+      # Performance monitoring for batch
+      monitoring:
+        enabled: true
+        query-store: true
+        automatic-tuning: true
+        collect-execution-plans: true       # Collect plans for batch optimization
+        
+      # Security configuration for batch
+      security:
+        tde-enabled: true                   # Transparent Data Encryption
+        advanced-threat-protection: true
+        vulnerability-assessment: true
+        audit-logging: true                 # Enable audit for batch operations
+        
+  # Azure Key Vault integration for batch credentials
+  keyvault:
+    enabled: true
+    uri: ${AZURE_KEYVAULT_BATCH_URI:https://file-transfer-kv-production.vault.azure.net/}
+    secret-keys:
+      - sql-mi-batch-username
+      - sql-mi-batch-password
+      - sql-mi-batch-connection-string
+      
+  # Application Insights integration for batch
+  application-insights:
+    enabled: true
+    connection-string: ${APPLICATIONINSIGHTS_BATCH_CONNECTION_STRING}
+    
+    # Batch-specific telemetry
+    telemetry:
+      batch-job-tracking: true
+      step-execution-tracking: true
+      performance-counters: true
+      
+    # SQL dependency tracking for batch
+    dependency-tracking:
+      sql-enabled: true
+      collect-query-text: false           # Security: don't log batch query text
+      collect-query-parameters: false     # Security: don't log parameters
+
+# Batch Processing Configuration for Azure SQL MI
+batch:
+  processing:
+    # SQL MI optimized batch configuration
+    sql-mi:
+      # Use SQL Server bulk operations
+      bulk-insert: true
+      bulk-copy: true
+      table-valued-parameters: true
+      
+      # Batch job optimization
+      job-repository:
+        use-stored-procedures: true        # Use stored procedures for better performance
+        connection-pool-dedicated: true   # Dedicated connection pool for job repository
+        
+      # Large dataset handling
+      large-dataset:
+        streaming: true                    # Stream large datasets
+        cursor-based: true                 # Use cursors for large result sets
+        parallel-processing: true          # Enable parallel processing
+        
+    # Performance configuration for SQL MI
+    performance:
+      # Query timeout for batch operations
+      query-timeout: ${AZURE_SQLMI_BATCH_QUERY_TIMEOUT:1800}    # 30 minutes for large batch
+      
+      # Batch size optimization
+      batch-size: ${AZURE_SQLMI_BATCH_SIZE:5000}                # Large batches for SQL MI
+      fetch-size: ${AZURE_SQLMI_BATCH_FETCH_SIZE:5000}          # Large fetch for SQL MI
+      
+      # Connection optimization
+      connection-pool:
+        validation-query: "SELECT 1"
+        validation-interval: 60000
+        test-on-borrow: true
+        test-while-idle: true
+        
+    # Azure SQL MI monitoring integration
+    monitoring:
+      sql-mi:
+        # Query Store integration
+        query-store:
+          enabled: true
+          capture-mode: "AUTO"
+          size-based-cleanup-mode: "AUTO"
+          stale-query-threshold-days: 30
+          
+        # Automatic tuning integration
+        automatic-tuning:
+          enabled: true
+          force-last-good-plan: true
+          create-index: true
+          drop-index: true
+          
+        # Performance monitoring
+        performance-insights:
+          enabled: true
+          retention-period: 7              # 7 days for batch performance data
+
+# Logging Configuration for Azure SQL MI Batch
+logging:
+  level:
+    # SQL Server driver logging
+    com.microsoft.sqlserver: INFO
+    
+    # Hibernate SQL logging (controlled for performance)
+    org.hibernate.SQL: ${AZURE_SQLMI_BATCH_SQL_LOGGING:WARN}
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    
+    # Spring Batch logging
+    org.springframework.batch: INFO
+    
+    # Azure SDK logging
+    com.azure: INFO
+    
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{tenantId},%X{jobExecutionId},%X{stepExecutionId}] %logger{36} - %msg%n"
+
+# Monitoring Configuration for Azure SQL MI Batch
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,batch,sql-mi
+  endpoint:
+    sql-mi:
+      enabled: true
+    batch:
+      enabled: true
+      
+  metrics:
+    export:
+      azure-monitor:
+        enabled: true
+        instrumentation-key: ${APPLICATIONINSIGHTS_BATCH_INSTRUMENTATION_KEY}
+        
+    tags:
+      database-type: "azure-sql-mi"
+      application: "file-transfer-batch"
+      environment: ${SPRING_PROFILES_ACTIVE}
+
+---
+# Development Profile for Azure SQL MI Batch
+spring:
+  profiles: development-azure-sqlmi
+
+# Development SQL MI batch settings
+azure:
+  sql-mi:
+    batch:
+      connection-retry:
+        max-attempts: 5
+        initial-interval: 2000
+      monitoring:
+        query-store: true                  # Enable for development testing
+        automatic-tuning: false            # Disable for development
+
+batch:
+  processing:
+    performance:
+      query-timeout: 300                   # 5 minutes for development
+      batch-size: 1000                     # Smaller batches for development
+
+logging:
+  level:
+    com.microsoft.sqlserver: DEBUG        # Enable debug for development
+    org.hibernate.SQL: DEBUG              # Enable SQL logging for development
+    org.springframework.batch: DEBUG      # Enable batch logging for development
+
+---
+# Production Profile for Azure SQL MI Batch
+spring:
+  profiles: production-azure-sqlmi
+
+# Production SQL MI batch settings
+azure:
+  sql-mi:
+    batch:
+      connection-retry:
+        max-attempts: 10                   # More retries for production
+        initial-interval: 5000
+      monitoring:
+        query-store: true                  # Enable for production monitoring
+        automatic-tuning: true             # Enable for production optimization
+      security:
+        tde-enabled: true                  # Enable TDE for production
+        advanced-threat-protection: true
+        vulnerability-assessment: true
+        audit-logging: true                # Enable audit for production
+
+batch:
+  processing:
+    performance:
+      query-timeout: 1800                  # 30 minutes for production batch
+      batch-size: 10000                    # Very large batches for production
+      fetch-size: 10000                    # Large fetch for production
+
+logging:
+  level:
+    com.microsoft.sqlserver: INFO         # Info level for production
+    org.hibernate.SQL: WARN               # Disable SQL logging for production performance
+    org.springframework.batch: INFO       # Info level for production
+
+---
+# High Availability Profile for Azure SQL MI Batch
+spring:
+  profiles: ha-azure-sqlmi
+
+# HA SQL MI batch settings
+azure:
+  sql-mi:
+    batch:
+      failover:
+        enabled: true
+        timeout: 60000                     # 1 minute for HA failover
+      monitoring:
+        query-store: true
+        automatic-tuning: true
+        performance-insights: true
+        
+batch:
+  processing:
+    performance:
+      connection-pool:
+        maximum-pool-size: 300             # Very large pool for HA
+        minimum-idle: 100                  # High baseline for HA
+      query-timeout: 3600                  # 1 hour for HA operations
+      batch-size: 20000                    # Very large batches for HA

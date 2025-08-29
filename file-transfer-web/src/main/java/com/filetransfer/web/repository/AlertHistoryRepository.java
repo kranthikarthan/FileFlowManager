@@ -35,4 +35,16 @@ public interface AlertHistoryRepository extends JpaRepository<AlertHistory, Long
     Long countAlertsByLevelAndDate(@Param("tenantId") String tenantId, 
                                   @Param("alertLevel") AlertHistory.AlertLevel alertLevel, 
                                   @Param("startDate") LocalDateTime startDate);
+    
+    // Additional methods for enhanced alert management
+    long countByTenantId(String tenantId);
+    
+    List<AlertHistory> findByTenantIdAndAcknowledgedAtIsNull(String tenantId);
+    
+    long countByTenantIdAndAcknowledgedAtIsNull(String tenantId);
+    
+    long countByTenantIdAndAlertLevel(String tenantId, AlertHistory.AlertLevel alertLevel);
+    
+    @Query("SELECT COUNT(ah) FROM AlertHistory ah WHERE ah.tenantId = :tenantId AND ah.sentAt >= :sentAt")
+    long countByTenantIdAndSentAtAfter(@Param("tenantId") String tenantId, @Param("sentAt") LocalDateTime sentAt);
 }

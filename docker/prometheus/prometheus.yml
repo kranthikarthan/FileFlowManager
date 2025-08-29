@@ -1,0 +1,122 @@
+# Prometheus configuration for file transfer monitoring
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'file-transfer-monitor'
+    environment: 'development'
+
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Load alert rules
+rule_files:
+  - "alert-rules.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # File Transfer Web Application
+  - job_name: 'file-transfer-web'
+    static_configs:
+      - targets: ['host.docker.internal:8080']  # Adjust for your application port
+    scrape_interval: 15s
+    metrics_path: /actuator/prometheus
+    scrape_timeout: 10s
+    honor_labels: true
+
+  # File Transfer Batch Application
+  - job_name: 'file-transfer-batch'
+    static_configs:
+      - targets: ['host.docker.internal:8081']  # Adjust for your batch application port
+    scrape_interval: 30s
+    metrics_path: /actuator/prometheus
+    scrape_timeout: 10s
+    honor_labels: true
+
+  # System metrics from Node Exporter
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+    metrics_path: /metrics
+
+  # Container metrics from cAdvisor
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 15s
+    metrics_path: /metrics
+
+  # Database metrics (if using PostgreSQL exporter)
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # JVM metrics from applications
+  - job_name: 'jvm-metrics'
+    static_configs:
+      - targets: 
+        - 'host.docker.internal:8080'
+        - 'host.docker.internal:8081'
+    scrape_interval: 30s
+    metrics_path: /actuator/prometheus
+    params:
+      match[]:
+        - '{__name__=~"jvm_.*"}'
+        - '{__name__=~"system_.*"}'
+        - '{__name__=~"tomcat_.*"}'
+        - '{__name__=~"hikaricp_.*"}'
+
+  # Custom business metrics
+  - job_name: 'business-metrics'
+    static_configs:
+      - targets: 
+        - 'host.docker.internal:8080'
+    scrape_interval: 15s
+    metrics_path: /actuator/prometheus
+    params:
+      match[]:
+        - '{__name__=~"file_.*"}'
+        - '{__name__=~"cutoff_.*"}'
+        - '{__name__=~"alerts_.*"}'
+        - '{__name__=~"tenant_.*"}'
+
+  # HTTP endpoint monitoring
+  - job_name: 'blackbox-http'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - http://host.docker.internal:8080/actuator/health
+        - http://host.docker.internal:8080/api/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+# Remote write configuration (for long-term storage)
+# remote_write:
+#   - url: "http://cortex:9009/api/prom/push"
+#   - url: "http://thanos-receive:19291/api/v1/receive"
+
+# Remote read configuration (for long-term storage)
+# remote_read:
+#   - url: "http://thanos-query:9090/api/v1/query"

@@ -9,6 +9,10 @@ import SecurityIcon from '@mui/icons-material/Security';
 import BusinessIcon from '@mui/icons-material/Business';
 import EventIcon from '@mui/icons-material/Event';
 import NotificationsIcon from '@mui/icons-material/Notifications';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import ScheduleIcon from '@mui/icons-material/Schedule';
+import SchemaIcon from '@mui/icons-material/Schema';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 
 export const Navigation = () => {
   const navigate = useNavigate();
@@ -68,6 +72,30 @@ export const Navigation = () => {
           iconPosition="start" 
           label="Alerts" 
           value="/alerts" 
+        />
+        <Tab 
+          icon={<AccountTreeIcon />} 
+          iconPosition="start" 
+          label="Sub-Services" 
+          value="/sub-services" 
+        />
+        <Tab 
+          icon={<ScheduleIcon />} 
+          iconPosition="start" 
+          label="Cut-off Extensions" 
+          value="/cutoff-extensions" 
+        />
+        <Tab 
+          icon={<SchemaIcon />} 
+          iconPosition="start" 
+          label="Shared Schemas" 
+          value="/shared-schemas" 
+        />
+        <Tab 
+          icon={<AssessmentIcon />} 
+          iconPosition="start" 
+          label="EOT Validation" 
+          value="/eot-validation" 
         />
       </Tabs>
     </Box>
