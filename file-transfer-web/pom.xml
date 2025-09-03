@@ -103,6 +103,35 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
         
+        <!-- Compression Libraries -->
+        <!-- Apache Commons Compress for various compression formats -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>1.24.0</version>
+        </dependency>
+        
+        <!-- XZ compression support -->
+        <dependency>
+            <groupId>org.tukaani</groupId>
+            <artifactId>xz</artifactId>
+            <version>1.9</version>
+        </dependency>
+        
+        <!-- LZ4 compression support -->
+        <dependency>
+            <groupId>org.lz4</groupId>
+            <artifactId>lz4-java</artifactId>
+            <version>1.8.0</version>
+        </dependency>
+        
+        <!-- Zstandard compression support -->
+        <dependency>
+            <groupId>com.github.luben</groupId>
+            <artifactId>zstd-jni</artifactId>
+            <version>1.5.5-5</version>
+        </dependency>
+        
         <!-- Micrometer Tracing for distributed tracing -->
         <dependency>
             <groupId>io.micrometer</groupId>

@@ -21,6 +21,7 @@ src/
 │   ├── Dashboard.js                   # Main dashboard
 │   ├── FileTransferList.js           # File transfer management
 │   ├── AckNackManagement.js          # ACK/NACK management
+│   ├── CompressionManagement.js     # File compression management
 │   ├── Navigation.js                 # Main navigation
 │   ├── Login.js                      # Authentication
 │   ├── ServiceManagement.js          # Service CRUD operations
@@ -51,6 +52,7 @@ src/
 │   ├── api.js                     # Base API configuration
 │   ├── serviceAPI.js              # Service-specific APIs
 │   ├── ackNackService.js          # ACK/NACK operations
+│   ├── compressionService.js      # File compression operations
 │   ├── analyticsService.js        # Analytics and reporting
 │   ├── apiVersionService.js       # API versioning
 │   ├── frontendBackupService.js   # Backup operations

@@ -500,6 +500,93 @@
 
 ---
 
+## Epic 15: File Compression and Optimization
+
+### User Story FTM-015-US-001: Automatic File Compression
+**As a** system administrator  
+**I want** files to be automatically compressed before sending to partners  
+**So that** I can reduce bandwidth usage and improve transfer performance  
+
+**Acceptance Criteria:**
+- Given compression is enabled for a service, when outbound files are processed, then they are automatically compressed
+- Given compression type is configured, when files are compressed, then the specified algorithm is used
+- Given file type doesn't benefit from compression, when processing, then compression is skipped
+- Given compression fails, when error occurs, then original file is sent and failure is logged
+
+**Story Points:** 13  
+**Priority:** High  
+**Components:** Compression Service, Batch Processing
+
+---
+
+### User Story FTM-015-US-002: Automatic File Decompression
+**As a** file processing system  
+**I want** to automatically decompress received compressed files  
+**So that** files can be processed normally regardless of compression  
+
+**Acceptance Criteria:**
+- Given a compressed file is received, when processing starts, then file is automatically decompressed
+- Given compression type is detected from file extension, when decompressing, then correct algorithm is used
+- Given decompression fails, when error occurs, then file is moved to error directory with details
+- Given file is not compressed, when processing, then normal processing continues
+
+**Story Points:** 13  
+**Priority:** High  
+**Components:** Compression Service, File Processing
+
+---
+
+### User Story FTM-015-US-003: Compression Management Interface
+**As a** operations manager  
+**I want** a web interface to manage file compression settings  
+**So that** I can configure and monitor compression operations  
+
+**Acceptance Criteria:**
+- Given I access compression management, when page loads, then I see compression statistics and settings
+- Given I want to test compression, when I upload a file, then I can test different algorithms and see results
+- Given I want to compress a file, when I select compression type, then file is compressed and results are shown
+- Given I want to view compression history, when I check logs, then I see detailed compression audit trail
+
+**Story Points:** 8  
+**Priority:** Medium  
+**Components:** React Frontend, Compression Controller
+
+---
+
+### User Story FTM-015-US-004: Compression Performance Optimization
+**As a** performance engineer  
+**I want** compression operations to be optimized for large files  
+**So that** system performance is maintained during compression operations  
+
+**Acceptance Criteria:**
+- Given large files are compressed, when processing, then compression is performed asynchronously
+- Given multiple files need compression, when processing, then operations are parallelized
+- Given compression takes too long, when timeout is reached, then operation is cancelled gracefully
+- Given system resources are limited, when compressing, then resource usage is monitored and controlled
+
+**Story Points:** 13  
+**Priority:** Medium  
+**Components:** Compression Service, Performance Monitoring
+
+---
+
+### User Story FTM-015-US-005: Compression Analytics and Reporting
+**As a** data analyst  
+**I want** detailed analytics on compression operations  
+**So that** I can optimize compression strategies and measure benefits  
+
+**Acceptance Criteria:**
+- Given compression operations occur, when analyzing, then I can see compression ratios and performance metrics
+- Given I want to compare algorithms, when viewing reports, then I see algorithm comparison data
+- Given I need historical data, when requesting, then I get compression trends over time
+- Given I want to optimize settings, when reviewing analytics, then I get recommendations for improvement
+
+**Story Points:** 8  
+**Priority:** Low  
+**Components:** Analytics Service, Compression Statistics
+
+---
+
 ## User Story Summary by Epic
 
 | Epic | Total Stories | Total Story Points | Priority Distribution |
@@ -516,10 +603,11 @@
 | FTM-010 | 2 | 29 | High: 1, Medium: 1 |
 | FTM-011 | 2 | 34 | High: 1, Medium: 1 |
 | FTM-012 | 2 | 21 | Low: 2 |
+| FTM-015 | 5 | 55 | High: 2, Medium: 2, Low: 1 |
 
-**Total User Stories**: 26  
-**Total Story Points**: 304  
-**Average Story Points per Story**: 11.7
+**Total User Stories**: 31  
+**Total Story Points**: 359  
+**Average Story Points per Story**: 11.6
 
 ## Story Point Estimation Guide
 

@@ -80,6 +80,31 @@ public class FileTransferRecord {
     @Column(name = "metadata", columnDefinition = "TEXT")
     private String metadata;
     
+    @Enumerated(EnumType.STRING)
+    @Column(name = "compression_type")
+    private CompressionType compressionType = CompressionType.NONE;
+    
+    @Column(name = "original_file_size")
+    private Long originalFileSize;
+    
+    @Column(name = "compressed_file_size")
+    private Long compressedFileSize;
+    
+    @Column(name = "compression_ratio")
+    private Float compressionRatio;
+    
+    @Column(name = "compression_time_ms")
+    private Long compressionTimeMs;
+    
+    @Column(name = "decompression_time_ms")
+    private Long decompressionTimeMs;
+    
+    @Column(name = "compressed_file_path")
+    private String compressedFilePath;
+    
+    @Column(name = "compression_enabled")
+    private Boolean compressionEnabled = false;
+    
     // Constructors
     public FileTransferRecord() {
         this.createdAt = LocalDateTime.now();
@@ -181,4 +206,28 @@ public class FileTransferRecord {
     
     public String getMetadata() { return metadata; }
     public void setMetadata(String metadata) { this.metadata = metadata; }
+    
+    public CompressionType getCompressionType() { return compressionType; }
+    public void setCompressionType(CompressionType compressionType) { this.compressionType = compressionType; }
+    
+    public Long getOriginalFileSize() { return originalFileSize; }
+    public void setOriginalFileSize(Long originalFileSize) { this.originalFileSize = originalFileSize; }
+    
+    public Long getCompressedFileSize() { return compressedFileSize; }
+    public void setCompressedFileSize(Long compressedFileSize) { this.compressedFileSize = compressedFileSize; }
+    
+    public Float getCompressionRatio() { return compressionRatio; }
+    public void setCompressionRatio(Float compressionRatio) { this.compressionRatio = compressionRatio; }
+    
+    public Long getCompressionTimeMs() { return compressionTimeMs; }
+    public void setCompressionTimeMs(Long compressionTimeMs) { this.compressionTimeMs = compressionTimeMs; }
+    
+    public Long getDecompressionTimeMs() { return decompressionTimeMs; }
+    public void setDecompressionTimeMs(Long decompressionTimeMs) { this.decompressionTimeMs = decompressionTimeMs; }
+    
+    public String getCompressedFilePath() { return compressedFilePath; }
+    public void setCompressedFilePath(String compressedFilePath) { this.compressedFilePath = compressedFilePath; }
+    
+    public Boolean getCompressionEnabled() { return compressionEnabled; }
+    public void setCompressionEnabled(Boolean compressionEnabled) { this.compressionEnabled = compressionEnabled; }
 }

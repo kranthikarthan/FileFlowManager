@@ -2,6 +2,7 @@ package com.filetransfer.web.dto;
 
 import com.filetransfer.web.entity.TransferDirection;
 import com.filetransfer.web.entity.TransferStatus;
+import com.filetransfer.web.entity.CompressionType;
 
 import java.time.LocalDateTime;
 
@@ -22,6 +23,16 @@ public class FileTransferRecordDto {
     private Long fileSize;
     private String checksum;
     private String batchJobExecutionId;
+    
+    // Compression fields
+    private Boolean compressionEnabled;
+    private CompressionType compressionType;
+    private Long originalFileSize;
+    private Long compressedFileSize;
+    private Float compressionRatio;
+    private Long compressionTimeMs;
+    private Long decompressionTimeMs;
+    private String compressedFilePath;
     
     // Constructors
     public FileTransferRecordDto() {}
@@ -71,4 +82,29 @@ public class FileTransferRecordDto {
     
     public String getBatchJobExecutionId() { return batchJobExecutionId; }
     public void setBatchJobExecutionId(String batchJobExecutionId) { this.batchJobExecutionId = batchJobExecutionId; }
+    
+    // Compression getters and setters
+    public Boolean getCompressionEnabled() { return compressionEnabled; }
+    public void setCompressionEnabled(Boolean compressionEnabled) { this.compressionEnabled = compressionEnabled; }
+    
+    public CompressionType getCompressionType() { return compressionType; }
+    public void setCompressionType(CompressionType compressionType) { this.compressionType = compressionType; }
+    
+    public Long getOriginalFileSize() { return originalFileSize; }
+    public void setOriginalFileSize(Long originalFileSize) { this.originalFileSize = originalFileSize; }
+    
+    public Long getCompressedFileSize() { return compressedFileSize; }
+    public void setCompressedFileSize(Long compressedFileSize) { this.compressedFileSize = compressedFileSize; }
+    
+    public Float getCompressionRatio() { return compressionRatio; }
+    public void setCompressionRatio(Float compressionRatio) { this.compressionRatio = compressionRatio; }
+    
+    public Long getCompressionTimeMs() { return compressionTimeMs; }
+    public void setCompressionTimeMs(Long compressionTimeMs) { this.compressionTimeMs = compressionTimeMs; }
+    
+    public Long getDecompressionTimeMs() { return decompressionTimeMs; }
+    public void setDecompressionTimeMs(Long decompressionTimeMs) { this.decompressionTimeMs = decompressionTimeMs; }
+    
+    public String getCompressedFilePath() { return compressedFilePath; }
+    public void setCompressedFilePath(String compressedFilePath) { this.compressedFilePath = compressedFilePath; }
 }

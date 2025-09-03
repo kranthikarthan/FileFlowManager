@@ -4,6 +4,8 @@ import com.filetransfer.batch.config.FileTransferConfig;
 import com.filetransfer.batch.entity.FileTransferRecord;
 import com.filetransfer.batch.entity.ServiceConfiguration;
 import com.filetransfer.batch.entity.TransferStatus;
+import com.filetransfer.batch.entity.TransferDirection;
+import com.filetransfer.batch.entity.CompressionType;
 import com.filetransfer.batch.repository.FileTransferRecordRepository;
 import com.filetransfer.batch.repository.ServiceConfigurationRepository;
 import org.slf4j.Logger;
@@ -36,6 +38,9 @@ public class FileTransferService {
     
     @Autowired
     private AckNackService ackNackService;
+    
+    @Autowired
+    private CompressionService compressionService;
     
     @Scheduled(fixedDelayString = "${file-transfer.poll-interval-seconds:30}000")
     public void processPendingTransfers() {
@@ -86,11 +91,59 @@ public class FileTransferService {
             // Ensure target directory exists
             Files.createDirectories(targetPath.getParent());
             
-            // Copy the file
-            Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+            Path actualSourcePath = sourcePath;
+            Path actualTargetPath = targetPath;
+            
+            // Handle compression for outbound files
+            if (record.getDirection() == TransferDirection.OUTBOUND && record.getCompressionEnabled()) {
+                logger.info("Compressing outbound file: {}", record.getFileName());
+                
+                CompressionService.CompressionResult compressionResult = compressionService.compressFile(
+                    sourcePath, record.getCompressionType(), targetPath.getParent().toString());
+                
+                // Update record with compression details
+                record.setOriginalFileSize(Files.size(sourcePath));
+                record.setCompressedFileSize(Files.size(compressionResult.getCompressedFile()));
+                record.setCompressionRatio(compressionResult.getCompressionRatio());
+                record.setCompressionTimeMs(compressionResult.getCompressionTimeMs());
+                record.setCompressedFilePath(compressionResult.getCompressedFile().toString());
+                
+                actualSourcePath = compressionResult.getCompressedFile();
+                actualTargetPath = targetPath.getParent().resolve(compressionResult.getCompressedFile().getFileName());
+            }
+            
+            // Handle decompression for inbound files
+            if (record.getDirection() == TransferDirection.INBOUND && 
+                CompressionType.fromFileExtension(sourcePath.getFileName().toString()) != CompressionType.NONE) {
+                
+                logger.info("Decompressing inbound file: {}", record.getFileName());
+                
+                CompressionService.DecompressionResult decompressionResult = compressionService.decompressFile(
+                    sourcePath, targetPath.getParent().toString());
+                
+                // Update record with decompression details
+                record.setCompressionEnabled(true);
+                record.setCompressionType(decompressionResult.getCompressionType());
+                record.setCompressedFileSize(Files.size(sourcePath));
+                record.setOriginalFileSize(Files.size(decompressionResult.getDecompressedFile()));
+                record.setDecompressionTimeMs(decompressionResult.getDecompressionTimeMs());
+                record.setCompressionRatio((float) record.getCompressedFileSize() / record.getOriginalFileSize());
+                
+                actualSourcePath = decompressionResult.getDecompressedFile();
+                actualTargetPath = targetPath;
+            }
+            
+            // Copy the file (compressed or decompressed as needed)
+            if (!actualSourcePath.equals(actualTargetPath)) {
+                Files.copy(actualSourcePath, actualTargetPath, StandardCopyOption.REPLACE_EXISTING);
+            }
             
             // Verify the transfer
-            if (Files.exists(targetPath) && Files.size(targetPath) == record.getFileSize()) {
+            long expectedSize = record.getDirection() == TransferDirection.OUTBOUND && record.getCompressionEnabled() 
+                              ? record.getCompressedFileSize() 
+                              : record.getOriginalFileSize() != null ? record.getOriginalFileSize() : record.getFileSize();
+            
+            if (Files.exists(actualTargetPath) && Files.size(actualTargetPath) == expectedSize) {
                 record.setStatus(TransferStatus.COMPLETED);
                 logger.info("File transfer completed successfully: {}", record.getFileName());
                 

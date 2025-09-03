@@ -51,7 +51,8 @@ com.filetransfer.batch/
 │   ├── BatchBackupService.java
 │   ├── SchemaValidationService.java
 │   ├── CutOffTimeService.java
-│   └── HolidayService.java
+│   ├── HolidayService.java
+│   └── CompressionService.java
 ├── controller/                         # REST Controllers
 │   ├── v1/
 │   │   └── BatchJobV1Controller.java
@@ -70,7 +71,8 @@ com.filetransfer.batch/
 │   ├── FileType.java (Enum)
 │   ├── AckNackStatus.java (Enum)
 │   ├── AckNackType.java (Enum)
-│   └── CutOffTimeType.java (Enum)
+│   ├── CutOffTimeType.java (Enum)
+│   └── CompressionType.java (Enum)
 ├── repository/                         # Data Access Layer
 │   ├── FileTransferRecordRepository.java
 │   ├── AckNackRecordRepository.java

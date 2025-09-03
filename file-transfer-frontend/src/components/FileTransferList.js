@@ -22,9 +22,12 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import CompressIcon from '@mui/icons-material/Compress';
+import UncompressIcon from '@mui/icons-material/Uncompress';
 import { format } from 'date-fns';
 import { fileTransferAPI } from '../services/api';
 import { ackNackService } from '../services/ackNackService';
+import { compressionService } from '../services/compressionService';
 
 const statusColors = {
   PENDING: 'warning',
@@ -170,6 +173,43 @@ export const FileTransferList = () => {
     alert(`ACK/NACK Details:\nType: ${ackNackInfo.type}\nStatus: ${ackNackInfo.status}\nFile: ${ackNackInfo.ackNackFileName}`);
   };
 
+  const handleCompressFile = async (fileTransferId) => {
+    try {
+      // Get compression recommendations first
+      const recommendations = await compressionService.getCompressionRecommendations(fileTransferId);
+      
+      const compressionType = recommendations.speedOptimized || 'GZIP';
+      
+      // Confirm compression
+      const confirmed = window.confirm(
+        `Compress file using ${compressionType}?\n` +
+        `Estimated compressed size: ${compressionService.formatFileSize(recommendations.estimatedCompressedSize || 0)}`
+      );
+      
+      if (confirmed) {
+        await compressionService.compressFileTransfer(fileTransferId, compressionType);
+        fetchData(); // Refresh the data
+      }
+    } catch (err) {
+      setError('Failed to compress file');
+      console.error('Error compressing file:', err);
+    }
+  };
+
+  const handleDecompressFile = async (fileTransferId) => {
+    try {
+      const confirmed = window.confirm('Decompress this file?');
+      
+      if (confirmed) {
+        await compressionService.decompressFileTransfer(fileTransferId);
+        fetchData(); // Refresh the data
+      }
+    } catch (err) {
+      setError('Failed to decompress file');
+      console.error('Error decompressing file:', err);
+    }
+  };
+
   const columns = [
     {
       field: 'id',
@@ -269,6 +309,48 @@ export const FileTransferList = () => {
       },
     },
     {
+      field: 'compressionInfo',
+      headerName: 'Compression',
+      width: 140,
+      renderCell: (params) => {
+        const row = params.row;
+        
+        if (row.compressionEnabled && row.compressionType !== 'NONE') {
+          const savings = row.originalFileSize && row.compressedFileSize 
+            ? compressionService.calculateSavings(row.originalFileSize, row.compressedFileSize)
+            : null;
+            
+          return (
+            <Tooltip title={`${row.compressionType}: ${savings ? savings.percentage.toFixed(1) + '% saved' : 'Compressed'}`}>
+              <Chip
+                label={row.compressionType}
+                size="small"
+                color={compressionService.getCompressionTypeColor(row.compressionType)}
+                icon={<CompressIcon />}
+              />
+            </Tooltip>
+          );
+        }
+        
+        // Show compression options for eligible files
+        if (row.status === 'PENDING' || row.status === 'COMPLETED') {
+          return (
+            <Tooltip title="Compress File">
+              <IconButton
+                size="small"
+                onClick={() => handleCompressFile(row.id)}
+                color="primary"
+              >
+                <CompressIcon />
+              </IconButton>
+            </Tooltip>
+          );
+        }
+        
+        return '-';
+      },
+    },
+    {
       field: 'actions',
       headerName: 'Actions',
       width: 180,
@@ -325,6 +407,29 @@ export const FileTransferList = () => {
                 <VisibilityIcon />
               </IconButton>
             </Tooltip>
+          )}
+          {params.row.compressionEnabled && params.row.compressionType !== 'NONE' ? (
+            <Tooltip title="Decompress File">
+              <IconButton
+                size="small"
+                onClick={() => handleDecompressFile(params.row.id)}
+                color="secondary"
+              >
+                <UncompressIcon />
+              </IconButton>
+            </Tooltip>
+          ) : (
+            params.row.status === 'COMPLETED' && (
+              <Tooltip title="Compress File">
+                <IconButton
+                  size="small"
+                  onClick={() => handleCompressFile(params.row.id)}
+                  color="primary"
+                >
+                  <CompressIcon />
+                </IconButton>
+              </Tooltip>
+            )
           )}
         </Box>
       ),

@@ -31,7 +31,8 @@ com.filetransfer.web/
 │   ├── BackupController.java
 │   ├── SecurityController.java
 │   ├── ApiVersionController.java
-│   └── AnalyticsController.java
+│   ├── AnalyticsController.java
+│   └── CompressionController.java
 ├── service/                            # Business Logic Services
 │   ├── FileTransferManagementService.java
 │   ├── AckNackService.java
@@ -69,7 +70,8 @@ com.filetransfer.web/
 │   ├── SubServiceConfigurationService.java
 │   ├── SsoTestingService.java
 │   ├── TenantTimeZoneService.java
-│   └── DatabaseAbstractionService.java
+│   ├── DatabaseAbstractionService.java
+│   └── CompressionService.java
 ├── entity/                             # JPA Entities
 │   ├── FileTransferRecord.java
 │   ├── AckNackRecord.java
@@ -94,7 +96,8 @@ com.filetransfer.web/
 │   ├── FileType.java (Enum)
 │   ├── AckNackStatus.java (Enum)
 │   ├── AckNackType.java (Enum)
-│   └── CutOffTimeType.java (Enum)
+│   ├── CutOffTimeType.java (Enum)
+│   └── CompressionType.java (Enum)
 ├── repository/                         # Data Access Layer
 │   ├── FileTransferRecordRepository.java
 │   ├── AckNackRecordRepository.java
@@ -251,6 +254,9 @@ public class FileTransferManagementService {
     @Autowired
     private AckNackService ackNackService;
     
+    @Autowired
+    private CompressionService compressionService;
+    
     // Core CRUD operations
     public List<FileTransferRecordDto> getAllFileTransfers(String tenantId);
     public FileTransferRecordDto getFileTransferById(Long id);
@@ -267,6 +273,11 @@ public class FileTransferManagementService {
     public void cancelTransfer(Long id);
     public void generateAckForFile(Long id);
     public void generateNackForFile(Long id, String reasonCode, String reasonDescription);
+    
+    // Compression operations
+    public void compressFile(Long id, CompressionType compressionType);
+    public void decompressFile(Long id);
+    public Map<String, Object> getCompressionRecommendations(Long id);
 }
 ```
 
@@ -301,6 +312,36 @@ public class AckNackService {
 }
 ```
 
+#### CompressionService
+```java
+@Service
+public class CompressionService {
+    
+    @Value("${file-transfer.compression.temp-dir:/tmp/compression}")
+    private String tempCompressionDir;
+    
+    @Value("${file-transfer.compression.max-file-size-mb:1024}")
+    private long maxFileSizeMB;
+    
+    @Value("${file-transfer.compression.default-type:GZIP}")
+    private CompressionType defaultCompressionType;
+    
+    // Core compression operations
+    public CompressionResult compressFile(Path sourceFile, CompressionType compressionType, String targetDirectory);
+    public DecompressionResult decompressFile(Path compressedFile, String targetDirectory);
+    
+    // Analysis and recommendations
+    public CompressionType getRecommendedCompression(Path file, FileType fileType, boolean prioritizeSpeed);
+    public CompressionTestResult testCompressionEfficiency(Path file);
+    
+    // Helper methods
+    private OutputStream createCompressorOutputStream(OutputStream outputStream, CompressionType type);
+    private InputStream createDecompressorInputStream(InputStream inputStream, CompressionType type);
+    private long performCompression(Path sourceFile, Path targetFile, CompressionType compressionType);
+    private void performDecompression(Path compressedFile, Path targetFile, CompressionType compressionType);
+}
+```
+
 ## 4. Database Schema Design
 
 ### 4.1 Core Tables Schema
@@ -331,6 +372,14 @@ CREATE TABLE file_transfer_records (
     batch_job_execution_id VARCHAR(255),
     validation_result TEXT,
     metadata TEXT,
+    compression_enabled BOOLEAN DEFAULT FALSE,
+    compression_type ENUM('NONE','GZIP','ZIP','BZIP2','XZ','LZ4','ZSTD') DEFAULT 'NONE',
+    original_file_size BIGINT,
+    compressed_file_size BIGINT,
+    compression_ratio FLOAT,
+    compression_time_ms BIGINT,
+    decompression_time_ms BIGINT,
+    compressed_file_path VARCHAR(500),
     
     INDEX idx_tenant_id (tenant_id),
     INDEX idx_service_name (service_name),
@@ -338,7 +387,10 @@ CREATE TABLE file_transfer_records (
     INDEX idx_direction (direction),
     INDEX idx_created_at (created_at),
     INDEX idx_tenant_service (tenant_id, service_name),
-    INDEX idx_tenant_status (tenant_id, status)
+    INDEX idx_tenant_status (tenant_id, status),
+    INDEX idx_compression_enabled (compression_enabled),
+    INDEX idx_compression_type (compression_type),
+    INDEX idx_tenant_compression (tenant_id, compression_enabled)
 );
 ```
 
@@ -512,6 +564,103 @@ requestBody:
             type: string
         required:
           - reasonCode
+```
+
+### 5.3 Compression API
+
+#### POST /api/v1/compression/compress/{fileTransferId}
+```yaml
+summary: Compress a file transfer
+parameters:
+  - name: fileTransferId
+    in: path
+    required: true
+    schema:
+      type: integer
+      format: int64
+  - name: compressionType
+    in: query
+    required: true
+    schema:
+      type: string
+      enum: [GZIP, ZIP, BZIP2, XZ, LZ4, ZSTD]
+responses:
+  200:
+    description: File compressed successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            fileTransferId:
+              type: string
+            compressionType:
+              type: string
+```
+
+#### GET /api/v1/compression/recommendations/{fileTransferId}
+```yaml
+summary: Get compression recommendations for a file
+parameters:
+  - name: fileTransferId
+    in: path
+    required: true
+    schema:
+      type: integer
+      format: int64
+responses:
+  200:
+    description: Compression recommendations
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            speedOptimized:
+              type: string
+            ratioOptimized:
+              type: string
+            shouldCompress:
+              type: boolean
+            originalFileSize:
+              type: integer
+            estimatedCompressedSize:
+              type: integer
+```
+
+#### POST /api/v1/compression/test-efficiency
+```yaml
+summary: Test compression efficiency for an uploaded file
+requestBody:
+  required: true
+  content:
+    multipart/form-data:
+      schema:
+        type: object
+        properties:
+          file:
+            type: string
+            format: binary
+        required:
+          - file
+responses:
+  200:
+    description: Compression test results
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            originalSize:
+              type: integer
+            results:
+              type: object
+            bestForSpeed:
+              type: string
+            bestForRatio:
+              type: string
 ```
 
 ## 6. Security Implementation

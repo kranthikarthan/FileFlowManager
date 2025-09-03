@@ -176,7 +176,8 @@ graph TB
 │  ├── SchemaValidationService                                  │
 │  ├── CutOffTimeService                                        │
 │  ├── HolidayService                                           │
-│  └── EncryptionService                                        │
+│  ├── EncryptionService                                        │
+│  └── CompressionService                                       │
 ├─────────────────────────────────────────────────────────────────┤
 │                    Infrastructure Layer                         │
 ├─────────────────────────────────────────────────────────────────┤
@@ -278,11 +279,11 @@ FileTransferRecords (1) ──→ (0..1) AckNackRecords
 
 #### File Processing Data Flow
 ```
-File Arrival ──→ File Detection ──→ Validation ──→ Processing ──→ Completion
-     │                │               │             │             │
-     ▼                ▼               ▼             ▼             ▼
-File Metadata ──→ Transfer Record ──→ Validation ──→ Status ──→ ACK/NACK
-                                     Results       Updates    Generation
+File Arrival ──→ File Detection ──→ Decompression ──→ Validation ──→ Processing ──→ Compression ──→ Completion
+     │                │               │               │             │             │             │
+     ▼                ▼               ▼               ▼             ▼             ▼             ▼
+File Metadata ──→ Transfer Record ──→ File Extract ──→ Validation ──→ Status ──→ File Package ──→ ACK/NACK
+                                                     Results       Updates                     Generation
 ```
 
 #### ACK/NACK Data Flow

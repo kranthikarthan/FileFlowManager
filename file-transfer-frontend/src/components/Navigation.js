@@ -14,6 +14,7 @@ import ScheduleIcon from '@mui/icons-material/Schedule';
 import SchemaIcon from '@mui/icons-material/Schema';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CompressIcon from '@mui/icons-material/Compress';
 
 export const Navigation = () => {
   const navigate = useNavigate();
@@ -103,6 +104,12 @@ export const Navigation = () => {
           iconPosition="start" 
           label="ACK/NACK" 
           value="/ack-nack" 
+        />
+        <Tab 
+          icon={<CompressIcon />} 
+          iconPosition="start" 
+          label="Compression" 
+          value="/compression" 
         />
       </Tabs>
     </Box>

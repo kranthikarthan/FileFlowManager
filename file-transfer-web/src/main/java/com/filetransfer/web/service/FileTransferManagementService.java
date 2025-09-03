@@ -4,6 +4,8 @@ import com.filetransfer.web.dto.FileTransferRecordDto;
 import com.filetransfer.web.entity.FileTransferRecord;
 import com.filetransfer.web.entity.TransferDirection;
 import com.filetransfer.web.entity.TransferStatus;
+import com.filetransfer.web.entity.CompressionType;
+import com.filetransfer.web.entity.FileType;
 import com.filetransfer.web.repository.FileTransferRecordRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -11,7 +13,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,6 +31,9 @@ public class FileTransferManagementService {
     
     @Autowired
     private AckNackService ackNackService;
+    
+    @Autowired
+    private CompressionService compressionService;
     
     public List<FileTransferRecordDto> getAllFileTransfers(String tenantId) {
         return fileTransferRepository.findByTenantId(tenantId).stream()
@@ -174,6 +184,111 @@ public class FileTransferManagementService {
         ackNackService.generateNackForInboundFile(id, reasonCode, reasonDescription);
     }
     
+    /**
+     * Compress a file for transfer
+     */
+    public void compressFile(Long id, CompressionType compressionType) {
+        FileTransferRecord record = fileTransferRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("File transfer record not found: " + id));
+        
+        if (record.getCompressionEnabled()) {
+            throw new IllegalStateException("File is already compressed");
+        }
+        
+        try {
+            Path sourceFile = Paths.get(record.getSourcePath());
+            String targetDirectory = sourceFile.getParent().toString() + "/compressed";
+            
+            long startTime = System.currentTimeMillis();
+            CompressionService.CompressionResult result = compressionService.compressFile(
+                sourceFile, compressionType, targetDirectory);
+            
+            // Update record with compression information
+            record.setCompressionEnabled(true);
+            record.setCompressionType(compressionType);
+            record.setOriginalFileSize(Files.size(sourceFile));
+            record.setCompressedFileSize(Files.size(result.getCompressedFile()));
+            record.setCompressionRatio(result.getCompressionRatio());
+            record.setCompressionTimeMs(result.getCompressionTimeMs());
+            record.setCompressedFilePath(result.getCompressedFile().toString());
+            
+            fileTransferRepository.save(record);
+            
+            logger.info("Compressed file for transfer {}: {} -> {} (ratio: {:.2f})", 
+                       id, record.getOriginalFileSize(), record.getCompressedFileSize(), 
+                       record.getCompressionRatio());
+                       
+        } catch (Exception e) {
+            logger.error("Failed to compress file for transfer {}: {}", id, e.getMessage());
+            throw new RuntimeException("File compression failed", e);
+        }
+    }
+    
+    /**
+     * Decompress a received file
+     */
+    public void decompressFile(Long id) {
+        FileTransferRecord record = fileTransferRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("File transfer record not found: " + id));
+        
+        if (!record.getCompressionEnabled() || record.getCompressionType() == CompressionType.NONE) {
+            throw new IllegalStateException("File is not compressed");
+        }
+        
+        try {
+            Path compressedFile = Paths.get(record.getCompressedFilePath() != null ? 
+                                           record.getCompressedFilePath() : record.getSourcePath());
+            String targetDirectory = record.getTargetPath();
+            
+            long startTime = System.currentTimeMillis();
+            CompressionService.DecompressionResult result = compressionService.decompressFile(
+                compressedFile, targetDirectory);
+            
+            // Update record with decompression information
+            record.setDecompressionTimeMs(result.getDecompressionTimeMs());
+            record.setTargetPath(result.getDecompressedFile().toString());
+            
+            fileTransferRepository.save(record);
+            
+            logger.info("Decompressed file for transfer {}: {} (time: {}ms)", 
+                       id, result.getDecompressedFile(), result.getDecompressionTimeMs());
+                       
+        } catch (Exception e) {
+            logger.error("Failed to decompress file for transfer {}: {}", id, e.getMessage());
+            throw new RuntimeException("File decompression failed", e);
+        }
+    }
+    
+    /**
+     * Get compression recommendations for a file
+     */
+    public Map<String, Object> getCompressionRecommendations(Long id) {
+        FileTransferRecord record = fileTransferRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("File transfer record not found: " + id));
+        
+        try {
+            Path file = Paths.get(record.getSourcePath());
+            FileType fileType = record.getFileType();
+            
+            // Get recommended compression types
+            CompressionType speedOptimized = compressionService.getRecommendedCompression(file, fileType, true);
+            CompressionType ratioOptimized = compressionService.getRecommendedCompression(file, fileType, false);
+            
+            Map<String, Object> recommendations = new HashMap<>();
+            recommendations.put("speedOptimized", speedOptimized);
+            recommendations.put("ratioOptimized", ratioOptimized);
+            recommendations.put("shouldCompress", CompressionType.shouldCompress(fileType));
+            recommendations.put("originalFileSize", Files.size(file));
+            recommendations.put("estimatedCompressedSize", Math.round(Files.size(file) * speedOptimized.getAverageCompressionRatio()));
+            
+            return recommendations;
+            
+        } catch (Exception e) {
+            logger.error("Failed to get compression recommendations for transfer {}: {}", id, e.getMessage());
+            throw new RuntimeException("Failed to get compression recommendations", e);
+        }
+    }
+    
     private FileTransferRecordDto convertToDto(FileTransferRecord record) {
         FileTransferRecordDto dto = new FileTransferRecordDto();
         dto.setId(record.getId());
@@ -189,6 +304,17 @@ public class FileTransferManagementService {
         dto.setFileSize(record.getFileSize());
         dto.setChecksum(record.getChecksum());
         dto.setBatchJobExecutionId(record.getBatchJobExecutionId());
+        
+        // Compression fields
+        dto.setCompressionEnabled(record.getCompressionEnabled());
+        dto.setCompressionType(record.getCompressionType());
+        dto.setOriginalFileSize(record.getOriginalFileSize());
+        dto.setCompressedFileSize(record.getCompressedFileSize());
+        dto.setCompressionRatio(record.getCompressionRatio());
+        dto.setCompressionTimeMs(record.getCompressionTimeMs());
+        dto.setDecompressionTimeMs(record.getDecompressionTimeMs());
+        dto.setCompressedFilePath(record.getCompressedFilePath());
+        
         return dto;
     }
 }

@@ -53,6 +53,9 @@ The File Transfer Management System is a comprehensive enterprise-grade platform
 │                  │              │              │                │
 │  EOT Validation  │  Backup      │  Monitoring  │  Analytics     │
 │  Service         │  Service     │  Service     │  Service       │
+│                  │              │              │                │
+│  Compression     │  Performance │  Security    │  Integration   │
+│  Service         │  Service     │  Service     │  Service       │
 └─────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
@@ -319,6 +322,7 @@ Event Bus (Future) ←───────────────────�
 - **Caching Strategy**: Multi-level caching (Redis, application-level)
 - **Database Optimization**: Proper indexing, query optimization
 - **File Processing**: Streaming processing for large files
+- **File Compression**: Automatic compression/decompression for bandwidth optimization
 - **CDN Integration**: Static asset delivery optimization
 
 ### 8.2 Performance Metrics
@@ -344,6 +348,7 @@ Traces ────────────────→ Jaeger ────�
 #### Key Metrics
 - **Business Metrics**: File transfer success/failure rates, processing times
 - **Technical Metrics**: CPU, memory, disk usage, database performance
+- **Compression Metrics**: Compression ratios, bandwidth savings, processing times
 - **Security Metrics**: Authentication failures, unauthorized access attempts
 - **User Metrics**: Active users, feature usage, response times
 
