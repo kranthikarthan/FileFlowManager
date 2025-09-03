@@ -18,6 +18,7 @@ import SharedSchemaManagement from './components/SharedSchemaManagement';
 import EotValidationDashboard from './components/EotValidationDashboard';
 import AckNackManagement from './components/AckNackManagement';
 import CompressionManagement from './components/CompressionManagement';
+import HsmManagement from './components/HsmManagement';
 import { CustomThemeProvider, useTheme } from './theme/themeProvider';
 import MobileNavigation from './components/mobile/MobileNavigation';
 import ThemeToggle from './components/mobile/ThemeToggle';
@@ -211,6 +212,7 @@ function AppContent() {
           <Route path="/eot-validation" element={<EotValidationDashboard tenantId={user?.tenantId || 'default'} />} />
           <Route path="/ack-nack" element={<AckNackManagement selectedTenant={user?.tenantId || 'default'} />} />
           <Route path="/compression" element={<CompressionManagement selectedTenant={user?.tenantId || 'default'} />} />
+          <Route path="/hsm" element={<HsmManagement selectedTenant={user?.tenantId || 'default'} />} />
         </Routes>
       </Container>
 

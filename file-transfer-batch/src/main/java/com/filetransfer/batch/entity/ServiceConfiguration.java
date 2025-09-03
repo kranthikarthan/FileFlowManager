@@ -133,6 +133,43 @@ public class ServiceConfiguration {
     @Column(name = "eot_validation_enabled")
     private Boolean eotValidationEnabled = false;
     
+    // HSM (Hardware Security Module) configuration
+    @Column(name = "hsm_validation_required")
+    private Boolean hsmValidationRequired = false;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "hsm_provider")
+    private HsmProvider hsmProvider = HsmProvider.NONE;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "hsm_operation_outbound")
+    private HsmOperation hsmOperationOutbound = HsmOperation.SIGN;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "hsm_operation_inbound")
+    private HsmOperation hsmOperationInbound = HsmOperation.VERIFY;
+    
+    @Column(name = "hsm_key_alias")
+    private String hsmKeyAlias;
+    
+    @Column(name = "hsm_algorithm")
+    private String hsmAlgorithm = "SHA256withRSA";
+    
+    @Column(name = "hsm_timeout_seconds")
+    private Integer hsmTimeoutSeconds = 30;
+    
+    @Column(name = "hsm_retry_attempts")
+    private Integer hsmRetryAttempts = 3;
+    
+    @Column(name = "hsm_fail_on_error")
+    private Boolean hsmFailOnError = true;
+    
+    @Column(name = "hsm_certificate_path")
+    private String hsmCertificatePath;
+    
+    @Column(name = "hsm_config_properties", columnDefinition = "TEXT")
+    private String hsmConfigProperties; // JSON configuration for HSM provider
+    
     @Column
     private String description;
     
@@ -251,6 +288,40 @@ public class ServiceConfiguration {
     
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    
+    // HSM getters and setters
+    public Boolean getHsmValidationRequired() { return hsmValidationRequired; }
+    public void setHsmValidationRequired(Boolean hsmValidationRequired) { this.hsmValidationRequired = hsmValidationRequired; }
+    
+    public HsmProvider getHsmProvider() { return hsmProvider; }
+    public void setHsmProvider(HsmProvider hsmProvider) { this.hsmProvider = hsmProvider; }
+    
+    public HsmOperation getHsmOperationOutbound() { return hsmOperationOutbound; }
+    public void setHsmOperationOutbound(HsmOperation hsmOperationOutbound) { this.hsmOperationOutbound = hsmOperationOutbound; }
+    
+    public HsmOperation getHsmOperationInbound() { return hsmOperationInbound; }
+    public void setHsmOperationInbound(HsmOperation hsmOperationInbound) { this.hsmOperationInbound = hsmOperationInbound; }
+    
+    public String getHsmKeyAlias() { return hsmKeyAlias; }
+    public void setHsmKeyAlias(String hsmKeyAlias) { this.hsmKeyAlias = hsmKeyAlias; }
+    
+    public String getHsmAlgorithm() { return hsmAlgorithm; }
+    public void setHsmAlgorithm(String hsmAlgorithm) { this.hsmAlgorithm = hsmAlgorithm; }
+    
+    public Integer getHsmTimeoutSeconds() { return hsmTimeoutSeconds; }
+    public void setHsmTimeoutSeconds(Integer hsmTimeoutSeconds) { this.hsmTimeoutSeconds = hsmTimeoutSeconds; }
+    
+    public Integer getHsmRetryAttempts() { return hsmRetryAttempts; }
+    public void setHsmRetryAttempts(Integer hsmRetryAttempts) { this.hsmRetryAttempts = hsmRetryAttempts; }
+    
+    public Boolean getHsmFailOnError() { return hsmFailOnError; }
+    public void setHsmFailOnError(Boolean hsmFailOnError) { this.hsmFailOnError = hsmFailOnError; }
+    
+    public String getHsmCertificatePath() { return hsmCertificatePath; }
+    public void setHsmCertificatePath(String hsmCertificatePath) { this.hsmCertificatePath = hsmCertificatePath; }
+    
+    public String getHsmConfigProperties() { return hsmConfigProperties; }
+    public void setHsmConfigProperties(String hsmConfigProperties) { this.hsmConfigProperties = hsmConfigProperties; }
     
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

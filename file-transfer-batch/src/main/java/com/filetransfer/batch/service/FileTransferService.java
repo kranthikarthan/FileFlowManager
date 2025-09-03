@@ -42,6 +42,9 @@ public class FileTransferService {
     @Autowired
     private CompressionService compressionService;
     
+    @Autowired
+    private HsmService hsmService;
+    
     @Scheduled(fixedDelayString = "${file-transfer.poll-interval-seconds:30}000")
     public void processPendingTransfers() {
         if (!fileTransferConfig.isEnabled()) {
@@ -144,6 +147,32 @@ public class FileTransferService {
                               : record.getOriginalFileSize() != null ? record.getOriginalFileSize() : record.getFileSize();
             
             if (Files.exists(actualTargetPath) && Files.size(actualTargetPath) == expectedSize) {
+                
+                // Perform HSM validation if required
+                try {
+                    HsmValidationRecord hsmValidation = hsmService.performHsmValidation(
+                        record.getId(), record.getFileName(), record.getTenantId(),
+                        record.getServiceType(), record.getSubServiceType(),
+                        record.getDirection(), actualTargetPath
+                    );
+                    
+                    // Check if HSM validation passed (or was skipped)
+                    if (!hsmValidation.getStatus().isSuccess()) {
+                        if (shouldFailOnHsmError(record)) {
+                            throw new IOException("HSM validation failed: " + hsmValidation.getErrorMessage());
+                        } else {
+                            logger.warn("HSM validation failed for file {} but configured to continue: {}", 
+                                       record.getFileName(), hsmValidation.getErrorMessage());
+                        }
+                    }
+                    
+                } catch (Exception hsmException) {
+                    logger.error("HSM validation error for file {}: {}", record.getFileName(), hsmException.getMessage());
+                    if (shouldFailOnHsmError(record)) {
+                        throw new IOException("HSM validation error: " + hsmException.getMessage());
+                    }
+                }
+                
                 record.setStatus(TransferStatus.COMPLETED);
                 logger.info("File transfer completed successfully: {}", record.getFileName());
                 
@@ -243,6 +272,23 @@ public class FileTransferService {
             }
         } catch (Exception e) {
             logger.warn("Error logging transfer completion details: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * Check if file transfer should fail on HSM errors
+     */
+    private boolean shouldFailOnHsmError(FileTransferRecord record) {
+        try {
+            ServiceConfiguration config = serviceConfigurationRepository
+                .findByTenantIdAndServiceNameAndSubServiceName(
+                    record.getTenantId(), record.getServiceType(), record.getSubServiceType())
+                .orElse(null);
+            
+            return config != null && config.getHsmFailOnError() != null && config.getHsmFailOnError();
+        } catch (Exception e) {
+            logger.warn("Could not determine HSM error handling policy for {}: {}", record.getFileName(), e.getMessage());
+            return true; // Fail safe - fail on HSM errors by default
         }
     }
 }

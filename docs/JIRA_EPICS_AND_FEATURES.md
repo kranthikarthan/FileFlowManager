@@ -361,6 +361,31 @@ Implement comprehensive file compression and decompression capabilities to optim
 
 ---
 
+## Epic 16: HSM Integration and Cryptographic Security
+**Epic ID**: FTM-016  
+**Priority**: High  
+**Story Points**: 89  
+
+### Description
+Implement Hardware Security Module (HSM) integration for enterprise-grade cryptographic validation, digital signatures, and file integrity checks with configurable per-service security policies.
+
+### Features
+- **FTM-016-F1**: Multi-HSM Provider Integration
+- **FTM-016-F2**: Configurable Cryptographic Operations
+- **FTM-016-F3**: Per-Service HSM Configuration
+- **FTM-016-F4**: HSM Monitoring and Management Interface
+- **FTM-016-F5**: Cryptographic Audit and Compliance
+
+### Acceptance Criteria
+- [ ] Support for 8+ HSM providers (Azure Key Vault, AWS CloudHSM, Thales Luna, etc.)
+- [ ] Configurable HSM validation per sub-service type
+- [ ] Digital signature generation and verification
+- [ ] File encryption and decryption using HSM keys
+- [ ] Comprehensive HSM monitoring and statistics
+- [ ] Complete audit trail for compliance requirements
+
+---
+
 ## Epic Summary
 
 | Epic ID | Epic Name | Priority | Story Points | Status |
@@ -380,7 +405,8 @@ Implement comprehensive file compression and decompression capabilities to optim
 | FTM-013 | Cloud and Container Platform | Medium | 67 | ✅ Complete |
 | FTM-014 | Mobile and Progressive Web App | Low | 23 | ✅ Complete |
 | FTM-015 | File Compression and Optimization | Medium | 55 | ✅ Complete |
+| FTM-016 | HSM Integration and Cryptographic Security | High | 89 | ✅ Complete |
 
-**Total Story Points**: 847  
-**Total Epics**: 15  
+**Total Story Points**: 936  
+**Total Epics**: 16  
 **Completion Status**: 100%

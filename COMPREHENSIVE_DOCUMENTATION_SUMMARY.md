@@ -112,8 +112,9 @@ The File Transfer Management System is a sophisticated enterprise platform consi
 | FTM-013 | Cloud and Container Platform | Medium | 67 | ✅ Complete |
 | FTM-014 | Mobile and Progressive Web App | Low | 23 | ✅ Complete |
 | FTM-015 | File Compression and Optimization | Medium | 55 | ✅ Complete |
+| FTM-016 | HSM Integration and Cryptographic Security | High | 89 | ✅ Complete |
 
-**Total Story Points**: 847 points across 15 epics
+**Total Story Points**: 936 points across 16 epics
 
 ## 🔧 Technical Implementation Summary
 
@@ -134,6 +135,7 @@ The File Transfer Management System is a sophisticated enterprise platform consi
 - Alert Management with multi-channel notifications
 - Schema Management with reuse capabilities
 - Compression Management with algorithm testing
+- HSM Management with cryptographic operations
 - Mobile navigation and PWA features
 
 ### Web Application (Spring Boot)
@@ -149,6 +151,7 @@ The File Transfer Management System is a sophisticated enterprise platform consi
 - FileTransferManagementService (core operations)
 - AckNackService (acknowledgment handling)
 - CompressionService (file compression/decompression)
+- HsmService (hardware security module integration)
 - EotValidationService (transmission validation)
 - TenantService (multi-tenancy)
 - AlertService (monitoring and notifications)

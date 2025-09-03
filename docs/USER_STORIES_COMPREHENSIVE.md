@@ -587,6 +587,93 @@
 
 ---
 
+## Epic 16: HSM Integration and Cryptographic Security
+
+### User Story FTM-016-US-001: Configurable HSM Validation per Sub-Service
+**As a** security administrator  
+**I want** to configure HSM validation requirements per sub-service type  
+**So that** sensitive data transfers have appropriate cryptographic protection  
+
+**Acceptance Criteria:**
+- Given I configure a sub-service, when setting HSM options, then I can enable/disable HSM validation
+- Given HSM is enabled for a service, when files are processed, then HSM validation is performed
+- Given HSM validation fails, when configured to fail on error, then file transfer is rejected
+- Given HSM validation fails, when configured to continue, then warning is logged and processing continues
+
+**Story Points:** 21  
+**Priority:** High  
+**Components:** Service Configuration, HSM Service
+
+---
+
+### User Story FTM-016-US-002: Multi-HSM Provider Support
+**As a** enterprise architect  
+**I want** support for multiple HSM providers  
+**So that** I can choose the best HSM solution for different security requirements  
+
+**Acceptance Criteria:**
+- Given I select an HSM provider, when configuring, then provider-specific settings are available
+- Given Azure Key Vault is selected, when configured, then Azure-specific authentication is used
+- Given AWS CloudHSM is selected, when configured, then AWS-specific connectivity is established
+- Given on-premises HSM is selected, when configured, then network connectivity requirements are met
+
+**Story Points:** 21  
+**Priority:** High  
+**Components:** HSM Service, Provider Integration
+
+---
+
+### User Story FTM-016-US-003: Digital Signature Operations
+**As a** compliance officer  
+**I want** digital signatures for file transfers  
+**So that** I can ensure non-repudiation and data integrity  
+
+**Acceptance Criteria:**
+- Given outbound file processing, when HSM signing is enabled, then digital signature is generated
+- Given inbound file with signature, when processing, then signature is verified using HSM
+- Given signature verification fails, when processing, then file is rejected with detailed error
+- Given signature is valid, when processing continues, then validation status is recorded
+
+**Story Points:** 21  
+**Priority:** High  
+**Components:** HSM Service, Cryptographic Operations
+
+---
+
+### User Story FTM-016-US-004: HSM Monitoring and Management
+**As a** security operations manager  
+**I want** comprehensive monitoring of HSM operations  
+**So that** I can ensure security infrastructure is functioning correctly  
+
+**Acceptance Criteria:**
+- Given HSM operations occur, when monitoring, then I see real-time statistics and performance metrics
+- Given HSM errors occur, when detected, then appropriate alerts are generated
+- Given I need to troubleshoot, when accessing HSM management, then I see detailed operation logs
+- Given HSM performance degrades, when detected, then performance alerts are triggered
+
+**Story Points:** 13  
+**Priority:** Medium  
+**Components:** HSM Management Interface, Monitoring Service
+
+---
+
+### User Story FTM-016-US-005: Cryptographic Audit and Compliance
+**As a** compliance auditor  
+**I want** complete audit trail of all cryptographic operations  
+**So that** I can demonstrate regulatory compliance and security controls  
+
+**Acceptance Criteria:**
+- Given HSM operations occur, when auditing, then complete operation details are logged
+- Given I need compliance reports, when generated, then reports include all HSM activities
+- Given key lifecycle events occur, when tracking, then key creation, usage, and expiration are recorded
+- Given security incidents occur, when investigating, then detailed HSM audit trail is available
+
+**Story Points:** 13  
+**Priority:** Medium  
+**Components:** Audit Service, Compliance Reporting
+
+---
+
 ## User Story Summary by Epic
 
 | Epic | Total Stories | Total Story Points | Priority Distribution |
@@ -604,10 +691,11 @@
 | FTM-011 | 2 | 34 | High: 1, Medium: 1 |
 | FTM-012 | 2 | 21 | Low: 2 |
 | FTM-015 | 5 | 55 | High: 2, Medium: 2, Low: 1 |
+| FTM-016 | 5 | 89 | High: 3, Medium: 2 |
 
-**Total User Stories**: 31  
-**Total Story Points**: 359  
-**Average Story Points per Story**: 11.6
+**Total User Stories**: 36  
+**Total Story Points**: 448  
+**Average Story Points per Story**: 12.4
 
 ## Story Point Estimation Guide
 

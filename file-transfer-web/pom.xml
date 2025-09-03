@@ -132,6 +132,34 @@
             <version>1.5.5-5</version>
         </dependency>
         
+        <!-- HSM Integration Libraries -->
+        <!-- Azure Key Vault JCE Provider -->
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-security-keyvault-jca</artifactId>
+            <version>2.8.0</version>
+        </dependency>
+        
+        <!-- Bouncy Castle for cryptographic operations -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>1.76</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <version>1.76</version>
+        </dependency>
+        
+        <!-- PKCS#11 support for HSM integration -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-ext-jdk18on</artifactId>
+            <version>1.76</version>
+        </dependency>
+        
         <!-- Micrometer Tracing for distributed tracing -->
         <dependency>
             <groupId>io.micrometer</groupId>
