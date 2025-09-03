@@ -1,0 +1,89 @@
+# ACK/NACK Configuration for File Transfer Batch Application
+file-transfer:
+  ack-nack:
+    # Base directory for storing ACK/NACK files
+    base-path: ${ACK_NACK_BASE_PATH:/data/ack-nack}
+    
+    # Directory for incoming ACK/NACK files from partners
+    incoming-path: ${ACK_NACK_INCOMING_PATH:/data/incoming/ack-nack}
+    
+    # Timeout for ACK/NACK files (hours)
+    timeout-hours: ${ACK_NACK_TIMEOUT_HOURS:24}
+    
+    # Auto-generation settings
+    auto-generate: ${ACK_NACK_AUTO_GENERATE:true}
+    
+    # Auto-sending settings
+    auto-send: ${ACK_NACK_AUTO_SEND:true}
+    
+    # Polling intervals (seconds)
+    poll-interval-seconds: ${ACK_NACK_POLL_INTERVAL:60}
+    generation-interval-seconds: ${ACK_NACK_GENERATION_INTERVAL:300}
+    send-interval-seconds: ${ACK_NACK_SEND_INTERVAL:120}
+    cleanup-interval-seconds: ${ACK_NACK_CLEANUP_INTERVAL:3600}
+    
+    # Batch processing settings
+    batch:
+      chunk-size: ${ACK_NACK_BATCH_CHUNK_SIZE:10}
+      thread-pool-size: ${ACK_NACK_THREAD_POOL_SIZE:5}
+      max-retry-attempts: ${ACK_NACK_MAX_RETRY:3}
+      retry-delay-seconds: ${ACK_NACK_RETRY_DELAY:30}
+    
+    # File processing settings
+    processing:
+      max-file-size-mb: ${ACK_NACK_MAX_FILE_SIZE:10}
+      allowed-extensions:
+        - .ack
+        - .nack
+      archive-processed-files: ${ACK_NACK_ARCHIVE_PROCESSED:true}
+      archive-retention-days: ${ACK_NACK_ARCHIVE_RETENTION:30}
+    
+    # Partner integration settings
+    partner:
+      # Default paths for partner ACK/NACK directories
+      default-ack-path: ${PARTNER_ACK_PATH:/data/partner/ack}
+      default-nack-path: ${PARTNER_NACK_PATH:/data/partner/nack}
+      
+      # Connection settings for partner systems
+      connection:
+        timeout-seconds: ${PARTNER_CONNECTION_TIMEOUT:30}
+        retry-attempts: ${PARTNER_RETRY_ATTEMPTS:3}
+        retry-delay-seconds: ${PARTNER_RETRY_DELAY:5}
+    
+    # Monitoring and alerting
+    monitoring:
+      enabled: ${ACK_NACK_MONITORING_ENABLED:true}
+      alert-on-expired: ${ACK_NACK_ALERT_ON_EXPIRED:true}
+      alert-on-failed: ${ACK_NACK_ALERT_ON_FAILED:true}
+      metrics-retention-days: ${ACK_NACK_METRICS_RETENTION:90}
+      
+      # Health check settings
+      health-check:
+        enabled: ${ACK_NACK_HEALTH_CHECK_ENABLED:true}
+        interval-seconds: ${ACK_NACK_HEALTH_CHECK_INTERVAL:300}
+        max-pending-threshold: ${ACK_NACK_MAX_PENDING_THRESHOLD:100}
+        max-failed-threshold: ${ACK_NACK_MAX_FAILED_THRESHOLD:10}
+
+# Spring Batch configuration for ACK/NACK processing
+spring:
+  batch:
+    job:
+      enabled: true
+    jdbc:
+      initialize-schema: embedded
+      
+# Scheduler configuration
+scheduler:
+  ack-nack:
+    enabled: ${ACK_NACK_SCHEDULER_ENABLED:true}
+    pool-size: ${ACK_NACK_SCHEDULER_POOL_SIZE:5}
+
+# Logging configuration for ACK/NACK operations
+logging:
+  level:
+    com.filetransfer.batch.service.AckNackService: ${ACK_NACK_LOG_LEVEL:INFO}
+    com.filetransfer.batch.controller.AckNackBatchController: ${ACK_NACK_LOG_LEVEL:INFO}
+    com.filetransfer.batch.processor.AckNackFileProcessor: ${ACK_NACK_LOG_LEVEL:INFO}
+    com.filetransfer.batch.reader.AckNackFileReader: ${ACK_NACK_LOG_LEVEL:DEBUG}
+    com.filetransfer.batch.writer.AckNackFileWriter: ${ACK_NACK_LOG_LEVEL:INFO}
+    com.filetransfer.batch.config.AckNackBatchConfig: ${ACK_NACK_LOG_LEVEL:INFO}

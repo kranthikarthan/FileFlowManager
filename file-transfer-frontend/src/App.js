@@ -16,6 +16,7 @@ import SubServiceManagement from './components/SubServiceManagement';
 import CutOffExtensionManagement from './components/CutOffExtensionManagement';
 import SharedSchemaManagement from './components/SharedSchemaManagement';
 import EotValidationDashboard from './components/EotValidationDashboard';
+import AckNackManagement from './components/AckNackManagement';
 import { CustomThemeProvider, useTheme } from './theme/themeProvider';
 import MobileNavigation from './components/mobile/MobileNavigation';
 import ThemeToggle from './components/mobile/ThemeToggle';
@@ -207,6 +208,7 @@ function AppContent() {
           <Route path="/cutoff-extensions" element={<CutOffExtensionManagement tenantId={user?.tenantId || 'default'} />} />
           <Route path="/shared-schemas" element={<SharedSchemaManagement tenantId={user?.tenantId || 'default'} />} />
           <Route path="/eot-validation" element={<EotValidationDashboard tenantId={user?.tenantId || 'default'} />} />
+          <Route path="/ack-nack" element={<AckNackManagement selectedTenant={user?.tenantId || 'default'} />} />
         </Routes>
       </Container>
 

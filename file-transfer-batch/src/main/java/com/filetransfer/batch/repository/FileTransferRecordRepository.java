@@ -24,6 +24,8 @@ public interface FileTransferRecordRepository extends JpaRepository<FileTransfer
     
     List<FileTransferRecord> findByTenantIdAndDirection(String tenantId, TransferDirection direction);
     
+    List<FileTransferRecord> findByTenantIdAndDirectionAndStatus(String tenantId, TransferDirection direction, TransferStatus status);
+    
     List<FileTransferRecord> findByTenantIdAndServiceTypeAndStatus(String tenantId, String serviceType, TransferStatus status);
     
     List<FileTransferRecord> findByTenantIdAndServiceTypeAndDirection(String tenantId, String serviceType, TransferDirection direction);
@@ -46,6 +48,11 @@ public interface FileTransferRecordRepository extends JpaRepository<FileTransfer
     
     @Query("SELECT DISTINCT f.subServiceType FROM FileTransferRecord f WHERE f.tenantId = :tenantId AND f.serviceType = :serviceType AND f.subServiceType IS NOT NULL")
     List<String> findDistinctSubServiceTypesForService(@Param("tenantId") String tenantId, @Param("serviceType") String serviceType);
+    
+    @Query("SELECT f FROM FileTransferRecord f WHERE f.direction = 'INBOUND' AND f.status = 'COMPLETED' AND f.id NOT IN (SELECT a.originalFileTransferId FROM AckNackRecord a WHERE a.originalFileTransferId = f.id)")
+    List<FileTransferRecord> findCompletedInboundTransfersWithoutAck();
+    
+    List<FileTransferRecord> findByTenantIdAndDirectionAndStatus(String tenantId, TransferDirection direction, TransferStatus status);
     
     // Legacy methods for backward compatibility (deprecated)
     @Deprecated

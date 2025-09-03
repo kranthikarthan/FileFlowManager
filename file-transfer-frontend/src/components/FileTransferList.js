@@ -19,8 +19,12 @@ import { DataGrid } from '@mui/x-data-grid';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import RetryIcon from '@mui/icons-material/Replay';
 import CancelIcon from '@mui/icons-material/Cancel';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import { format } from 'date-fns';
 import { fileTransferAPI } from '../services/api';
+import { ackNackService } from '../services/ackNackService';
 
 const statusColors = {
   PENDING: 'warning',
@@ -69,7 +73,20 @@ export const FileTransferList = () => {
         response = await fileTransferAPI.getAllFileTransfers();
       }
       
-      setTransfers(response.data);
+      // Enhance transfer data with ACK/NACK information
+      const transfersWithAckNack = await Promise.all(
+        response.data.map(async (transfer) => {
+          try {
+            const ackNackInfo = await ackNackService.getAckNackForFileTransfer(transfer.id);
+            return { ...transfer, ackNackInfo };
+          } catch (error) {
+            // No ACK/NACK found, which is normal
+            return { ...transfer, ackNackInfo: null };
+          }
+        })
+      );
+      
+      setTransfers(transfersWithAckNack);
     } catch (err) {
       setError('Failed to fetch file transfers');
       console.error('Error fetching transfers:', err);
@@ -120,6 +137,37 @@ export const FileTransferList = () => {
       status: '',
       direction: ''
     });
+  };
+
+  const handleGenerateAck = async (fileTransferId) => {
+    try {
+      await ackNackService.generateAck(fileTransferId);
+      fetchData(); // Refresh the data
+    } catch (err) {
+      setError('Failed to generate ACK');
+      console.error('Error generating ACK:', err);
+    }
+  };
+
+  const handleGenerateNack = async (fileTransferId) => {
+    // You could open a dialog here to get reason code/description
+    const reasonCode = prompt('Enter reason code:');
+    const reasonDescription = prompt('Enter reason description:');
+    
+    if (reasonCode) {
+      try {
+        await ackNackService.generateNack(fileTransferId, reasonCode, reasonDescription);
+        fetchData(); // Refresh the data
+      } catch (err) {
+        setError('Failed to generate NACK');
+        console.error('Error generating NACK:', err);
+      }
+    }
+  };
+
+  const handleViewAckNack = (ackNackInfo) => {
+    // You could open a dialog to show ACK/NACK details
+    alert(`ACK/NACK Details:\nType: ${ackNackInfo.type}\nStatus: ${ackNackInfo.status}\nFile: ${ackNackInfo.ackNackFileName}`);
   };
 
   const columns = [
@@ -189,12 +237,44 @@ export const FileTransferList = () => {
         params.value ? format(new Date(params.value), 'yyyy-MM-dd HH:mm:ss') : '-',
     },
     {
+      field: 'ackNackStatus',
+      headerName: 'ACK/NACK',
+      width: 120,
+      renderCell: (params) => {
+        const ackNackInfo = params.row.ackNackInfo;
+        if (!ackNackInfo) {
+          return params.row.direction === 'INBOUND' && params.row.status === 'COMPLETED' ? (
+            <Tooltip title="Generate ACK">
+              <IconButton
+                size="small"
+                onClick={() => handleGenerateAck(params.row.id)}
+                color="success"
+              >
+                <CheckCircleIcon />
+              </IconButton>
+            </Tooltip>
+          ) : '-';
+        }
+        
+        return (
+          <Tooltip title={`${ackNackInfo.type}: ${ackNackInfo.status}`}>
+            <Chip
+              label={ackNackInfo.type}
+              size="small"
+              color={ackNackInfo.type === 'ACK' ? 'success' : 'error'}
+              icon={ackNackInfo.type === 'ACK' ? <CheckCircleIcon /> : <ErrorIcon />}
+            />
+          </Tooltip>
+        );
+      },
+    },
+    {
       field: 'actions',
       headerName: 'Actions',
-      width: 120,
+      width: 180,
       sortable: false,
       renderCell: (params) => (
-        <Box>
+        <Box display="flex" gap={0.5}>
           <Tooltip title="Retry Transfer">
             <IconButton
               size="small"
@@ -213,6 +293,39 @@ export const FileTransferList = () => {
               <CancelIcon />
             </IconButton>
           </Tooltip>
+          {params.row.direction === 'INBOUND' && params.row.status === 'COMPLETED' && !params.row.ackNackInfo && (
+            <Tooltip title="Generate ACK">
+              <IconButton
+                size="small"
+                onClick={() => handleGenerateAck(params.row.id)}
+                color="success"
+              >
+                <CheckCircleIcon />
+              </IconButton>
+            </Tooltip>
+          )}
+          {params.row.direction === 'INBOUND' && params.row.status === 'FAILED' && !params.row.ackNackInfo && (
+            <Tooltip title="Generate NACK">
+              <IconButton
+                size="small"
+                onClick={() => handleGenerateNack(params.row.id)}
+                color="error"
+              >
+                <ErrorIcon />
+              </IconButton>
+            </Tooltip>
+          )}
+          {params.row.ackNackInfo && (
+            <Tooltip title="View ACK/NACK Details">
+              <IconButton
+                size="small"
+                onClick={() => handleViewAckNack(params.row.ackNackInfo)}
+                color="info"
+              >
+                <VisibilityIcon />
+              </IconButton>
+            </Tooltip>
+          )}
         </Box>
       ),
     },

@@ -13,6 +13,7 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import SchemaIcon from '@mui/icons-material/Schema';
 import AssessmentIcon from '@mui/icons-material/Assessment';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 export const Navigation = () => {
   const navigate = useNavigate();
@@ -96,6 +97,12 @@ export const Navigation = () => {
           iconPosition="start" 
           label="EOT Validation" 
           value="/eot-validation" 
+        />
+        <Tab 
+          icon={<CheckCircleIcon />} 
+          iconPosition="start" 
+          label="ACK/NACK" 
+          value="/ack-nack" 
         />
       </Tabs>
     </Box>

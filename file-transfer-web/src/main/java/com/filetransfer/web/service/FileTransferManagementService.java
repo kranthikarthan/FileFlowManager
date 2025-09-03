@@ -7,6 +7,8 @@ import com.filetransfer.web.entity.TransferStatus;
 import com.filetransfer.web.repository.FileTransferRecordRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,8 +17,13 @@ import java.util.stream.Collectors;
 @Service
 public class FileTransferManagementService {
     
+    private static final Logger logger = LoggerFactory.getLogger(FileTransferManagementService.class);
+    
     @Autowired
     private FileTransferRecordRepository fileTransferRepository;
+    
+    @Autowired
+    private AckNackService ackNackService;
     
     public List<FileTransferRecordDto> getAllFileTransfers(String tenantId) {
         return fileTransferRepository.findByTenantId(tenantId).stream()
@@ -106,6 +113,65 @@ public class FileTransferManagementService {
         return fileTransferRepository.findByTenantIdAndFileName(tenantId, fileName).stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
+    }
+    
+    /**
+     * Complete file transfer and trigger ACK generation for inbound files
+     */
+    public void completeFileTransfer(Long id) {
+        FileTransferRecord record = fileTransferRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("File transfer record not found: " + id));
+        
+        record.setStatus(TransferStatus.COMPLETED);
+        record.setProcessedAt(LocalDateTime.now());
+        fileTransferRepository.save(record);
+        
+        // Auto-generate ACK for completed inbound files
+        if (record.getDirection() == TransferDirection.INBOUND) {
+            try {
+                ackNackService.generateAckForInboundFile(id);
+                logger.info("Auto-generated ACK for completed inbound file: {}", record.getFileName());
+            } catch (Exception e) {
+                logger.error("Failed to auto-generate ACK for file {}: {}", record.getFileName(), e.getMessage());
+            }
+        }
+    }
+    
+    /**
+     * Mark file transfer as failed and trigger NACK generation for inbound files
+     */
+    public void failFileTransfer(Long id, String errorMessage) {
+        FileTransferRecord record = fileTransferRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("File transfer record not found: " + id));
+        
+        record.setStatus(TransferStatus.FAILED);
+        record.setErrorMessage(errorMessage);
+        record.setProcessedAt(LocalDateTime.now());
+        fileTransferRepository.save(record);
+        
+        // Auto-generate NACK for failed inbound files
+        if (record.getDirection() == TransferDirection.INBOUND) {
+            try {
+                ackNackService.generateNackForInboundFile(id, "PROCESSING_FAILED", errorMessage);
+                logger.info("Auto-generated NACK for failed inbound file: {}", record.getFileName());
+            } catch (Exception e) {
+                logger.error("Failed to auto-generate NACK for file {}: {}", record.getFileName(), e.getMessage());
+            }
+        }
+    }
+    
+    /**
+     * Generate ACK for a specific file transfer
+     */
+    public void generateAckForFile(Long id) {
+        ackNackService.generateAckForInboundFile(id);
+    }
+    
+    /**
+     * Generate NACK for a specific file transfer
+     */
+    public void generateNackForFile(Long id, String reasonCode, String reasonDescription) {
+        ackNackService.generateNackForInboundFile(id, reasonCode, reasonDescription);
     }
     
     private FileTransferRecordDto convertToDto(FileTransferRecord record) {

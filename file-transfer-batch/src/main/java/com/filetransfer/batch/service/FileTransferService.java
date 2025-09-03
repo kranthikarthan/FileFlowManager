@@ -34,6 +34,9 @@ public class FileTransferService {
     @Autowired
     private ServiceConfigurationRepository serviceConfigurationRepository;
     
+    @Autowired
+    private AckNackService ackNackService;
+    
     @Scheduled(fixedDelayString = "${file-transfer.poll-interval-seconds:30}000")
     public void processPendingTransfers() {
         if (!fileTransferConfig.isEnabled()) {
@@ -93,6 +96,16 @@ public class FileTransferService {
                 
                 // Log completion with service details from database
                 logTransferCompletion(record);
+                
+                // Auto-generate ACK for completed inbound files
+                if (record.getDirection() == TransferDirection.INBOUND) {
+                    try {
+                        ackNackService.generateAckForInboundFile(record.getId());
+                        logger.info("Auto-generated ACK for completed inbound file: {}", record.getFileName());
+                    } catch (Exception e) {
+                        logger.error("Failed to auto-generate ACK for file {}: {}", record.getFileName(), e.getMessage());
+                    }
+                }
             } else {
                 throw new IOException("File verification failed after transfer");
             }
@@ -110,6 +123,16 @@ public class FileTransferService {
         record.setErrorMessage(errorMessage);
         record.setProcessedAt(LocalDateTime.now());
         fileTransferRepository.save(record);
+        
+        // Auto-generate NACK for failed inbound files
+        if (record.getDirection() == TransferDirection.INBOUND) {
+            try {
+                ackNackService.generateNackForInboundFile(record.getId(), "PROCESSING_FAILED", errorMessage);
+                logger.info("Auto-generated NACK for failed inbound file: {}", record.getFileName());
+            } catch (Exception e) {
+                logger.error("Failed to auto-generate NACK for file {}: {}", record.getFileName(), e.getMessage());
+            }
+        }
     }
     
     public void retryTransfer(Long recordId) {
