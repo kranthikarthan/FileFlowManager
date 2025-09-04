@@ -16,6 +16,7 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CompressIcon from '@mui/icons-material/Compress';
 import SecurityIcon from '@mui/icons-material/Security';
+import AnalyticsIcon from '@mui/icons-material/Analytics';
 
 export const Navigation = () => {
   const navigate = useNavigate();
@@ -117,6 +118,12 @@ export const Navigation = () => {
           iconPosition="start" 
           label="HSM Security" 
           value="/hsm" 
+        />
+        <Tab 
+          icon={<AnalyticsIcon />} 
+          iconPosition="start" 
+          label="Content Analysis" 
+          value="/content-analysis" 
         />
       </Tabs>
     </Box>

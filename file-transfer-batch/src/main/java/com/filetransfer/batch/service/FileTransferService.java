@@ -45,6 +45,9 @@ public class FileTransferService {
     @Autowired
     private HsmService hsmService;
     
+    @Autowired
+    private ContentAnalysisService contentAnalysisService;
+    
     @Scheduled(fixedDelayString = "${file-transfer.poll-interval-seconds:30}000")
     public void processPendingTransfers() {
         if (!fileTransferConfig.isEnabled()) {
@@ -86,6 +89,38 @@ public class FileTransferService {
         record.setStatus(TransferStatus.IN_PROGRESS);
         record.setProcessedAt(LocalDateTime.now());
         fileTransferRepository.save(record);
+        
+        // Perform content analysis for processing optimization
+        ContentAnalysisService.ProcessingDecision decision = contentAnalysisService.shouldProcessFile(record);
+        
+        if (!decision.isShouldProcess()) {
+            logger.warn("Content analysis recommends skipping file {}: {}", record.getFileName(), decision.getReason());
+            handleTransferFailure(record, "Processing skipped: " + decision.getReason() + ". " + decision.getRecommendedAction());
+            return;
+        }
+        
+        // Get processing optimizations
+        ContentAnalysisService.ProcessingOptimization optimization = contentAnalysisService.getProcessingOptimization(record);
+        
+        // Enhanced file type detection
+        FileType enhancedType = contentAnalysisService.enhancedFileTypeDetection(record);
+        if (enhancedType != record.getFileType()) {
+            logger.info("Enhanced file type detection updated type from {} to {} for file: {}", 
+                record.getFileType(), enhancedType, record.getFileName());
+            record.setFileType(enhancedType);
+            fileTransferRepository.save(record);
+        }
+        
+        // Apply processing optimizations if recommended
+        if (optimization.isRecommendCompression() && !record.getCompressionEnabled()) {
+            logger.info("Content analysis recommends compression for file {}: {}", 
+                record.getFileName(), optimization.getCompressionReason());
+            record.setCompressionEnabled(true);
+            if (record.getCompressionType() == null) {
+                record.setCompressionType(CompressionType.GZIP); // Default
+            }
+            fileTransferRepository.save(record);
+        }
         
         try {
             Path sourcePath = Paths.get(record.getSourcePath());
