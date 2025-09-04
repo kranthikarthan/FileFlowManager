@@ -21,6 +21,7 @@ import CompressionManagement from './components/CompressionManagement';
 import HsmManagement from './components/HsmManagement';
 import ContentAnalysis from './components/ContentAnalysis';
 import FileTagManagement from './components/FileTagManagement';
+import WorkflowManagement from './components/WorkflowManagement';
 import { CustomThemeProvider, useTheme } from './theme/themeProvider';
 import MobileNavigation from './components/mobile/MobileNavigation';
 import ThemeToggle from './components/mobile/ThemeToggle';
@@ -217,6 +218,7 @@ function AppContent() {
           <Route path="/hsm" element={<HsmManagement selectedTenant={user?.tenantId || 'default'} />} />
           <Route path="/content-analysis" element={<ContentAnalysis />} />
           <Route path="/file-tags" element={<FileTagManagement selectedTenant={user?.tenantId || 'default'} />} />
+          <Route path="/workflows" element={<WorkflowManagement selectedTenant={user?.tenantId || 'default'} />} />
         </Routes>
       </Container>
 

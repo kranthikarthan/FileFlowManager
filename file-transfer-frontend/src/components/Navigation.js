@@ -18,6 +18,7 @@ import CompressIcon from '@mui/icons-material/Compress';
 import SecurityIcon from '@mui/icons-material/Security';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 
 export const Navigation = () => {
   const navigate = useNavigate();
@@ -131,6 +132,12 @@ export const Navigation = () => {
           iconPosition="start" 
           label="File Tags" 
           value="/file-tags" 
+        />
+        <Tab 
+          icon={<AccountTreeIcon />} 
+          iconPosition="start" 
+          label="Workflows" 
+          value="/workflows" 
         />
       </Tabs>
     </Box>

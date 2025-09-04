@@ -48,6 +48,12 @@ public class FileTransferService {
     @Autowired
     private ContentAnalysisService contentAnalysisService;
     
+    @Autowired
+    private BusinessRulesEngine businessRulesEngine;
+    
+    @Autowired
+    private WorkflowOrchestrationService workflowOrchestrationService;
+    
     @Scheduled(fixedDelayString = "${file-transfer.poll-interval-seconds:30}000")
     public void processPendingTransfers() {
         if (!fileTransferConfig.isEnabled()) {
@@ -120,6 +126,17 @@ public class FileTransferService {
                 record.setCompressionType(CompressionType.GZIP); // Default
             }
             fileTransferRepository.save(record);
+        }
+        
+        // Execute intelligent workflow automation
+        WorkflowOrchestrationService.WorkflowResult workflowResult = 
+            workflowOrchestrationService.executeFileProcessingWorkflow(record);
+        
+        if (!workflowResult.isSuccess()) {
+            logger.warn("Workflow automation failed for file {}: {}", record.getFileName(), workflowResult.getErrorMessage());
+            // Continue with processing but log the workflow failure
+        } else {
+            logger.info("Workflow automation completed for file {}: {}", record.getFileName(), workflowResult.getMessage());
         }
         
         try {
@@ -240,6 +257,25 @@ public class FileTransferService {
         record.setErrorMessage(errorMessage);
         record.setProcessedAt(LocalDateTime.now());
         fileTransferRepository.save(record);
+        
+        // Execute error recovery workflow
+        try {
+            WorkflowOrchestrationService.WorkflowResult recoveryResult = 
+                workflowOrchestrationService.executeErrorRecoveryWorkflow(record, errorMessage);
+            
+            if (recoveryResult.isSuccess()) {
+                logger.info("Error recovery workflow completed for file {}: {}", 
+                    record.getFileName(), recoveryResult.getMessage());
+                
+                // If recovery was successful, the file status may have been reset to PENDING
+                // The record will be picked up in the next processing cycle
+            } else {
+                logger.warn("Error recovery workflow failed for file {}: {}", 
+                    record.getFileName(), recoveryResult.getErrorMessage());
+            }
+        } catch (Exception e) {
+            logger.error("Error in recovery workflow for file {}: {}", record.getFileName(), e.getMessage());
+        }
         
         // Auto-generate NACK for failed inbound files
         if (record.getDirection() == TransferDirection.INBOUND) {
