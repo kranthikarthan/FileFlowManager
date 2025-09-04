@@ -17,11 +17,11 @@ public class FileTransferRecord {
     @Column(nullable = false)
     private String fileName;
     
-    @Column(nullable = false)
-    private String serviceType;
+    @Column(name = "service_name", nullable = false)
+    private String serviceName;
     
-    @Column
-    private String subServiceType;
+    @Column(name = "sub_service_name")
+    private String subServiceName;
     
     @Column(nullable = false)
     private String sourcePath;
@@ -91,7 +91,7 @@ public class FileTransferRecord {
         this();
         this.tenantId = tenantId;
         this.fileName = fileName;
-        this.serviceType = serviceType;
+        this.serviceName = serviceName;
         this.sourcePath = sourcePath;
         this.targetPath = targetPath;
         this.direction = direction;
@@ -102,8 +102,8 @@ public class FileTransferRecord {
         this();
         this.tenantId = tenantId;
         this.fileName = fileName;
-        this.serviceType = serviceType;
-        this.subServiceType = subServiceType;
+        this.serviceName = serviceName;
+        this.subServiceName = subServiceName;
         this.sourcePath = sourcePath;
         this.targetPath = targetPath;
         this.direction = direction;
@@ -119,11 +119,11 @@ public class FileTransferRecord {
     public String getFileName() { return fileName; }
     public void setFileName(String fileName) { this.fileName = fileName; }
     
-    public String getServiceType() { return serviceType; }
-    public void setServiceType(String serviceType) { this.serviceType = serviceType; }
+    public String getServiceName() { return serviceName; }
+    public void setServiceName(String serviceName) { this.serviceName = serviceName; }
     
-    public String getSubServiceType() { return subServiceType; }
-    public void setSubServiceType(String subServiceType) { this.subServiceType = subServiceType; }
+    public String getSubServiceName() { return subServiceName; }
+    public void setSubServiceName(String subServiceName) { this.subServiceName = subServiceName; }
     
     public String getSourcePath() { return sourcePath; }
     public void setSourcePath(String sourcePath) { this.sourcePath = sourcePath; }

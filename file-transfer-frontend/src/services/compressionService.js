@@ -101,6 +101,19 @@ export const compressionService = {
     },
     
     /**
+     * Get compression recommendations for a file transfer
+     */
+    async getCompressionRecommendations(fileTransferId) {
+        try {
+            const response = await api.get(`/api/v1/compression/recommendations/${fileTransferId}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error getting compression recommendations:', error);
+            throw error;
+        }
+    },
+    
+    /**
      * Get compression statistics for a tenant
      */
     async getCompressionStatistics(tenantId) {

@@ -469,13 +469,29 @@ public class HsmService {
     }
     
     private char[] getKeyPassword(ServiceConfiguration serviceConfig) {
-        // In production, this would retrieve the password from a secure location (Azure Key Vault, etc.)
-        return "changeit".toCharArray();
+        // Retrieve password from secure configuration or environment variable
+        String password = System.getenv("HSM_KEY_PASSWORD_" + serviceConfig.getTenantId());
+        if (password == null) {
+            password = System.getProperty("hsm.key.password", "");
+        }
+        if (password.isEmpty()) {
+            logger.warn("HSM key password not configured for tenant: {}", serviceConfig.getTenantId());
+            throw new RuntimeException("HSM key password not configured");
+        }
+        return password.toCharArray();
     }
     
     private char[] getKeyStorePassword(ServiceConfiguration serviceConfig) {
-        // In production, this would retrieve the password from a secure location
-        return "changeit".toCharArray();
+        // Retrieve password from secure configuration or environment variable
+        String password = System.getenv("HSM_KEYSTORE_PASSWORD_" + serviceConfig.getTenantId());
+        if (password == null) {
+            password = System.getProperty("hsm.keystore.password", "");
+        }
+        if (password.isEmpty()) {
+            logger.warn("HSM keystore password not configured for tenant: {}", serviceConfig.getTenantId());
+            throw new RuntimeException("HSM keystore password not configured");
+        }
+        return password.toCharArray();
     }
     
     // Result classes (same as web application)

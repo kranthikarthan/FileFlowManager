@@ -293,7 +293,8 @@ public class FileTransferManagementService {
         FileTransferRecordDto dto = new FileTransferRecordDto();
         dto.setId(record.getId());
         dto.setFileName(record.getFileName());
-        dto.setServiceType(record.getServiceType());
+        dto.setServiceName(record.getServiceName());
+        dto.setSubServiceName(record.getSubServiceName());
         dto.setSourcePath(record.getSourcePath());
         dto.setTargetPath(record.getTargetPath());
         dto.setStatus(record.getStatus());

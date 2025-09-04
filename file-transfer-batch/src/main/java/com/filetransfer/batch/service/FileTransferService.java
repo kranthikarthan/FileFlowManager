@@ -152,7 +152,7 @@ public class FileTransferService {
                 try {
                     HsmValidationRecord hsmValidation = hsmService.performHsmValidation(
                         record.getId(), record.getFileName(), record.getTenantId(),
-                        record.getServiceType(), record.getSubServiceType(),
+                        record.getServiceName(), record.getSubServiceName(),
                         record.getDirection(), actualTargetPath
                     );
                     

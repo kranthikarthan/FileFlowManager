@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequestMapping("/api/v1/hsm")
-@CrossOrigin(origins = "*")
+// CORS configured globally in GlobalCorsConfiguration
 public class HsmController {
     
     private static final Logger logger = LoggerFactory.getLogger(HsmController.class);

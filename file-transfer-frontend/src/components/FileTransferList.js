@@ -223,7 +223,7 @@ export const FileTransferList = () => {
       flex: 1,
     },
     {
-      field: 'serviceType',
+      field: 'serviceName',
       headerName: 'Service',
       width: 120,
     },

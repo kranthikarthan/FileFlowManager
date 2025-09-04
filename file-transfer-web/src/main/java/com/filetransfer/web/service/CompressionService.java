@@ -275,7 +275,7 @@ public class CompressionService {
         }
     }
     
-    // Result classes
+    // Public Result classes for external access
     
     public static class CompressionResult {
         private final Path originalFile;

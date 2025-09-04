@@ -178,8 +178,8 @@ public class AckNackService {
             fileTransferId,
             fileTransfer.getFileName(),
             fileTransfer.getTenantId(),
-            fileTransfer.getServiceType(),
-            fileTransfer.getSubServiceType(),
+            fileTransfer.getServiceName(),
+            fileTransfer.getSubServiceName(),
             AckNackType.ACK,
             TransferDirection.OUTBOUND // ACK is outbound relative to our system
         );
@@ -241,8 +241,8 @@ public class AckNackService {
             fileTransferId,
             fileTransfer.getFileName(),
             fileTransfer.getTenantId(),
-            fileTransfer.getServiceType(),
-            fileTransfer.getSubServiceType(),
+            fileTransfer.getServiceName(),
+            fileTransfer.getSubServiceName(),
             AckNackType.NACK,
             TransferDirection.OUTBOUND // NACK is outbound relative to our system
         );
@@ -454,9 +454,9 @@ public class AckNackService {
         List<FileTransferRecord> candidates = fileTransferRepository.findByTenantIdAndFileName(tenantId, fileName);
         
         return candidates.stream()
-            .filter(record -> record.getServiceType().equals(serviceName))
-            .filter(record -> (subServiceName == null && record.getSubServiceType() == null) || 
-                             (subServiceName != null && subServiceName.equals(record.getSubServiceType())))
+            .filter(record -> record.getServiceName().equals(serviceName))
+            .filter(record -> (subServiceName == null && record.getSubServiceName() == null) || 
+                             (subServiceName != null && subServiceName.equals(record.getSubServiceName())))
             .filter(record -> record.getDirection() == TransferDirection.OUTBOUND)
             .findFirst();
     }
@@ -494,8 +494,8 @@ public class AckNackService {
     private String generateAckContent(FileTransferRecord fileTransfer) {
         StringBuilder content = new StringBuilder();
         content.append("ACK|").append(fileTransfer.getFileName()).append("|");
-        content.append(fileTransfer.getServiceType()).append("|");
-        content.append(fileTransfer.getSubServiceType() != null ? fileTransfer.getSubServiceType() : "").append("|");
+        content.append(fileTransfer.getServiceName()).append("|");
+        content.append(fileTransfer.getSubServiceName() != null ? fileTransfer.getSubServiceName() : "").append("|");
         content.append(LocalDateTime.now().format(TIMESTAMP_FORMAT)).append("|");
         content.append("SUCCESS|");
         content.append(fileTransfer.getFileSize() != null ? fileTransfer.getFileSize() : "0").append("|");
@@ -507,8 +507,8 @@ public class AckNackService {
     private String generateNackContent(FileTransferRecord fileTransfer, String reasonCode, String reasonDescription) {
         StringBuilder content = new StringBuilder();
         content.append("NACK|").append(fileTransfer.getFileName()).append("|");
-        content.append(fileTransfer.getServiceType()).append("|");
-        content.append(fileTransfer.getSubServiceType() != null ? fileTransfer.getSubServiceType() : "").append("|");
+        content.append(fileTransfer.getServiceName()).append("|");
+        content.append(fileTransfer.getSubServiceName() != null ? fileTransfer.getSubServiceName() : "").append("|");
         content.append(LocalDateTime.now().format(TIMESTAMP_FORMAT)).append("|");
         content.append("FAILED|");
         content.append(reasonCode != null ? reasonCode : "PROCESSING_ERROR").append("|");
