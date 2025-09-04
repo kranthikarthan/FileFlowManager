@@ -54,6 +54,19 @@ public interface FileTransferRecordRepository extends JpaRepository<FileTransfer
     
     List<FileTransferRecord> findByTenantIdAndDirectionAndStatus(String tenantId, TransferDirection direction, TransferStatus status);
     
+    // File extension filtering methods
+    List<FileTransferRecord> findByTenantIdAndFileExtension(String tenantId, String fileExtension);
+    
+    List<FileTransferRecord> findByTenantIdAndFileExtensionIn(String tenantId, List<String> fileExtensions);
+    
+    @Query("SELECT DISTINCT f.fileExtension FROM FileTransferRecord f WHERE f.tenantId = :tenantId AND f.fileExtension IS NOT NULL ORDER BY f.fileExtension")
+    List<String> findDistinctFileExtensionsForTenant(@Param("tenantId") String tenantId);
+    
+    @Query("SELECT f.fileExtension, COUNT(f) FROM FileTransferRecord f WHERE f.tenantId = :tenantId AND f.fileExtension IS NOT NULL GROUP BY f.fileExtension ORDER BY COUNT(f) DESC")
+    List<Object[]> getFileExtensionStatistics(@Param("tenantId") String tenantId);
+    
+    List<FileTransferRecord> findByTenantIdAndServiceNameAndFileExtension(String tenantId, String serviceName, String fileExtension);
+    
     // Legacy methods for backward compatibility (deprecated)
     @Deprecated
     List<FileTransferRecord> findByServiceType(String serviceType);

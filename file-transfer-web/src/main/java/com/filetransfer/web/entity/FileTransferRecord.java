@@ -105,6 +105,9 @@ public class FileTransferRecord {
     @Column(name = "compression_enabled")
     private Boolean compressionEnabled = false;
     
+    @Column(name = "file_extension", length = 20)
+    private String fileExtension; // Optional file extension (e.g., .txt, .csv, .xml)
+    
     // Constructors
     public FileTransferRecord() {
         this.createdAt = LocalDateTime.now();
@@ -135,6 +138,7 @@ public class FileTransferRecord {
         this.targetPath = targetPath;
         this.direction = direction;
         this.fileType = fileType;
+        this.fileExtension = extractFileExtension(fileName);
     }
     
     // Getters and Setters
@@ -142,7 +146,10 @@ public class FileTransferRecord {
     public void setId(Long id) { this.id = id; }
     
     public String getFileName() { return fileName; }
-    public void setFileName(String fileName) { this.fileName = fileName; }
+    public void setFileName(String fileName) { 
+        this.fileName = fileName; 
+        this.fileExtension = extractFileExtension(fileName);
+    }
     
     public String getServiceName() { return serviceName; }
     public void setServiceName(String serviceName) { this.serviceName = serviceName; }
@@ -230,4 +237,25 @@ public class FileTransferRecord {
     
     public Boolean getCompressionEnabled() { return compressionEnabled; }
     public void setCompressionEnabled(Boolean compressionEnabled) { this.compressionEnabled = compressionEnabled; }
+    
+    public String getFileExtension() { return fileExtension; }
+    public void setFileExtension(String fileExtension) { this.fileExtension = fileExtension; }
+    
+    /**
+     * Extract file extension from filename
+     */
+    public static String extractFileExtension(String fileName) {
+        if (fileName == null || fileName.trim().isEmpty()) {
+            return null;
+        }
+        
+        int lastDotIndex = fileName.lastIndexOf('.');
+        if (lastDotIndex > 0 && lastDotIndex < fileName.length() - 1) {
+            return fileName.substring(lastDotIndex).toLowerCase();
+        }
+        
+        return null; // No extension found
+    }
+    
+
 }

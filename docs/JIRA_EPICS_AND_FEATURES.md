@@ -386,6 +386,31 @@ Implement Hardware Security Module (HSM) integration for enterprise-grade crypto
 
 ---
 
+## Epic 17: File Extension Management and Analytics
+**Epic ID**: FTM-017  
+**Priority**: Low  
+**Story Points**: 21  
+
+### Description
+Implement optional file extension tracking and management capabilities for better file categorization, filtering, and analytics based on file types.
+
+### Features
+- **FTM-017-F1**: Automatic Extension Extraction and Tracking
+- **FTM-017-F2**: Extension-Based Filtering and Search
+- **FTM-017-F3**: File Categorization by Extension
+- **FTM-017-F4**: Extension Analytics and Statistics
+- **FTM-017-F5**: Extension Validation and Policies
+
+### Acceptance Criteria
+- [ ] Automatic extraction of file extensions from filenames
+- [ ] Optional file extension field (doesn't break existing functionality)
+- [ ] Filter file transfers by extension type
+- [ ] Categorize files by extension (Text, Data, Archive, etc.)
+- [ ] Extension usage statistics and analytics
+- [ ] Per-service extension validation policies
+
+---
+
 ## Epic Summary
 
 | Epic ID | Epic Name | Priority | Story Points | Status |
@@ -406,7 +431,8 @@ Implement Hardware Security Module (HSM) integration for enterprise-grade crypto
 | FTM-014 | Mobile and Progressive Web App | Low | 23 | ✅ Complete |
 | FTM-015 | File Compression and Optimization | Medium | 55 | ✅ Complete |
 | FTM-016 | HSM Integration and Cryptographic Security | High | 89 | ✅ Complete |
+| FTM-017 | File Extension Management and Analytics | Low | 21 | ✅ Complete |
 
-**Total Story Points**: 936  
-**Total Epics**: 16  
+**Total Story Points**: 957  
+**Total Epics**: 17  
 **Completion Status**: 100%

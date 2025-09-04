@@ -80,13 +80,16 @@ public class FileTransferRecord {
     @Column(name = "compression_enabled")
     private Boolean compressionEnabled = false;
     
+    @Column(name = "file_extension", length = 20)
+    private String fileExtension; // Optional file extension (e.g., .txt, .csv, .xml)
+    
     // Constructors
     public FileTransferRecord() {
         this.createdAt = LocalDateTime.now();
         this.status = TransferStatus.PENDING;
     }
     
-    public FileTransferRecord(String tenantId, String fileName, String serviceType, String sourcePath, 
+    public FileTransferRecord(String tenantId, String fileName, String serviceName, String sourcePath, 
                             String targetPath, TransferDirection direction) {
         this();
         this.tenantId = tenantId;
@@ -95,9 +98,10 @@ public class FileTransferRecord {
         this.sourcePath = sourcePath;
         this.targetPath = targetPath;
         this.direction = direction;
+        this.fileExtension = extractFileExtension(fileName);
     }
     
-    public FileTransferRecord(String tenantId, String fileName, String serviceType, String subServiceType, 
+    public FileTransferRecord(String tenantId, String fileName, String serviceName, String subServiceName, 
                             String sourcePath, String targetPath, TransferDirection direction) {
         this();
         this.tenantId = tenantId;
@@ -107,6 +111,7 @@ public class FileTransferRecord {
         this.sourcePath = sourcePath;
         this.targetPath = targetPath;
         this.direction = direction;
+        this.fileExtension = extractFileExtension(fileName);
     }
     
     // Getters and Setters
@@ -117,7 +122,10 @@ public class FileTransferRecord {
     public void setTenantId(String tenantId) { this.tenantId = tenantId; }
     
     public String getFileName() { return fileName; }
-    public void setFileName(String fileName) { this.fileName = fileName; }
+    public void setFileName(String fileName) { 
+        this.fileName = fileName; 
+        this.fileExtension = extractFileExtension(fileName);
+    }
     
     public String getServiceName() { return serviceName; }
     public void setServiceName(String serviceName) { this.serviceName = serviceName; }
@@ -178,4 +186,23 @@ public class FileTransferRecord {
     
     public Boolean getCompressionEnabled() { return compressionEnabled; }
     public void setCompressionEnabled(Boolean compressionEnabled) { this.compressionEnabled = compressionEnabled; }
+    
+    public String getFileExtension() { return fileExtension; }
+    public void setFileExtension(String fileExtension) { this.fileExtension = fileExtension; }
+    
+    /**
+     * Extract file extension from filename
+     */
+    public static String extractFileExtension(String fileName) {
+        if (fileName == null || fileName.trim().isEmpty()) {
+            return null;
+        }
+        
+        int lastDotIndex = fileName.lastIndexOf('.');
+        if (lastDotIndex > 0 && lastDotIndex < fileName.length() - 1) {
+            return fileName.substring(lastDotIndex).toLowerCase();
+        }
+        
+        return null; // No extension found
+    }
 }

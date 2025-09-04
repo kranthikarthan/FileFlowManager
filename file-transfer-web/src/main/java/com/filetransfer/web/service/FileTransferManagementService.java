@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -123,6 +124,45 @@ public class FileTransferManagementService {
         return fileTransferRepository.findByTenantIdAndFileName(tenantId, fileName).stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
+    }
+    
+    /**
+     * Get file transfers by file extension
+     */
+    public List<FileTransferRecordDto> getFileTransfersByExtension(String tenantId, String fileExtension) {
+        return fileTransferRepository.findByTenantIdAndFileExtension(tenantId, fileExtension).stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Get file transfers by multiple file extensions
+     */
+    public List<FileTransferRecordDto> getFileTransfersByExtensions(String tenantId, List<String> fileExtensions) {
+        return fileTransferRepository.findByTenantIdAndFileExtensionIn(tenantId, fileExtensions).stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Get distinct file extensions for a tenant
+     */
+    public List<String> getDistinctFileExtensions(String tenantId) {
+        return fileTransferRepository.findDistinctFileExtensionsForTenant(tenantId);
+    }
+    
+    /**
+     * Get file extension statistics for a tenant
+     */
+    public Map<String, Long> getFileExtensionStatistics(String tenantId) {
+        List<Object[]> stats = fileTransferRepository.getFileExtensionStatistics(tenantId);
+        return stats.stream()
+                .collect(Collectors.toMap(
+                    row -> (String) row[0],
+                    row -> (Long) row[1],
+                    (existing, replacement) -> existing,
+                    LinkedHashMap::new
+                ));
     }
     
     /**
@@ -315,6 +355,7 @@ public class FileTransferManagementService {
         dto.setCompressionTimeMs(record.getCompressionTimeMs());
         dto.setDecompressionTimeMs(record.getDecompressionTimeMs());
         dto.setCompressedFilePath(record.getCompressedFilePath());
+        dto.setFileExtension(record.getFileExtension());
         
         return dto;
     }

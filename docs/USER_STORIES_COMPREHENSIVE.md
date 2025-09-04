@@ -674,6 +674,59 @@
 
 ---
 
+## Epic 17: File Extension Management and Analytics
+
+### User Story FTM-017-US-001: Automatic File Extension Tracking
+**As a** file operations manager  
+**I want** file extensions to be automatically extracted and tracked  
+**So that** I can categorize and analyze files by type without manual effort  
+
+**Acceptance Criteria:**
+- Given a file is processed, when filename has extension, then extension is automatically extracted and stored
+- Given a file has no extension, when processed, then extension field remains null without error
+- Given filename changes, when updated, then extension is automatically updated to match
+- Given file extension is tracked, when viewing file lists, then extension is displayed with appropriate categorization
+
+**Story Points:** 5  
+**Priority:** Low  
+**Components:** FileTransferRecord Entity, File Processing Service
+
+---
+
+### User Story FTM-017-US-002: Extension-Based Filtering and Search
+**As a** data analyst  
+**I want** to filter and search files by extension type  
+**So that** I can quickly find specific types of files for analysis  
+
+**Acceptance Criteria:**
+- Given I want to find CSV files, when I filter by .csv extension, then only CSV files are displayed
+- Given I want multiple file types, when I select multiple extensions, then files matching any extension are shown
+- Given I combine filters, when I use service and extension filters, then results match both criteria
+- Given I want extension statistics, when I request them, then I see usage counts by extension
+
+**Story Points:** 8  
+**Priority:** Low  
+**Components:** Repository Layer, REST API, Frontend UI
+
+---
+
+### User Story FTM-017-US-003: File Type Categorization
+**As a** operations specialist  
+**I want** files to be automatically categorized by extension  
+**So that** I can understand file type distribution and apply appropriate processing rules  
+
+**Acceptance Criteria:**
+- Given file extensions are tracked, when viewing analytics, then files are grouped by category (Text, Data, Archive, etc.)
+- Given I view file details, when checking extension, then I see the file category and recommended processing
+- Given different file types, when processing, then appropriate compression and security policies are applied
+- Given file categories, when reporting, then I can generate reports by file type category
+
+**Story Points:** 8  
+**Priority:** Low  
+**Components:** FileExtensionService, Analytics Service, UI Components
+
+---
+
 ## User Story Summary by Epic
 
 | Epic | Total Stories | Total Story Points | Priority Distribution |
@@ -692,10 +745,11 @@
 | FTM-012 | 2 | 21 | Low: 2 |
 | FTM-015 | 5 | 55 | High: 2, Medium: 2, Low: 1 |
 | FTM-016 | 5 | 89 | High: 3, Medium: 2 |
+| FTM-017 | 3 | 21 | Low: 3 |
 
-**Total User Stories**: 36  
-**Total Story Points**: 448  
-**Average Story Points per Story**: 12.4
+**Total User Stories**: 39  
+**Total Story Points**: 469  
+**Average Story Points per Story**: 12.0
 
 ## Story Point Estimation Guide
 

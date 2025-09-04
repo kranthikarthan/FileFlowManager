@@ -34,6 +34,9 @@ public class FileTransferRecordDto {
     private Long decompressionTimeMs;
     private String compressedFilePath;
     
+    // File extension field
+    private String fileExtension;
+    
     // Constructors
     public FileTransferRecordDto() {}
     
@@ -107,4 +110,7 @@ public class FileTransferRecordDto {
     
     public String getCompressedFilePath() { return compressedFilePath; }
     public void setCompressedFilePath(String compressedFilePath) { this.compressedFilePath = compressedFilePath; }
+    
+    public String getFileExtension() { return fileExtension; }
+    public void setFileExtension(String fileExtension) { this.fileExtension = fileExtension; }
 }

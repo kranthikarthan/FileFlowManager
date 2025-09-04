@@ -28,6 +28,7 @@ import { format } from 'date-fns';
 import { fileTransferAPI } from '../services/api';
 import { ackNackService } from '../services/ackNackService';
 import { compressionService } from '../services/compressionService';
+import { fileExtensionService } from '../services/fileExtensionService';
 
 const statusColors = {
   PENDING: 'warning',
@@ -46,12 +47,15 @@ export const FileTransferList = () => {
   const [filters, setFilters] = useState({
     service: '',
     status: '',
-    direction: ''
+    direction: '',
+    extension: ''
   });
+  const [availableExtensions, setAvailableExtensions] = useState([]);
 
   useEffect(() => {
     fetchData();
     fetchServices();
+    fetchExtensions();
   }, []);
 
   useEffect(() => {
@@ -72,6 +76,8 @@ export const FileTransferList = () => {
         response = await fileTransferAPI.getFileTransfersByStatus(filters.status);
       } else if (filters.direction) {
         response = await fileTransferAPI.getFileTransfersByDirection(filters.direction);
+      } else if (filters.extension) {
+        response = await fileExtensionService.getFileTransfersByExtension('default', filters.extension);
       } else {
         response = await fileTransferAPI.getAllFileTransfers();
       }
@@ -107,6 +113,15 @@ export const FileTransferList = () => {
     }
   };
 
+  const fetchExtensions = async () => {
+    try {
+      const extensions = await fileExtensionService.getDistinctFileExtensions('default');
+      setAvailableExtensions(extensions);
+    } catch (err) {
+      console.error('Error fetching extensions:', err);
+    }
+  };
+
   const handleRetry = async (id) => {
     try {
       await fileTransferAPI.retryTransfer(id);
@@ -138,7 +153,8 @@ export const FileTransferList = () => {
     setFilters({
       service: '',
       status: '',
-      direction: ''
+      direction: '',
+      extension: ''
     });
   };
 
@@ -221,6 +237,25 @@ export const FileTransferList = () => {
       headerName: 'File Name',
       width: 200,
       flex: 1,
+    },
+    {
+      field: 'fileExtension',
+      headerName: 'Extension',
+      width: 100,
+      renderCell: (params) => {
+        if (!params.value) return '-';
+        
+        return (
+          <Tooltip title={`File Type: ${fileExtensionService.getFileCategory(params.value)}`}>
+            <Chip
+              label={params.value}
+              size="small"
+              color={fileExtensionService.getExtensionColor(params.value)}
+              variant="outlined"
+            />
+          </Tooltip>
+        );
+      },
     },
     {
       field: 'serviceName',
@@ -497,6 +532,34 @@ export const FileTransferList = () => {
                 <MenuItem value="">All</MenuItem>
                 <MenuItem value="INBOUND">Inbound</MenuItem>
                 <MenuItem value="OUTBOUND">Outbound</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={2}>
+            <FormControl fullWidth size="small">
+              <InputLabel>File Extension</InputLabel>
+              <Select
+                value={filters.extension}
+                onChange={handleFilterChange('extension')}
+                label="File Extension"
+              >
+                <MenuItem value="">All Extensions</MenuItem>
+                {availableExtensions.map(extension => (
+                  <MenuItem key={extension} value={extension}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Chip
+                        label={extension}
+                        size="small"
+                        color={fileExtensionService.getExtensionColor(extension)}
+                        variant="outlined"
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        {fileExtensionService.getFileCategory(extension)}
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
           </Grid>

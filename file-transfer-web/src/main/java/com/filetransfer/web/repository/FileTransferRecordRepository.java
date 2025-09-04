@@ -67,6 +67,19 @@ public interface FileTransferRecordRepository extends JpaRepository<FileTransfer
     @Query("SELECT DISTINCT f.subServiceName FROM FileTransferRecord f WHERE f.tenantId = :tenantId AND f.serviceName = :serviceName AND f.subServiceName IS NOT NULL")
     List<String> findDistinctSubServiceNamesForService(@Param("tenantId") String tenantId, @Param("serviceName") String serviceName);
     
+    // File extension filtering methods
+    List<FileTransferRecord> findByTenantIdAndFileExtension(String tenantId, String fileExtension);
+    
+    List<FileTransferRecord> findByTenantIdAndFileExtensionIn(String tenantId, List<String> fileExtensions);
+    
+    @Query("SELECT DISTINCT f.fileExtension FROM FileTransferRecord f WHERE f.tenantId = :tenantId AND f.fileExtension IS NOT NULL ORDER BY f.fileExtension")
+    List<String> findDistinctFileExtensionsForTenant(@Param("tenantId") String tenantId);
+    
+    @Query("SELECT f.fileExtension, COUNT(f) FROM FileTransferRecord f WHERE f.tenantId = :tenantId AND f.fileExtension IS NOT NULL GROUP BY f.fileExtension ORDER BY COUNT(f) DESC")
+    List<Object[]> getFileExtensionStatistics(@Param("tenantId") String tenantId);
+    
+    List<FileTransferRecord> findByTenantIdAndServiceNameAndFileExtension(String tenantId, String serviceName, String fileExtension);
+    
     // BACKWARD COMPATIBILITY - Keep old method names  
     @Query("SELECT DISTINCT f.serviceName FROM FileTransferRecord f WHERE f.tenantId = :tenantId")
     List<String> findDistinctServiceTypesForTenant(@Param("tenantId") String tenantId);
