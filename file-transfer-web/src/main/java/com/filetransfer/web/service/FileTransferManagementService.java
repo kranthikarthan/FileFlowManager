@@ -21,6 +21,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class FileTransferManagementService {
@@ -163,6 +165,45 @@ public class FileTransferManagementService {
                     (existing, replacement) -> existing,
                     LinkedHashMap::new
                 ));
+    }
+    
+    /**
+     * Get recent files for a tenant
+     */
+    public List<FileTransferRecordDto> getRecentFiles(String tenantId, int limit) {
+        Pageable pageable = PageRequest.of(0, limit);
+        return fileTransferRepository.findRecentFiles(tenantId, pageable).stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Get recent files since a specific date
+     */
+    public List<FileTransferRecordDto> getRecentFilesSince(String tenantId, LocalDateTime since) {
+        return fileTransferRepository.findRecentFilesSince(tenantId, since).stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Get recently processed files
+     */
+    public List<FileTransferRecordDto> getRecentlyProcessedFiles(String tenantId, int limit) {
+        Pageable pageable = PageRequest.of(0, limit);
+        return fileTransferRepository.findRecentlyProcessedFiles(tenantId, pageable).stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Get recent failed files
+     */
+    public List<FileTransferRecordDto> getRecentFailedFiles(String tenantId, int limit) {
+        Pageable pageable = PageRequest.of(0, limit);
+        return fileTransferRepository.findRecentFailedFiles(tenantId, pageable).stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
     }
     
     /**

@@ -2,6 +2,8 @@ package com.filetransfer.web.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "file_transfer_records")
@@ -107,6 +109,10 @@ public class FileTransferRecord {
     
     @Column(name = "file_extension", length = 20)
     private String fileExtension; // Optional file extension (e.g., .txt, .csv, .xml)
+    
+    // Relationships
+    @OneToMany(mappedBy = "fileTransfer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Set<FileTransferTag> tags = new HashSet<>();
     
     // Constructors
     public FileTransferRecord() {
@@ -240,6 +246,9 @@ public class FileTransferRecord {
     
     public String getFileExtension() { return fileExtension; }
     public void setFileExtension(String fileExtension) { this.fileExtension = fileExtension; }
+    
+    public Set<FileTransferTag> getTags() { return tags; }
+    public void setTags(Set<FileTransferTag> tags) { this.tags = tags; }
     
     /**
      * Extract file extension from filename

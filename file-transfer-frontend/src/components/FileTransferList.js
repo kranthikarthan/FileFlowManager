@@ -13,7 +13,12 @@ import {
   Chip,
   IconButton,
   Tooltip,
-  Grid
+  Grid,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Checkbox
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -24,11 +29,23 @@ import ErrorIcon from '@mui/icons-material/Error';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import CompressIcon from '@mui/icons-material/Compress';
 import UncompressIcon from '@mui/icons-material/Uncompress';
+import {
+  SelectAll,
+  CheckBox,
+  CheckBoxOutlineBlank,
+  LocalOffer,
+  Delete as DeleteIcon,
+  Archive,
+  Refresh as RefreshIcon
+} from '@mui/icons-material';
 import { format } from 'date-fns';
 import { fileTransferAPI } from '../services/api';
 import { ackNackService } from '../services/ackNackService';
 import { compressionService } from '../services/compressionService';
 import { fileExtensionService } from '../services/fileExtensionService';
+import { fileTaggingService } from '../services/fileTaggingService';
+import { filePreviewService } from '../services/filePreviewService';
+import FilePreview from './FilePreview';
 
 const statusColors = {
   PENDING: 'warning',
@@ -51,11 +68,20 @@ export const FileTransferList = () => {
     extension: ''
   });
   const [availableExtensions, setAvailableExtensions] = useState([]);
+  const [availableTags, setAvailableTags] = useState([]);
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [showBulkTagDialog, setShowBulkTagDialog] = useState(false);
+  const [bulkSelectedTags, setBulkSelectedTags] = useState([]);
+  const [bulkOperation, setBulkOperation] = useState(''); // 'add-tags', 'remove-tags', 'retry', 'cancel'
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewFile, setPreviewFile] = useState(null);
 
   useEffect(() => {
     fetchData();
     fetchServices();
     fetchExtensions();
+    fetchTags();
   }, []);
 
   useEffect(() => {
@@ -119,6 +145,15 @@ export const FileTransferList = () => {
       setAvailableExtensions(extensions);
     } catch (err) {
       console.error('Error fetching extensions:', err);
+    }
+  };
+
+  const fetchTags = async () => {
+    try {
+      const tags = await fileTaggingService.getAllTags('default');
+      setAvailableTags(tags);
+    } catch (err) {
+      console.error('Error fetching tags:', err);
     }
   };
 
@@ -226,6 +261,111 @@ export const FileTransferList = () => {
     }
   };
 
+  // Bulk Operations Handlers
+  const handleSelectionChange = (newSelection) => {
+    setSelectedRows(newSelection);
+    setShowBulkActions(newSelection.length > 0);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedRows.length === transfers.length) {
+      setSelectedRows([]);
+      setShowBulkActions(false);
+    } else {
+      const allIds = transfers.map(transfer => transfer.id);
+      setSelectedRows(allIds);
+      setShowBulkActions(true);
+    }
+  };
+
+  const handleBulkRetry = async () => {
+    try {
+      for (const fileId of selectedRows) {
+        await fileTransferAPI.retryTransfer(fileId);
+      }
+      setSelectedRows([]);
+      setShowBulkActions(false);
+      fetchData();
+    } catch (err) {
+      console.error('Error in bulk retry:', err);
+    }
+  };
+
+  const handleBulkCancel = async () => {
+    if (!window.confirm(`Are you sure you want to cancel ${selectedRows.length} file transfers?`)) {
+      return;
+    }
+    
+    try {
+      for (const fileId of selectedRows) {
+        await fileTransferAPI.cancelTransfer(fileId);
+      }
+      setSelectedRows([]);
+      setShowBulkActions(false);
+      fetchData();
+    } catch (err) {
+      console.error('Error in bulk cancel:', err);
+    }
+  };
+
+  const handleBulkAddTags = async () => {
+    if (bulkSelectedTags.length === 0) {
+      alert('Please select at least one tag');
+      return;
+    }
+
+    try {
+      const tagIds = bulkSelectedTags.map(tagName => {
+        const tag = availableTags.find(t => t.tagName === tagName);
+        return tag ? tag.id : null;
+      }).filter(id => id !== null);
+
+      await fileTaggingService.bulkAddTags(selectedRows, tagIds, 'user', 'Bulk tag operation');
+      
+      setSelectedRows([]);
+      setShowBulkActions(false);
+      setShowBulkTagDialog(false);
+      setBulkSelectedTags([]);
+      fetchData();
+    } catch (err) {
+      console.error('Error in bulk tag addition:', err);
+    }
+  };
+
+  const handleBulkRemoveTags = async () => {
+    if (bulkSelectedTags.length === 0) {
+      alert('Please select at least one tag to remove');
+      return;
+    }
+
+    try {
+      const tagIds = bulkSelectedTags.map(tagName => {
+        const tag = availableTags.find(t => t.tagName === tagName);
+        return tag ? tag.id : null;
+      }).filter(id => id !== null);
+
+      await fileTaggingService.bulkRemoveTags(selectedRows, tagIds);
+      
+      setSelectedRows([]);
+      setShowBulkActions(false);
+      setShowBulkTagDialog(false);
+      setBulkSelectedTags([]);
+      fetchData();
+    } catch (err) {
+      console.error('Error in bulk tag removal:', err);
+    }
+  };
+
+  const openBulkTagDialog = (operation) => {
+    setBulkOperation(operation);
+    setShowBulkTagDialog(true);
+  };
+
+  const handlePreviewFile = (transfer) => {
+    setPreviewFile(transfer);
+    setShowPreview(true);
+  };
+
   const columns = [
     {
       field: 'id',
@@ -254,6 +394,43 @@ export const FileTransferList = () => {
               variant="outlined"
             />
           </Tooltip>
+        );
+      },
+    },
+    {
+      field: 'tags',
+      headerName: 'Tags',
+      width: 200,
+      renderCell: (params) => {
+        const tags = params.row.tags || [];
+        if (tags.length === 0) return '-';
+        
+        return (
+          <Box display="flex" gap={0.5} flexWrap="wrap">
+            {tags.slice(0, 3).map((tag, index) => (
+              <Tooltip key={index} title={tag.tagDescription || tag.tagName}>
+                <Chip
+                  label={fileTaggingService.formatTagDisplayText(tag)}
+                  size="small"
+                  style={{
+                    backgroundColor: tag.tagColor,
+                    color: fileTaggingService.getTagContrastColor(tag.tagColor),
+                    fontSize: '0.7rem'
+                  }}
+                />
+              </Tooltip>
+            ))}
+            {tags.length > 3 && (
+              <Tooltip title={`${tags.length - 3} more tags`}>
+                <Chip
+                  label={`+${tags.length - 3}`}
+                  size="small"
+                  variant="outlined"
+                  style={{ fontSize: '0.7rem' }}
+                />
+              </Tooltip>
+            )}
+          </Box>
         );
       },
     },
@@ -392,6 +569,16 @@ export const FileTransferList = () => {
       sortable: false,
       renderCell: (params) => (
         <Box display="flex" gap={0.5}>
+          <Tooltip title="Preview File">
+            <IconButton
+              size="small"
+              onClick={() => handlePreviewFile(params.row)}
+              color="info"
+            >
+              <VisibilityIcon />
+            </IconButton>
+          </Tooltip>
+          
           <Tooltip title="Retry Transfer">
             <IconButton
               size="small"
@@ -583,6 +770,54 @@ export const FileTransferList = () => {
         </Grid>
       </Paper>
 
+      {/* Bulk Actions Toolbar */}
+      {showBulkActions && (
+        <Paper sx={{ p: 2, mb: 2, bgcolor: 'primary.50' }}>
+          <Box display="flex" alignItems="center" justifyContent="space-between">
+            <Typography variant="body1" color="primary">
+              {selectedRows.length} file{selectedRows.length !== 1 ? 's' : ''} selected
+            </Typography>
+            <Box display="flex" gap={1}>
+              <Button
+                startIcon={<RefreshIcon />}
+                onClick={handleBulkRetry}
+                size="small"
+                variant="outlined"
+              >
+                Retry Selected
+              </Button>
+              <Button
+                startIcon={<CancelIcon />}
+                onClick={handleBulkCancel}
+                size="small"
+                variant="outlined"
+                color="error"
+              >
+                Cancel Selected
+              </Button>
+              <Button
+                startIcon={<LocalOffer />}
+                onClick={() => openBulkTagDialog('add-tags')}
+                size="small"
+                variant="outlined"
+                color="secondary"
+              >
+                Add Tags
+              </Button>
+              <Button
+                startIcon={<DeleteIcon />}
+                onClick={() => openBulkTagDialog('remove-tags')}
+                size="small"
+                variant="outlined"
+                color="warning"
+              >
+                Remove Tags
+              </Button>
+            </Box>
+          </Box>
+        </Paper>
+      )}
+
       {/* Data Grid */}
       <Paper sx={{ height: 600, width: '100%' }}>
         <DataGrid
@@ -591,10 +826,111 @@ export const FileTransferList = () => {
           pageSize={10}
           rowsPerPageOptions={[10, 25, 50]}
           loading={loading}
+          checkboxSelection
           disableSelectionOnClick
+          onSelectionModelChange={handleSelectionChange}
+          selectionModel={selectedRows}
           density="compact"
+          components={{
+            Toolbar: () => (
+              <Box sx={{ p: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Button
+                  startIcon={selectedRows.length === transfers.length ? <CheckBoxOutlineBlank /> : <CheckBox />}
+                  onClick={handleSelectAll}
+                  size="small"
+                  variant="text"
+                >
+                  {selectedRows.length === transfers.length ? 'Deselect All' : 'Select All'}
+                </Button>
+                {selectedRows.length > 0 && (
+                  <Typography variant="body2" color="primary" sx={{ ml: 1 }}>
+                    ({selectedRows.length} selected)
+                  </Typography>
+                )}
+              </Box>
+            )
+          }}
         />
       </Paper>
+
+      {/* Bulk Tag Dialog */}
+      <Dialog open={showBulkTagDialog} onClose={() => setShowBulkTagDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {bulkOperation === 'add-tags' ? 'Add Tags to Selected Files' : 'Remove Tags from Selected Files'}
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" paragraph>
+            {bulkOperation === 'add-tags' 
+              ? `Select tags to add to ${selectedRows.length} selected files`
+              : `Select tags to remove from ${selectedRows.length} selected files`
+            }
+          </Typography>
+          
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel>Select Tags</InputLabel>
+            <Select
+              multiple
+              value={bulkSelectedTags}
+              onChange={(e) => setBulkSelectedTags(e.target.value)}
+              renderValue={(selected) => (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {selected.map((tagName) => {
+                    const tag = availableTags.find(t => t.tagName === tagName);
+                    return tag ? (
+                      <Chip
+                        key={tagName}
+                        label={fileTaggingService.formatTagDisplayText(tag)}
+                        size="small"
+                        style={{
+                          backgroundColor: tag.tagColor,
+                          color: fileTaggingService.getTagContrastColor(tag.tagColor)
+                        }}
+                      />
+                    ) : null;
+                  })}
+                </Box>
+              )}
+            >
+              {availableTags.map((tag) => (
+                <MenuItem key={tag.tagName} value={tag.tagName}>
+                  <Checkbox checked={bulkSelectedTags.indexOf(tag.tagName) > -1} />
+                  <Chip
+                    label={fileTaggingService.formatTagDisplayText(tag)}
+                    size="small"
+                    style={{
+                      backgroundColor: tag.tagColor,
+                      color: fileTaggingService.getTagContrastColor(tag.tagColor),
+                      marginLeft: 8
+                    }}
+                  />
+                  <Typography sx={{ ml: 1 }} variant="body2">
+                    ({tag.usageCount || 0} uses)
+                  </Typography>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowBulkTagDialog(false)}>Cancel</Button>
+          <Button
+            onClick={bulkOperation === 'add-tags' ? handleBulkAddTags : handleBulkRemoveTags}
+            variant="contained"
+            disabled={bulkSelectedTags.length === 0}
+          >
+            {bulkOperation === 'add-tags' ? 'Add Tags' : 'Remove Tags'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* File Preview Dialog */}
+      <FilePreview
+        open={showPreview}
+        onClose={() => setShowPreview(false)}
+        filePath={previewFile?.sourcePath}
+        fileName={previewFile?.fileName}
+        fileSize={previewFile?.fileSize}
+      />
     </Box>
   );
 };

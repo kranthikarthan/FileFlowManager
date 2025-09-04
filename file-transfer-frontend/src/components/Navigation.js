@@ -17,6 +17,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CompressIcon from '@mui/icons-material/Compress';
 import SecurityIcon from '@mui/icons-material/Security';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 
 export const Navigation = () => {
   const navigate = useNavigate();
@@ -124,6 +125,12 @@ export const Navigation = () => {
           iconPosition="start" 
           label="Content Analysis" 
           value="/content-analysis" 
+        />
+        <Tab 
+          icon={<LocalOfferIcon />} 
+          iconPosition="start" 
+          label="File Tags" 
+          value="/file-tags" 
         />
       </Tabs>
     </Box>

@@ -161,4 +161,52 @@ public class FileTransferController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+    
+    /**
+     * Get recent files for a tenant
+     */
+    @GetMapping("/recent")
+    public ResponseEntity<List<FileTransferRecordDto>> getRecentFiles(
+            @RequestParam String tenantId,
+            @RequestParam(defaultValue = "20") int limit) {
+        try {
+            List<FileTransferRecordDto> recentFiles = fileTransferService.getRecentFiles(tenantId, limit);
+            return ResponseEntity.ok(recentFiles);
+        } catch (Exception e) {
+            logger.error("Error retrieving recent files for tenant {}: {}", tenantId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
+     * Get recently processed files
+     */
+    @GetMapping("/recent/processed")
+    public ResponseEntity<List<FileTransferRecordDto>> getRecentlyProcessedFiles(
+            @RequestParam String tenantId,
+            @RequestParam(defaultValue = "10") int limit) {
+        try {
+            List<FileTransferRecordDto> recentFiles = fileTransferService.getRecentlyProcessedFiles(tenantId, limit);
+            return ResponseEntity.ok(recentFiles);
+        } catch (Exception e) {
+            logger.error("Error retrieving recently processed files for tenant {}: {}", tenantId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
+     * Get recent failed files
+     */
+    @GetMapping("/recent/failed")
+    public ResponseEntity<List<FileTransferRecordDto>> getRecentFailedFiles(
+            @RequestParam String tenantId,
+            @RequestParam(defaultValue = "10") int limit) {
+        try {
+            List<FileTransferRecordDto> recentFiles = fileTransferService.getRecentFailedFiles(tenantId, limit);
+            return ResponseEntity.ok(recentFiles);
+        } catch (Exception e) {
+            logger.error("Error retrieving recent failed files for tenant {}: {}", tenantId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }

@@ -3,6 +3,7 @@ package com.filetransfer.web.repository;
 import com.filetransfer.web.entity.FileTransferRecord;
 import com.filetransfer.web.entity.TransferStatus;
 import com.filetransfer.web.entity.TransferDirection;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -79,6 +80,19 @@ public interface FileTransferRecordRepository extends JpaRepository<FileTransfer
     List<Object[]> getFileExtensionStatistics(@Param("tenantId") String tenantId);
     
     List<FileTransferRecord> findByTenantIdAndServiceNameAndFileExtension(String tenantId, String serviceName, String fileExtension);
+    
+    // Recent files methods
+    @Query("SELECT f FROM FileTransferRecord f WHERE f.tenantId = :tenantId ORDER BY f.createdAt DESC")
+    List<FileTransferRecord> findRecentFiles(@Param("tenantId") String tenantId, Pageable pageable);
+    
+    @Query("SELECT f FROM FileTransferRecord f WHERE f.tenantId = :tenantId AND f.createdAt >= :since ORDER BY f.createdAt DESC")
+    List<FileTransferRecord> findRecentFilesSince(@Param("tenantId") String tenantId, @Param("since") LocalDateTime since);
+    
+    @Query("SELECT f FROM FileTransferRecord f WHERE f.tenantId = :tenantId AND f.status = 'COMPLETED' ORDER BY f.processedAt DESC")
+    List<FileTransferRecord> findRecentlyProcessedFiles(@Param("tenantId") String tenantId, Pageable pageable);
+    
+    @Query("SELECT f FROM FileTransferRecord f WHERE f.tenantId = :tenantId AND f.status = 'FAILED' ORDER BY f.createdAt DESC")
+    List<FileTransferRecord> findRecentFailedFiles(@Param("tenantId") String tenantId, Pageable pageable);
     
     // BACKWARD COMPATIBILITY - Keep old method names  
     @Query("SELECT DISTINCT f.serviceName FROM FileTransferRecord f WHERE f.tenantId = :tenantId")
