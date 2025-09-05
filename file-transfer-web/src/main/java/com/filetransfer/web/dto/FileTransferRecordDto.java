@@ -2,6 +2,7 @@ package com.filetransfer.web.dto;
 
 import com.filetransfer.web.entity.TransferDirection;
 import com.filetransfer.web.entity.TransferStatus;
+import com.filetransfer.web.entity.CompressionType;
 
 import java.time.LocalDateTime;
 
@@ -9,8 +10,8 @@ public class FileTransferRecordDto {
     
     private Long id;
     private String fileName;
-    private String serviceType;
-    private String subServiceType;
+    private String serviceName;
+    private String subServiceName;
     private String tenantId;
     private String sourcePath;
     private String targetPath;
@@ -23,6 +24,19 @@ public class FileTransferRecordDto {
     private String checksum;
     private String batchJobExecutionId;
     
+    // Compression fields
+    private Boolean compressionEnabled;
+    private CompressionType compressionType;
+    private Long originalFileSize;
+    private Long compressedFileSize;
+    private Float compressionRatio;
+    private Long compressionTimeMs;
+    private Long decompressionTimeMs;
+    private String compressedFilePath;
+    
+    // File extension field
+    private String fileExtension;
+    
     // Constructors
     public FileTransferRecordDto() {}
     
@@ -33,11 +47,11 @@ public class FileTransferRecordDto {
     public String getFileName() { return fileName; }
     public void setFileName(String fileName) { this.fileName = fileName; }
     
-    public String getServiceType() { return serviceType; }
-    public void setServiceType(String serviceType) { this.serviceType = serviceType; }
+    public String getServiceName() { return serviceName; }
+    public void setServiceName(String serviceName) { this.serviceName = serviceName; }
     
-    public String getSubServiceType() { return subServiceType; }
-    public void setSubServiceType(String subServiceType) { this.subServiceType = subServiceType; }
+    public String getSubServiceName() { return subServiceName; }
+    public void setSubServiceName(String subServiceName) { this.subServiceName = subServiceName; }
     
     public String getTenantId() { return tenantId; }
     public void setTenantId(String tenantId) { this.tenantId = tenantId; }
@@ -71,4 +85,32 @@ public class FileTransferRecordDto {
     
     public String getBatchJobExecutionId() { return batchJobExecutionId; }
     public void setBatchJobExecutionId(String batchJobExecutionId) { this.batchJobExecutionId = batchJobExecutionId; }
+    
+    // Compression getters and setters
+    public Boolean getCompressionEnabled() { return compressionEnabled; }
+    public void setCompressionEnabled(Boolean compressionEnabled) { this.compressionEnabled = compressionEnabled; }
+    
+    public CompressionType getCompressionType() { return compressionType; }
+    public void setCompressionType(CompressionType compressionType) { this.compressionType = compressionType; }
+    
+    public Long getOriginalFileSize() { return originalFileSize; }
+    public void setOriginalFileSize(Long originalFileSize) { this.originalFileSize = originalFileSize; }
+    
+    public Long getCompressedFileSize() { return compressedFileSize; }
+    public void setCompressedFileSize(Long compressedFileSize) { this.compressedFileSize = compressedFileSize; }
+    
+    public Float getCompressionRatio() { return compressionRatio; }
+    public void setCompressionRatio(Float compressionRatio) { this.compressionRatio = compressionRatio; }
+    
+    public Long getCompressionTimeMs() { return compressionTimeMs; }
+    public void setCompressionTimeMs(Long compressionTimeMs) { this.compressionTimeMs = compressionTimeMs; }
+    
+    public Long getDecompressionTimeMs() { return decompressionTimeMs; }
+    public void setDecompressionTimeMs(Long decompressionTimeMs) { this.decompressionTimeMs = decompressionTimeMs; }
+    
+    public String getCompressedFilePath() { return compressedFilePath; }
+    public void setCompressedFilePath(String compressedFilePath) { this.compressedFilePath = compressedFilePath; }
+    
+    public String getFileExtension() { return fileExtension; }
+    public void setFileExtension(String fileExtension) { this.fileExtension = fileExtension; }
 }

@@ -13,6 +13,12 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import SchemaIcon from '@mui/icons-material/Schema';
 import AssessmentIcon from '@mui/icons-material/Assessment';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CompressIcon from '@mui/icons-material/Compress';
+import SecurityIcon from '@mui/icons-material/Security';
+import AnalyticsIcon from '@mui/icons-material/Analytics';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 
 export const Navigation = () => {
   const navigate = useNavigate();
@@ -96,6 +102,42 @@ export const Navigation = () => {
           iconPosition="start" 
           label="EOT Validation" 
           value="/eot-validation" 
+        />
+        <Tab 
+          icon={<CheckCircleIcon />} 
+          iconPosition="start" 
+          label="ACK/NACK" 
+          value="/ack-nack" 
+        />
+        <Tab 
+          icon={<CompressIcon />} 
+          iconPosition="start" 
+          label="Compression" 
+          value="/compression" 
+        />
+        <Tab 
+          icon={<SecurityIcon />} 
+          iconPosition="start" 
+          label="HSM Security" 
+          value="/hsm" 
+        />
+        <Tab 
+          icon={<AnalyticsIcon />} 
+          iconPosition="start" 
+          label="Content Analysis" 
+          value="/content-analysis" 
+        />
+        <Tab 
+          icon={<LocalOfferIcon />} 
+          iconPosition="start" 
+          label="File Tags" 
+          value="/file-tags" 
+        />
+        <Tab 
+          icon={<AccountTreeIcon />} 
+          iconPosition="start" 
+          label="Workflows" 
+          value="/workflows" 
         />
       </Tabs>
     </Box>

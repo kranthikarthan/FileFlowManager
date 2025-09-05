@@ -1,0 +1,383 @@
+/* HSM Management Component Styles */
+
+.hsm-management {
+    padding: 24px;
+    background-color: var(--background-color);
+    min-height: 100vh;
+}
+
+.hsm-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.hsm-title {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.hsm-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.hsm-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.hsm-stat-card {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hsm-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.hsm-provider-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.hsm-provider-card {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.hsm-provider-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-color: var(--primary-main);
+}
+
+.hsm-provider-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.hsm-provider-badges {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.hsm-provider-description {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+
+.hsm-provider-security {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.hsm-provider-algorithms {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.hsm-validation-table {
+    background: var(--surface-color);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.hsm-validation-row {
+    transition: background-color 0.2s ease;
+}
+
+.hsm-validation-row:hover {
+    background-color: var(--hover-color);
+}
+
+.hsm-status-chip {
+    font-weight: 500;
+    border-radius: 16px;
+}
+
+.hsm-status-passed {
+    background-color: var(--success-light);
+    color: var(--success-dark);
+}
+
+.hsm-status-failed {
+    background-color: var(--error-light);
+    color: var(--error-dark);
+}
+
+.hsm-status-pending {
+    background-color: var(--warning-light);
+    color: var(--warning-dark);
+}
+
+.hsm-status-skipped {
+    background-color: var(--text-disabled);
+    color: var(--text-primary);
+}
+
+.hsm-provider-chip {
+    font-weight: 500;
+}
+
+.hsm-provider-azure {
+    background-color: #0078d4;
+    color: white;
+}
+
+.hsm-provider-aws {
+    background-color: #ff9900;
+    color: white;
+}
+
+.hsm-provider-thales {
+    background-color: #e31837;
+    color: white;
+}
+
+.hsm-provider-none {
+    background-color: var(--text-disabled);
+    color: var(--text-primary);
+}
+
+.hsm-security-level {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.hsm-security-stars {
+    display: flex;
+    gap: 2px;
+}
+
+.hsm-security-star {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.hsm-security-star.filled {
+    background-color: var(--warning-main);
+}
+
+.hsm-security-star.empty {
+    background-color: var(--text-disabled);
+}
+
+.hsm-test-result {
+    margin-top: 16px;
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.hsm-test-success {
+    background-color: var(--success-light);
+    border-color: var(--success-main);
+}
+
+.hsm-test-failure {
+    background-color: var(--error-light);
+    border-color: var(--error-main);
+}
+
+.hsm-config-section {
+    margin-bottom: 24px;
+}
+
+.hsm-config-accordion {
+    margin-bottom: 8px;
+}
+
+.hsm-setup-instructions {
+    background: var(--info-light);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 16px;
+}
+
+.hsm-setup-step {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.hsm-setup-step:last-child {
+    border-bottom: none;
+}
+
+.hsm-performance-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hsm-performance-good {
+    color: var(--success-main);
+}
+
+.hsm-performance-average {
+    color: var(--warning-main);
+}
+
+.hsm-performance-poor {
+    color: var(--error-main);
+}
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+    .hsm-management {
+        padding: 16px;
+    }
+    
+    .hsm-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .hsm-provider-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .hsm-stats {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+    }
+    
+    .hsm-provider-card {
+        padding: 12px;
+    }
+    
+    .hsm-provider-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .hsm-validation-table {
+        font-size: 0.875rem;
+    }
+    
+    .hsm-validation-table th,
+    .hsm-validation-table td {
+        padding: 8px 4px;
+    }
+}
+
+/* Dark theme adjustments */
+.dark-theme .hsm-provider-card {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.dark-theme .hsm-provider-card:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-color: var(--primary-main);
+}
+
+.dark-theme .hsm-test-result {
+    background-color: rgba(255, 255, 255, 0.02);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.dark-theme .hsm-setup-instructions {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* Animation for HSM operations */
+.hsm-operation-progress {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+/* HSM provider type indicators */
+.hsm-provider-cloud {
+    position: relative;
+}
+
+.hsm-provider-cloud::after {
+    content: '☁';
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    font-size: 16px;
+    color: var(--primary-main);
+}
+
+.hsm-provider-hardware {
+    position: relative;
+}
+
+.hsm-provider-hardware::after {
+    content: '⚙';
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    font-size: 16px;
+    color: var(--secondary-main);
+}
+
+/* HSM operation type styling */
+.hsm-operation-sign {
+    background-color: var(--primary-light);
+    color: var(--primary-dark);
+}
+
+.hsm-operation-verify {
+    background-color: var(--success-light);
+    color: var(--success-dark);
+}
+
+.hsm-operation-encrypt {
+    background-color: var(--warning-light);
+    color: var(--warning-dark);
+}
+
+.hsm-operation-decrypt {
+    background-color: var(--info-light);
+    color: var(--info-dark);
+}
+
+.hsm-operation-hash {
+    background-color: var(--secondary-light);
+    color: var(--secondary-dark);
+}
+
+.hsm-operation-mac {
+    background-color: var(--error-light);
+    color: var(--error-dark);
+}

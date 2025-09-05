@@ -1,0 +1,94 @@
+# ACK/NACK Configuration for File Transfer Web Application
+file-transfer:
+  ack-nack:
+    # Base directory for storing ACK/NACK files
+    base-path: ${ACK_NACK_BASE_PATH:/data/ack-nack}
+    
+    # Directory for incoming ACK/NACK files from partners
+    incoming-path: ${ACK_NACK_INCOMING_PATH:/data/incoming/ack-nack}
+    
+    # Timeout for ACK/NACK files (hours)
+    timeout-hours: ${ACK_NACK_TIMEOUT_HOURS:24}
+    
+    # Auto-generation settings
+    auto-generate:
+      ack: ${ACK_NACK_AUTO_GENERATE_ACK:true}
+      nack: ${ACK_NACK_AUTO_GENERATE_NACK:true}
+    
+    # Auto-sending settings
+    auto-send: ${ACK_NACK_AUTO_SEND:true}
+    
+    # Polling intervals (seconds)
+    poll-interval-seconds: ${ACK_NACK_POLL_INTERVAL:60}
+    generation-interval-seconds: ${ACK_NACK_GENERATION_INTERVAL:300}
+    send-interval-seconds: ${ACK_NACK_SEND_INTERVAL:120}
+    cleanup-interval-seconds: ${ACK_NACK_CLEANUP_INTERVAL:3600}
+    
+    # File format settings
+    format:
+      default: PIPE_DELIMITED
+      supported:
+        - PIPE_DELIMITED
+        - JSON
+        - XML
+        - CUSTOM
+    
+    # Template settings
+    templates:
+      ack:
+        pipe-delimited: "ACK|{originalFileName}|{serviceName}|{subServiceName}|{timestamp}|SUCCESS|{fileSize}|{checksum}"
+        json: |
+          {
+            "type": "ACK",
+            "originalFileName": "{originalFileName}",
+            "serviceName": "{serviceName}",
+            "subServiceName": "{subServiceName}",
+            "timestamp": "{timestamp}",
+            "status": "SUCCESS",
+            "fileSize": {fileSize},
+            "checksum": "{checksum}"
+          }
+      nack:
+        pipe-delimited: "NACK|{originalFileName}|{serviceName}|{subServiceName}|{timestamp}|FAILED|{reasonCode}|{reasonDescription}"
+        json: |
+          {
+            "type": "NACK",
+            "originalFileName": "{originalFileName}",
+            "serviceName": "{serviceName}",
+            "subServiceName": "{subServiceName}",
+            "timestamp": "{timestamp}",
+            "status": "FAILED",
+            "reasonCode": "{reasonCode}",
+            "reasonDescription": "{reasonDescription}"
+          }
+    
+    # Partner integration settings
+    partner:
+      # Default paths for partner ACK/NACK directories
+      default-ack-path: ${PARTNER_ACK_PATH:/data/partner/ack}
+      default-nack-path: ${PARTNER_NACK_PATH:/data/partner/nack}
+      
+      # Connection settings for partner systems
+      connection:
+        timeout-seconds: ${PARTNER_CONNECTION_TIMEOUT:30}
+        retry-attempts: ${PARTNER_RETRY_ATTEMPTS:3}
+        retry-delay-seconds: ${PARTNER_RETRY_DELAY:5}
+    
+    # Monitoring and alerting
+    monitoring:
+      enabled: ${ACK_NACK_MONITORING_ENABLED:true}
+      alert-on-expired: ${ACK_NACK_ALERT_ON_EXPIRED:true}
+      alert-on-failed: ${ACK_NACK_ALERT_ON_FAILED:true}
+      metrics-retention-days: ${ACK_NACK_METRICS_RETENTION:90}
+    
+    # Security settings
+    security:
+      encrypt-content: ${ACK_NACK_ENCRYPT_CONTENT:false}
+      validate-checksum: ${ACK_NACK_VALIDATE_CHECKSUM:true}
+      require-digital-signature: ${ACK_NACK_REQUIRE_SIGNATURE:false}
+
+# Logging configuration for ACK/NACK operations
+logging:
+  level:
+    com.filetransfer.web.service.AckNackService: ${ACK_NACK_LOG_LEVEL:INFO}
+    com.filetransfer.web.controller.AckNackController: ${ACK_NACK_LOG_LEVEL:INFO}

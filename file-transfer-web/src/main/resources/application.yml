@@ -39,3 +39,12 @@ management:
 
 server:
   port: 8080
+
+# Include ACK/NACK configuration
+---
+spring:
+  config:
+    activate:
+      on-profile: ack-nack
+  profiles:
+    include: ack-nack,compression,hsm

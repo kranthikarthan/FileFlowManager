@@ -3,7 +3,7 @@ spring:
     name: file-transfer-batch
   
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
+    active: ${SPRING_PROFILES_ACTIVE:local,ack-nack,compression,hsm}
   
   # Azure SQL Managed Instance Configuration (Production)
   datasource:
@@ -43,6 +43,14 @@ file-transfer:
   poll-interval-seconds: 30
   # Services are now loaded from database - no static configuration needed
   # Configuration is managed through the web application interface
+  
+  # ACK/NACK configuration
+  ack-nack:
+    enabled: ${ACK_NACK_ENABLED:true}
+    base-path: ${ACK_NACK_BASE_PATH:/data/ack-nack}
+    incoming-path: ${ACK_NACK_INCOMING_PATH:/data/incoming/ack-nack}
+    auto-generate: ${ACK_NACK_AUTO_GENERATE:true}
+    timeout-hours: ${ACK_NACK_TIMEOUT_HOURS:24}
 
 logging:
   level:

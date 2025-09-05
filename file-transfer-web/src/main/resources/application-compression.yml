@@ -1,0 +1,136 @@
+# File Compression Configuration for File Transfer Web Application
+file-transfer:
+  compression:
+    # Enable/disable compression functionality
+    enabled: ${COMPRESSION_ENABLED:true}
+    
+    # Temporary directory for compression operations
+    temp-dir: ${COMPRESSION_TEMP_DIR:/tmp/compression}
+    
+    # Maximum file size for compression (MB)
+    max-file-size-mb: ${COMPRESSION_MAX_FILE_SIZE_MB:1024}
+    
+    # Default compression type
+    default-type: ${COMPRESSION_DEFAULT_TYPE:GZIP}
+    
+    # Compression thresholds
+    thresholds:
+      # Minimum file size to consider compression (KB)
+      min-file-size-kb: ${COMPRESSION_MIN_FILE_SIZE_KB:100}
+      
+      # File size threshold for async processing (MB)
+      async-threshold-mb: ${COMPRESSION_ASYNC_THRESHOLD_MB:10}
+      
+      # Maximum compression time before timeout (seconds)
+      max-compression-time-seconds: ${COMPRESSION_MAX_TIME_SECONDS:300}
+    
+    # Algorithm-specific settings
+    algorithms:
+      gzip:
+        enabled: ${COMPRESSION_GZIP_ENABLED:true}
+        compression-level: ${COMPRESSION_GZIP_LEVEL:6}
+        
+      zip:
+        enabled: ${COMPRESSION_ZIP_ENABLED:true}
+        compression-level: ${COMPRESSION_ZIP_LEVEL:6}
+        
+      bzip2:
+        enabled: ${COMPRESSION_BZIP2_ENABLED:true}
+        block-size: ${COMPRESSION_BZIP2_BLOCK_SIZE:9}
+        
+      xz:
+        enabled: ${COMPRESSION_XZ_ENABLED:true}
+        preset: ${COMPRESSION_XZ_PRESET:6}
+        
+      lz4:
+        enabled: ${COMPRESSION_LZ4_ENABLED:true}
+        high-compression: ${COMPRESSION_LZ4_HIGH:false}
+        
+      zstd:
+        enabled: ${COMPRESSION_ZSTD_ENABLED:true}
+        compression-level: ${COMPRESSION_ZSTD_LEVEL:3}
+    
+    # Performance settings
+    performance:
+      # Thread pool size for compression operations
+      thread-pool-size: ${COMPRESSION_THREAD_POOL_SIZE:5}
+      
+      # Buffer size for I/O operations (bytes)
+      buffer-size: ${COMPRESSION_BUFFER_SIZE:8192}
+      
+      # Enable parallel compression for large files
+      parallel-compression: ${COMPRESSION_PARALLEL_ENABLED:true}
+      
+      # Memory limit for compression operations (MB)
+      memory-limit-mb: ${COMPRESSION_MEMORY_LIMIT_MB:512}
+    
+    # Auto-compression settings
+    auto-compression:
+      # Enable automatic compression based on file characteristics
+      enabled: ${COMPRESSION_AUTO_ENABLED:false}
+      
+      # Auto-compress outbound files
+      outbound-files: ${COMPRESSION_AUTO_OUTBOUND:true}
+      
+      # Auto-decompress inbound files
+      inbound-files: ${COMPRESSION_AUTO_INBOUND:true}
+      
+      # File types to auto-compress
+      file-types:
+        - COBOL_FLAT_FILE
+        - CSV
+        - FIXED_WIDTH
+        - DELIMITED
+        - XML
+        - JSON
+        - EDI
+      
+      # Services to exclude from auto-compression
+      excluded-services: ${COMPRESSION_EXCLUDED_SERVICES:}
+    
+    # Monitoring and alerting
+    monitoring:
+      # Enable compression performance monitoring
+      enabled: ${COMPRESSION_MONITORING_ENABLED:true}
+      
+      # Alert on compression failures
+      alert-on-failure: ${COMPRESSION_ALERT_ON_FAILURE:true}
+      
+      # Alert on poor compression ratios (ratio > threshold)
+      alert-on-poor-ratio: ${COMPRESSION_ALERT_ON_POOR_RATIO:false}
+      poor-ratio-threshold: ${COMPRESSION_POOR_RATIO_THRESHOLD:0.9}
+      
+      # Alert on slow compression (time > threshold)
+      alert-on-slow-compression: ${COMPRESSION_ALERT_ON_SLOW:false}
+      slow-compression-threshold-seconds: ${COMPRESSION_SLOW_THRESHOLD_SECONDS:60}
+      
+      # Metrics collection interval (seconds)
+      metrics-interval-seconds: ${COMPRESSION_METRICS_INTERVAL:300}
+    
+    # Cleanup settings
+    cleanup:
+      # Enable automatic cleanup of temporary files
+      enabled: ${COMPRESSION_CLEANUP_ENABLED:true}
+      
+      # Cleanup interval (hours)
+      interval-hours: ${COMPRESSION_CLEANUP_INTERVAL_HOURS:24}
+      
+      # Retention period for compressed files (days)
+      retention-days: ${COMPRESSION_RETENTION_DAYS:30}
+      
+      # Retention period for compression logs (days)
+      log-retention-days: ${COMPRESSION_LOG_RETENTION_DAYS:90}
+
+# Spring configuration for compression
+spring:
+  servlet:
+    multipart:
+      max-file-size: ${COMPRESSION_MAX_UPLOAD_SIZE:100MB}
+      max-request-size: ${COMPRESSION_MAX_REQUEST_SIZE:100MB}
+
+# Logging configuration for compression operations
+logging:
+  level:
+    com.filetransfer.web.service.CompressionService: ${COMPRESSION_LOG_LEVEL:INFO}
+    com.filetransfer.web.controller.CompressionController: ${COMPRESSION_LOG_LEVEL:INFO}
+    org.apache.commons.compress: ${COMPRESSION_LIB_LOG_LEVEL:WARN}

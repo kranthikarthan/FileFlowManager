@@ -1,0 +1,156 @@
+# File Compression Configuration for File Transfer Batch Application
+file-transfer:
+  compression:
+    # Enable/disable compression functionality
+    enabled: ${COMPRESSION_ENABLED:true}
+    
+    # Temporary directory for compression operations
+    temp-dir: ${COMPRESSION_TEMP_DIR:/tmp/compression}
+    
+    # Maximum file size for compression (MB)
+    max-file-size-mb: ${COMPRESSION_MAX_FILE_SIZE_MB:1024}
+    
+    # Default compression type
+    default-type: ${COMPRESSION_DEFAULT_TYPE:GZIP}
+    
+    # File size threshold for async processing (MB)
+    async-threshold-mb: ${COMPRESSION_ASYNC_THRESHOLD_MB:10}
+    
+    # Batch processing settings
+    batch:
+      # Compression chunk size for batch processing
+      chunk-size: ${COMPRESSION_BATCH_CHUNK_SIZE:10}
+      
+      # Thread pool size for parallel compression
+      thread-pool-size: ${COMPRESSION_BATCH_THREAD_POOL_SIZE:5}
+      
+      # Maximum retry attempts for failed compression
+      max-retry-attempts: ${COMPRESSION_MAX_RETRY_ATTEMPTS:3}
+      
+      # Retry delay for failed compression (seconds)
+      retry-delay-seconds: ${COMPRESSION_RETRY_DELAY_SECONDS:30}
+    
+    # Auto-compression settings for batch processing
+    auto-compression:
+      # Enable automatic compression during batch processing
+      enabled: ${COMPRESSION_AUTO_ENABLED:true}
+      
+      # Auto-compress outbound files before sending
+      outbound-files: ${COMPRESSION_AUTO_OUTBOUND:true}
+      
+      # Auto-decompress inbound compressed files
+      inbound-files: ${COMPRESSION_AUTO_INBOUND:true}
+      
+      # Compression threshold (files larger than this will be compressed)
+      size-threshold-mb: ${COMPRESSION_SIZE_THRESHOLD_MB:1}
+      
+      # Prioritize speed over compression ratio for auto-compression
+      prioritize-speed: ${COMPRESSION_PRIORITIZE_SPEED:true}
+      
+      # File types to auto-compress
+      file-types:
+        - COBOL_FLAT_FILE
+        - CSV
+        - FIXED_WIDTH
+        - DELIMITED
+        - XML
+        - JSON
+        - EDI
+    
+    # Algorithm-specific settings
+    algorithms:
+      gzip:
+        enabled: ${COMPRESSION_GZIP_ENABLED:true}
+        compression-level: ${COMPRESSION_GZIP_LEVEL:6}
+        
+      zip:
+        enabled: ${COMPRESSION_ZIP_ENABLED:true}
+        compression-level: ${COMPRESSION_ZIP_LEVEL:6}
+        
+      bzip2:
+        enabled: ${COMPRESSION_BZIP2_ENABLED:true}
+        block-size: ${COMPRESSION_BZIP2_BLOCK_SIZE:9}
+        
+      xz:
+        enabled: ${COMPRESSION_XZ_ENABLED:false} # Disabled by default due to high CPU usage
+        preset: ${COMPRESSION_XZ_PRESET:6}
+        
+      lz4:
+        enabled: ${COMPRESSION_LZ4_ENABLED:true}
+        high-compression: ${COMPRESSION_LZ4_HIGH:false}
+        
+      zstd:
+        enabled: ${COMPRESSION_ZSTD_ENABLED:true}
+        compression-level: ${COMPRESSION_ZSTD_LEVEL:3}
+    
+    # Scheduled compression operations
+    scheduler:
+      # Enable scheduled compression jobs
+      enabled: ${COMPRESSION_SCHEDULER_ENABLED:true}
+      
+      # Compress eligible files (every 5 minutes)
+      compress-interval-seconds: ${COMPRESSION_COMPRESS_INTERVAL:300}
+      
+      # Cleanup temporary files (every hour)
+      cleanup-interval-seconds: ${COMPRESSION_CLEANUP_INTERVAL:3600}
+      
+      # Update compression statistics (every 6 hours)
+      stats-update-interval-seconds: ${COMPRESSION_STATS_INTERVAL:21600}
+    
+    # Performance monitoring
+    monitoring:
+      # Enable compression performance monitoring
+      enabled: ${COMPRESSION_MONITORING_ENABLED:true}
+      
+      # Monitor compression queue size
+      queue-size-monitoring: ${COMPRESSION_QUEUE_MONITORING:true}
+      max-queue-size: ${COMPRESSION_MAX_QUEUE_SIZE:100}
+      
+      # Monitor compression performance
+      performance-monitoring: ${COMPRESSION_PERFORMANCE_MONITORING:true}
+      performance-threshold-ms: ${COMPRESSION_PERFORMANCE_THRESHOLD:60000}
+      
+      # Health check settings
+      health-check:
+        enabled: ${COMPRESSION_HEALTH_CHECK_ENABLED:true}
+        interval-seconds: ${COMPRESSION_HEALTH_CHECK_INTERVAL:300}
+        temp-dir-space-threshold-gb: ${COMPRESSION_TEMP_DIR_THRESHOLD:10}
+
+# Spring Batch configuration for compression processing
+spring:
+  batch:
+    job:
+      enabled: true
+      
+  # Task executor configuration for compression
+  task:
+    execution:
+      pool:
+        core-size: ${COMPRESSION_EXECUTOR_CORE_SIZE:5}
+        max-size: ${COMPRESSION_EXECUTOR_MAX_SIZE:20}
+        queue-capacity: ${COMPRESSION_EXECUTOR_QUEUE_CAPACITY:100}
+        keep-alive: 60s
+    scheduling:
+      pool:
+        size: ${COMPRESSION_SCHEDULER_POOL_SIZE:10}
+
+# Logging configuration for compression operations
+logging:
+  level:
+    com.filetransfer.batch.service.CompressionService: ${COMPRESSION_LOG_LEVEL:INFO}
+    com.filetransfer.batch.processor.CompressionProcessor: ${COMPRESSION_LOG_LEVEL:INFO}
+    org.apache.commons.compress: ${COMPRESSION_LIB_LOG_LEVEL:WARN}
+    
+  # Compression-specific log appender
+  appenders:
+    compression:
+      type: RollingFile
+      fileName: /app/logs/compression.log
+      filePattern: /app/logs/compression-%d{yyyy-MM-dd}-%i.log.gz
+      policies:
+        time:
+          interval: 1
+          modulate: true
+        size: 100MB
+      strategy:
+        max: 30

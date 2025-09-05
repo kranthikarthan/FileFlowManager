@@ -1,0 +1,204 @@
+# HSM (Hardware Security Module) Configuration for File Transfer Web Application
+hsm:
+  # Enable/disable HSM functionality globally
+  enabled: ${HSM_ENABLED:false}
+  
+  # Default timeout for HSM operations (seconds)
+  default-timeout-seconds: ${HSM_DEFAULT_TIMEOUT_SECONDS:30}
+  
+  # Maximum retry attempts for failed HSM operations
+  max-retry-attempts: ${HSM_MAX_RETRY_ATTEMPTS:3}
+  
+  # Enable HSM health monitoring
+  health-monitoring-enabled: ${HSM_HEALTH_MONITORING_ENABLED:true}
+  
+  # Health check interval (seconds)
+  health-check-interval-seconds: ${HSM_HEALTH_CHECK_INTERVAL_SECONDS:300}
+  
+  # Provider-specific configurations
+  providers:
+    azure-key-vault:
+      enabled: ${HSM_AZURE_KV_ENABLED:false}
+      vault-url: ${HSM_AZURE_KV_VAULT_URL:}
+      client-id: ${HSM_AZURE_KV_CLIENT_ID:}
+      client-secret: ${HSM_AZURE_KV_CLIENT_SECRET:}
+      tenant-id: ${HSM_AZURE_KV_TENANT_ID:}
+      certificate-path: ${HSM_AZURE_KV_CERTIFICATE_PATH:}
+      key-vault-name: ${HSM_AZURE_KV_NAME:}
+      
+    aws-cloud-hsm:
+      enabled: ${HSM_AWS_CLOUDHSM_ENABLED:false}
+      cluster-id: ${HSM_AWS_CLOUDHSM_CLUSTER_ID:}
+      region: ${HSM_AWS_CLOUDHSM_REGION:us-east-1}
+      access-key: ${HSM_AWS_CLOUDHSM_ACCESS_KEY:}
+      secret-key: ${HSM_AWS_CLOUDHSM_SECRET_KEY:}
+      endpoint: ${HSM_AWS_CLOUDHSM_ENDPOINT:}
+      
+    thales-luna:
+      enabled: ${HSM_THALES_LUNA_ENABLED:false}
+      server-host: ${HSM_THALES_LUNA_SERVER_HOST:}
+      server-port: ${HSM_THALES_LUNA_SERVER_PORT:1792}
+      client-cert-path: ${HSM_THALES_LUNA_CLIENT_CERT:}
+      client-key-path: ${HSM_THALES_LUNA_CLIENT_KEY:}
+      server-cert-path: ${HSM_THALES_LUNA_SERVER_CERT:}
+      
+    utimaco-crypto-server:
+      enabled: ${HSM_UTIMACO_ENABLED:false}
+      server-host: ${HSM_UTIMACO_SERVER_HOST:}
+      server-port: ${HSM_UTIMACO_SERVER_PORT:3001}
+      device: ${HSM_UTIMACO_DEVICE:3001@127.0.0.1}
+      timeout: ${HSM_UTIMACO_TIMEOUT:60000}
+      
+    gemalto-safe-net:
+      enabled: ${HSM_GEMALTO_ENABLED:false}
+      kmip-server: ${HSM_GEMALTO_KMIP_SERVER:}
+      kmip-port: ${HSM_GEMALTO_KMIP_PORT:5696}
+      username: ${HSM_GEMALTO_USERNAME:}
+      password: ${HSM_GEMALTO_PASSWORD:}
+      
+    ncipher-nshield:
+      enabled: ${HSM_NCIPHER_ENABLED:false}
+      module-path: ${HSM_NCIPHER_MODULE_PATH:/opt/nfast/toolkits/java}
+      world-path: ${HSM_NCIPHER_WORLD_PATH:/opt/nfast/kmdata/local}
+      
+    fortanix-dsm:
+      enabled: ${HSM_FORTANIX_ENABLED:false}
+      api-endpoint: ${HSM_FORTANIX_API_ENDPOINT:}
+      api-key: ${HSM_FORTANIX_API_KEY:}
+      app-uuid: ${HSM_FORTANIX_APP_UUID:}
+      
+    securosys-primus:
+      enabled: ${HSM_SECUROSYS_ENABLED:false}
+      rest-api-url: ${HSM_SECUROSYS_REST_API_URL:}
+      username: ${HSM_SECUROSYS_USERNAME:}
+      password: ${HSM_SECUROSYS_PASSWORD:}
+      tsa-url: ${HSM_SECUROSYS_TSA_URL:}
+  
+  # Default algorithms for different operations
+  algorithms:
+    signing:
+      rsa: ${HSM_SIGNING_RSA_ALGORITHM:SHA256withRSA}
+      ec: ${HSM_SIGNING_EC_ALGORITHM:SHA256withECDSA}
+    hashing:
+      default: ${HSM_HASHING_ALGORITHM:SHA-256}
+    mac:
+      default: ${HSM_MAC_ALGORITHM:HmacSHA256}
+    encryption:
+      symmetric: ${HSM_SYMMETRIC_ALGORITHM:AES/GCM/NoPadding}
+      asymmetric: ${HSM_ASYMMETRIC_ALGORITHM:RSA/OAEP/SHA256AndMGF1Padding}
+  
+  # Key management settings
+  key-management:
+    # Default key sizes
+    rsa-key-size: ${HSM_RSA_KEY_SIZE:2048}
+    ec-curve: ${HSM_EC_CURVE:secp256r1}
+    aes-key-size: ${HSM_AES_KEY_SIZE:256}
+    
+    # Key rotation settings
+    auto-rotation-enabled: ${HSM_AUTO_ROTATION_ENABLED:false}
+    rotation-interval-days: ${HSM_ROTATION_INTERVAL_DAYS:365}
+    rotation-warning-days: ${HSM_ROTATION_WARNING_DAYS:30}
+    
+    # Key backup settings
+    backup-enabled: ${HSM_KEY_BACKUP_ENABLED:true}
+    backup-interval-hours: ${HSM_KEY_BACKUP_INTERVAL_HOURS:24}
+  
+  # Performance and optimization settings
+  performance:
+    # Connection pooling
+    max-connections: ${HSM_MAX_CONNECTIONS:10}
+    connection-timeout-ms: ${HSM_CONNECTION_TIMEOUT_MS:10000}
+    connection-pool-enabled: ${HSM_CONNECTION_POOL_ENABLED:true}
+    
+    # Caching
+    session-cache-enabled: ${HSM_SESSION_CACHE_ENABLED:true}
+    session-cache-ttl-minutes: ${HSM_SESSION_CACHE_TTL_MINUTES:30}
+    key-cache-enabled: ${HSM_KEY_CACHE_ENABLED:true}
+    key-cache-ttl-minutes: ${HSM_KEY_CACHE_TTL_MINUTES:60}
+    
+    # Async processing
+    async-processing-enabled: ${HSM_ASYNC_PROCESSING_ENABLED:true}
+    async-threshold-ms: ${HSM_ASYNC_THRESHOLD_MS:1000}
+    thread-pool-size: ${HSM_THREAD_POOL_SIZE:5}
+  
+  # Security settings
+  security:
+    # Enable additional security checks
+    strict-certificate-validation: ${HSM_STRICT_CERT_VALIDATION:true}
+    require-fresh-keys: ${HSM_REQUIRE_FRESH_KEYS:false}
+    
+    # Audit settings
+    audit-enabled: ${HSM_AUDIT_ENABLED:true}
+    audit-all-operations: ${HSM_AUDIT_ALL_OPERATIONS:true}
+    audit-retention-days: ${HSM_AUDIT_RETENTION_DAYS:365}
+    
+    # Access control
+    ip-whitelist: ${HSM_IP_WHITELIST:}
+    require-client-certificates: ${HSM_REQUIRE_CLIENT_CERTS:false}
+  
+  # Monitoring and alerting
+  monitoring:
+    # Enable HSM operation monitoring
+    enabled: ${HSM_MONITORING_ENABLED:true}
+    
+    # Performance thresholds
+    slow-operation-threshold-ms: ${HSM_SLOW_OPERATION_THRESHOLD_MS:5000}
+    high-error-rate-threshold: ${HSM_HIGH_ERROR_RATE_THRESHOLD:0.05}
+    
+    # Alert settings
+    alert-on-failures: ${HSM_ALERT_ON_FAILURES:true}
+    alert-on-timeouts: ${HSM_ALERT_ON_TIMEOUTS:true}
+    alert-on-key-expiry: ${HSM_ALERT_ON_KEY_EXPIRY:true}
+    
+    # Metrics collection
+    metrics-collection-interval-seconds: ${HSM_METRICS_INTERVAL_SECONDS:60}
+    metrics-retention-days: ${HSM_METRICS_RETENTION_DAYS:90}
+  
+  # Failover and high availability
+  failover:
+    enabled: ${HSM_FAILOVER_ENABLED:false}
+    primary-provider: ${HSM_PRIMARY_PROVIDER:AZURE_KEY_VAULT}
+    secondary-provider: ${HSM_SECONDARY_PROVIDER:AWS_CLOUD_HSM}
+    failover-timeout-seconds: ${HSM_FAILOVER_TIMEOUT_SECONDS:10}
+    auto-failback-enabled: ${HSM_AUTO_FAILBACK_ENABLED:true}
+    failback-delay-minutes: ${HSM_FAILBACK_DELAY_MINUTES:5}
+
+# Spring configuration for HSM integration
+spring:
+  # Task executor for HSM operations
+  task:
+    execution:
+      pool:
+        hsm-core-size: ${HSM_EXECUTOR_CORE_SIZE:3}
+        hsm-max-size: ${HSM_EXECUTOR_MAX_SIZE:10}
+        hsm-queue-capacity: ${HSM_EXECUTOR_QUEUE_CAPACITY:50}
+
+# Logging configuration for HSM operations
+logging:
+  level:
+    com.filetransfer.web.service.HsmService: ${HSM_LOG_LEVEL:INFO}
+    com.filetransfer.web.controller.HsmController: ${HSM_LOG_LEVEL:INFO}
+    
+    # HSM provider-specific logging
+    com.safenetinc.luna: ${HSM_LUNA_LOG_LEVEL:WARN}
+    com.amazon.cloudhsm: ${HSM_AWS_LOG_LEVEL:WARN}
+    com.azure.security.keyvault: ${HSM_AZURE_LOG_LEVEL:WARN}
+    
+  # HSM-specific log appender
+  appenders:
+    hsm:
+      type: RollingFile
+      fileName: /app/logs/hsm-operations.log
+      filePattern: /app/logs/hsm-operations-%d{yyyy-MM-dd}-%i.log.gz
+      policies:
+        time:
+          interval: 1
+          modulate: true
+        size: 50MB
+      strategy:
+        max: 30
+      
+  loggers:
+    com.filetransfer.web.service.HsmService:
+      level: ${HSM_LOG_LEVEL:INFO}
+      appender-ref: hsm

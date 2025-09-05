@@ -24,6 +24,8 @@ public interface FileTransferRecordRepository extends JpaRepository<FileTransfer
     
     List<FileTransferRecord> findByTenantIdAndDirection(String tenantId, TransferDirection direction);
     
+    List<FileTransferRecord> findByTenantIdAndDirectionAndStatus(String tenantId, TransferDirection direction, TransferStatus status);
+    
     List<FileTransferRecord> findByTenantIdAndServiceTypeAndStatus(String tenantId, String serviceType, TransferStatus status);
     
     List<FileTransferRecord> findByTenantIdAndServiceTypeAndDirection(String tenantId, String serviceType, TransferDirection direction);
@@ -46,6 +48,24 @@ public interface FileTransferRecordRepository extends JpaRepository<FileTransfer
     
     @Query("SELECT DISTINCT f.subServiceType FROM FileTransferRecord f WHERE f.tenantId = :tenantId AND f.serviceType = :serviceType AND f.subServiceType IS NOT NULL")
     List<String> findDistinctSubServiceTypesForService(@Param("tenantId") String tenantId, @Param("serviceType") String serviceType);
+    
+    @Query("SELECT f FROM FileTransferRecord f WHERE f.direction = 'INBOUND' AND f.status = 'COMPLETED' AND f.id NOT IN (SELECT a.originalFileTransferId FROM AckNackRecord a WHERE a.originalFileTransferId = f.id)")
+    List<FileTransferRecord> findCompletedInboundTransfersWithoutAck();
+    
+    List<FileTransferRecord> findByTenantIdAndDirectionAndStatus(String tenantId, TransferDirection direction, TransferStatus status);
+    
+    // File extension filtering methods
+    List<FileTransferRecord> findByTenantIdAndFileExtension(String tenantId, String fileExtension);
+    
+    List<FileTransferRecord> findByTenantIdAndFileExtensionIn(String tenantId, List<String> fileExtensions);
+    
+    @Query("SELECT DISTINCT f.fileExtension FROM FileTransferRecord f WHERE f.tenantId = :tenantId AND f.fileExtension IS NOT NULL ORDER BY f.fileExtension")
+    List<String> findDistinctFileExtensionsForTenant(@Param("tenantId") String tenantId);
+    
+    @Query("SELECT f.fileExtension, COUNT(f) FROM FileTransferRecord f WHERE f.tenantId = :tenantId AND f.fileExtension IS NOT NULL GROUP BY f.fileExtension ORDER BY COUNT(f) DESC")
+    List<Object[]> getFileExtensionStatistics(@Param("tenantId") String tenantId);
+    
+    List<FileTransferRecord> findByTenantIdAndServiceNameAndFileExtension(String tenantId, String serviceName, String fileExtension);
     
     // Legacy methods for backward compatibility (deprecated)
     @Deprecated

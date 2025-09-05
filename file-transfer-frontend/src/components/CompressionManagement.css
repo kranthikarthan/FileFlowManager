@@ -1,0 +1,358 @@
+/* File Compression Management Component Styles */
+
+.compression-management {
+    padding: 24px;
+    background-color: var(--background-color);
+    min-height: 100vh;
+}
+
+.compression-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.compression-title {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.compression-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.compression-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.compression-stat-card {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.compression-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.compression-type-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.compression-type-card {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.compression-type-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-color: var(--primary-main);
+}
+
+.compression-type-card.selected {
+    border-color: var(--primary-main);
+    background-color: var(--primary-light);
+}
+
+.compression-type-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.compression-type-badges {
+    display: flex;
+    gap: 4px;
+}
+
+.compression-type-description {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+
+.compression-type-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.compression-test-results {
+    margin-top: 24px;
+    padding: 16px;
+    background: var(--surface-color);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.compression-result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.compression-result-item {
+    text-align: center;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+
+.compression-result-value {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.compression-result-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.compression-progress {
+    margin: 16px 0;
+}
+
+.compression-progress-text {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.compression-file-upload {
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 24px;
+    text-align: center;
+    margin: 16px 0;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+    cursor: pointer;
+}
+
+.compression-file-upload:hover {
+    border-color: var(--primary-main);
+    background-color: var(--primary-light);
+}
+
+.compression-file-upload.dragover {
+    border-color: var(--primary-main);
+    background-color: var(--primary-light);
+}
+
+.compression-file-info {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 12px;
+    margin: 8px 0;
+}
+
+.compression-recommendations {
+    background: linear-gradient(135deg, var(--info-light), var(--info-main));
+    color: white;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+}
+
+.compression-efficiency-table {
+    margin-top: 16px;
+}
+
+.compression-efficiency-row {
+    transition: background-color 0.2s ease;
+}
+
+.compression-efficiency-row:hover {
+    background-color: var(--hover-color);
+}
+
+.compression-savings-positive {
+    color: var(--success-main);
+    font-weight: 600;
+}
+
+.compression-savings-negative {
+    color: var(--error-main);
+    font-weight: 600;
+}
+
+.compression-type-chip {
+    font-weight: 500;
+    border-radius: 16px;
+}
+
+.compression-fast {
+    background-color: var(--warning-light);
+    color: var(--warning-dark);
+}
+
+.compression-high-ratio {
+    background-color: var(--success-light);
+    color: var(--success-dark);
+}
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+    .compression-management {
+        padding: 16px;
+    }
+    
+    .compression-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .compression-type-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .compression-stats {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+    }
+    
+    .compression-result-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 12px;
+    }
+    
+    .compression-type-card {
+        padding: 12px;
+    }
+    
+    .compression-type-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .compression-file-upload {
+        padding: 16px;
+    }
+}
+
+/* Dark theme adjustments */
+.dark-theme .compression-type-card {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.dark-theme .compression-type-card:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-color: var(--primary-main);
+}
+
+.dark-theme .compression-test-results {
+    background-color: rgba(255, 255, 255, 0.02);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.dark-theme .compression-file-info {
+    background-color: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.dark-theme .compression-file-upload {
+    border-color: rgba(255, 255, 255, 0.23);
+}
+
+.dark-theme .compression-file-upload:hover {
+    border-color: var(--primary-main);
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* Animation for compression progress */
+.compression-progress-animation {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+/* Compression ratio visualization */
+.compression-ratio-bar {
+    height: 8px;
+    background: linear-gradient(90deg, var(--success-main), var(--warning-main), var(--error-main));
+    border-radius: 4px;
+    position: relative;
+    margin: 8px 0;
+}
+
+.compression-ratio-indicator {
+    position: absolute;
+    top: -2px;
+    width: 12px;
+    height: 12px;
+    background: var(--primary-main);
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* File type specific styling */
+.compression-file-type-text {
+    background-color: var(--success-light);
+    color: var(--success-dark);
+}
+
+.compression-file-type-binary {
+    background-color: var(--warning-light);
+    color: var(--warning-dark);
+}
+
+.compression-file-type-compressed {
+    background-color: var(--info-light);
+    color: var(--info-dark);
+}
+
+/* Compression efficiency indicators */
+.compression-efficiency-excellent {
+    color: var(--success-main);
+    font-weight: bold;
+}
+
+.compression-efficiency-good {
+    color: var(--info-main);
+    font-weight: 500;
+}
+
+.compression-efficiency-poor {
+    color: var(--warning-main);
+}
+
+.compression-efficiency-none {
+    color: var(--text-secondary);
+}

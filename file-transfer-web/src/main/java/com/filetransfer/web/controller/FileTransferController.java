@@ -114,4 +114,99 @@ public class FileTransferController {
             @PathVariable String fileName) {
         return ResponseEntity.ok(fileTransferService.getFileTransfersByFileName(tenantId, fileName));
     }
+    
+    /**
+     * Get file transfers by file extension
+     */
+    @GetMapping("/extension/{extension}")
+    public ResponseEntity<List<FileTransferRecordDto>> getFileTransfersByExtension(
+            @RequestParam String tenantId,
+            @PathVariable String extension) {
+        try {
+            // Ensure extension starts with dot
+            String normalizedExtension = extension.startsWith(".") ? extension : "." + extension;
+            
+            List<FileTransferRecordDto> transfers = fileTransferService.getFileTransfersByExtension(tenantId, normalizedExtension);
+            return ResponseEntity.ok(transfers);
+        } catch (Exception e) {
+            logger.error("Error retrieving file transfers by extension for tenant {}: {}", tenantId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
+     * Get distinct file extensions for a tenant
+     */
+    @GetMapping("/extensions")
+    public ResponseEntity<List<String>> getDistinctFileExtensions(@RequestParam String tenantId) {
+        try {
+            List<String> extensions = fileTransferService.getDistinctFileExtensions(tenantId);
+            return ResponseEntity.ok(extensions);
+        } catch (Exception e) {
+            logger.error("Error retrieving distinct file extensions for tenant {}: {}", tenantId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
+     * Get file extension statistics for a tenant
+     */
+    @GetMapping("/statistics/extensions")
+    public ResponseEntity<Map<String, Long>> getFileExtensionStatistics(@RequestParam String tenantId) {
+        try {
+            Map<String, Long> statistics = fileTransferService.getFileExtensionStatistics(tenantId);
+            return ResponseEntity.ok(statistics);
+        } catch (Exception e) {
+            logger.error("Error retrieving file extension statistics for tenant {}: {}", tenantId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
+     * Get recent files for a tenant
+     */
+    @GetMapping("/recent")
+    public ResponseEntity<List<FileTransferRecordDto>> getRecentFiles(
+            @RequestParam String tenantId,
+            @RequestParam(defaultValue = "20") int limit) {
+        try {
+            List<FileTransferRecordDto> recentFiles = fileTransferService.getRecentFiles(tenantId, limit);
+            return ResponseEntity.ok(recentFiles);
+        } catch (Exception e) {
+            logger.error("Error retrieving recent files for tenant {}: {}", tenantId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
+     * Get recently processed files
+     */
+    @GetMapping("/recent/processed")
+    public ResponseEntity<List<FileTransferRecordDto>> getRecentlyProcessedFiles(
+            @RequestParam String tenantId,
+            @RequestParam(defaultValue = "10") int limit) {
+        try {
+            List<FileTransferRecordDto> recentFiles = fileTransferService.getRecentlyProcessedFiles(tenantId, limit);
+            return ResponseEntity.ok(recentFiles);
+        } catch (Exception e) {
+            logger.error("Error retrieving recently processed files for tenant {}: {}", tenantId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
+     * Get recent failed files
+     */
+    @GetMapping("/recent/failed")
+    public ResponseEntity<List<FileTransferRecordDto>> getRecentFailedFiles(
+            @RequestParam String tenantId,
+            @RequestParam(defaultValue = "10") int limit) {
+        try {
+            List<FileTransferRecordDto> recentFiles = fileTransferService.getRecentFailedFiles(tenantId, limit);
+            return ResponseEntity.ok(recentFiles);
+        } catch (Exception e) {
+            logger.error("Error retrieving recent failed files for tenant {}: {}", tenantId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }

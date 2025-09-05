@@ -253,7 +253,7 @@ stages:
         env:
           POSTGRES_DB: filetransfer_test
           POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
+          POSTGRES_PASSWORD: ${TEST_DB_PASSWORD}
         ports:
           5432:5432
       redis:
@@ -280,7 +280,7 @@ stages:
         # Set up test environment variables
         export SPRING_DATASOURCE_URL="jdbc:postgresql://localhost:5432/filetransfer_test"
         export SPRING_DATASOURCE_USERNAME="test_user"
-        export SPRING_DATASOURCE_PASSWORD="test_password"
+        export SPRING_DATASOURCE_PASSWORD="${TEST_DB_PASSWORD}"
         export SPRING_DATA_REDIS_HOST="localhost"
         export SPRING_DATA_REDIS_PORT="6379"
         

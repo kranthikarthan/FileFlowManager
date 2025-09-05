@@ -4,19 +4,39 @@ import com.filetransfer.web.dto.FileTransferRecordDto;
 import com.filetransfer.web.entity.FileTransferRecord;
 import com.filetransfer.web.entity.TransferDirection;
 import com.filetransfer.web.entity.TransferStatus;
+import com.filetransfer.web.entity.CompressionType;
+import com.filetransfer.web.entity.FileType;
 import com.filetransfer.web.repository.FileTransferRecordRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class FileTransferManagementService {
     
+    private static final Logger logger = LoggerFactory.getLogger(FileTransferManagementService.class);
+    
     @Autowired
     private FileTransferRecordRepository fileTransferRepository;
+    
+    @Autowired
+    private AckNackService ackNackService;
+    
+    @Autowired
+    private CompressionService compressionService;
     
     public List<FileTransferRecordDto> getAllFileTransfers(String tenantId) {
         return fileTransferRepository.findByTenantId(tenantId).stream()
@@ -108,11 +128,254 @@ public class FileTransferManagementService {
                 .collect(Collectors.toList());
     }
     
+    /**
+     * Get file transfers by file extension
+     */
+    public List<FileTransferRecordDto> getFileTransfersByExtension(String tenantId, String fileExtension) {
+        return fileTransferRepository.findByTenantIdAndFileExtension(tenantId, fileExtension).stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Get file transfers by multiple file extensions
+     */
+    public List<FileTransferRecordDto> getFileTransfersByExtensions(String tenantId, List<String> fileExtensions) {
+        return fileTransferRepository.findByTenantIdAndFileExtensionIn(tenantId, fileExtensions).stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Get distinct file extensions for a tenant
+     */
+    public List<String> getDistinctFileExtensions(String tenantId) {
+        return fileTransferRepository.findDistinctFileExtensionsForTenant(tenantId);
+    }
+    
+    /**
+     * Get file extension statistics for a tenant
+     */
+    public Map<String, Long> getFileExtensionStatistics(String tenantId) {
+        List<Object[]> stats = fileTransferRepository.getFileExtensionStatistics(tenantId);
+        return stats.stream()
+                .collect(Collectors.toMap(
+                    row -> (String) row[0],
+                    row -> (Long) row[1],
+                    (existing, replacement) -> existing,
+                    LinkedHashMap::new
+                ));
+    }
+    
+    /**
+     * Get recent files for a tenant
+     */
+    public List<FileTransferRecordDto> getRecentFiles(String tenantId, int limit) {
+        Pageable pageable = PageRequest.of(0, limit);
+        return fileTransferRepository.findRecentFiles(tenantId, pageable).stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Get recent files since a specific date
+     */
+    public List<FileTransferRecordDto> getRecentFilesSince(String tenantId, LocalDateTime since) {
+        return fileTransferRepository.findRecentFilesSince(tenantId, since).stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Get recently processed files
+     */
+    public List<FileTransferRecordDto> getRecentlyProcessedFiles(String tenantId, int limit) {
+        Pageable pageable = PageRequest.of(0, limit);
+        return fileTransferRepository.findRecentlyProcessedFiles(tenantId, pageable).stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Get recent failed files
+     */
+    public List<FileTransferRecordDto> getRecentFailedFiles(String tenantId, int limit) {
+        Pageable pageable = PageRequest.of(0, limit);
+        return fileTransferRepository.findRecentFailedFiles(tenantId, pageable).stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Complete file transfer and trigger ACK generation for inbound files
+     */
+    public void completeFileTransfer(Long id) {
+        FileTransferRecord record = fileTransferRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("File transfer record not found: " + id));
+        
+        record.setStatus(TransferStatus.COMPLETED);
+        record.setProcessedAt(LocalDateTime.now());
+        fileTransferRepository.save(record);
+        
+        // Auto-generate ACK for completed inbound files
+        if (record.getDirection() == TransferDirection.INBOUND) {
+            try {
+                ackNackService.generateAckForInboundFile(id);
+                logger.info("Auto-generated ACK for completed inbound file: {}", record.getFileName());
+            } catch (Exception e) {
+                logger.error("Failed to auto-generate ACK for file {}: {}", record.getFileName(), e.getMessage());
+            }
+        }
+    }
+    
+    /**
+     * Mark file transfer as failed and trigger NACK generation for inbound files
+     */
+    public void failFileTransfer(Long id, String errorMessage) {
+        FileTransferRecord record = fileTransferRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("File transfer record not found: " + id));
+        
+        record.setStatus(TransferStatus.FAILED);
+        record.setErrorMessage(errorMessage);
+        record.setProcessedAt(LocalDateTime.now());
+        fileTransferRepository.save(record);
+        
+        // Auto-generate NACK for failed inbound files
+        if (record.getDirection() == TransferDirection.INBOUND) {
+            try {
+                ackNackService.generateNackForInboundFile(id, "PROCESSING_FAILED", errorMessage);
+                logger.info("Auto-generated NACK for failed inbound file: {}", record.getFileName());
+            } catch (Exception e) {
+                logger.error("Failed to auto-generate NACK for file {}: {}", record.getFileName(), e.getMessage());
+            }
+        }
+    }
+    
+    /**
+     * Generate ACK for a specific file transfer
+     */
+    public void generateAckForFile(Long id) {
+        ackNackService.generateAckForInboundFile(id);
+    }
+    
+    /**
+     * Generate NACK for a specific file transfer
+     */
+    public void generateNackForFile(Long id, String reasonCode, String reasonDescription) {
+        ackNackService.generateNackForInboundFile(id, reasonCode, reasonDescription);
+    }
+    
+    /**
+     * Compress a file for transfer
+     */
+    public void compressFile(Long id, CompressionType compressionType) {
+        FileTransferRecord record = fileTransferRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("File transfer record not found: " + id));
+        
+        if (record.getCompressionEnabled()) {
+            throw new IllegalStateException("File is already compressed");
+        }
+        
+        try {
+            Path sourceFile = Paths.get(record.getSourcePath());
+            String targetDirectory = sourceFile.getParent().toString() + "/compressed";
+            
+            long startTime = System.currentTimeMillis();
+            CompressionService.CompressionResult result = compressionService.compressFile(
+                sourceFile, compressionType, targetDirectory);
+            
+            // Update record with compression information
+            record.setCompressionEnabled(true);
+            record.setCompressionType(compressionType);
+            record.setOriginalFileSize(Files.size(sourceFile));
+            record.setCompressedFileSize(Files.size(result.getCompressedFile()));
+            record.setCompressionRatio(result.getCompressionRatio());
+            record.setCompressionTimeMs(result.getCompressionTimeMs());
+            record.setCompressedFilePath(result.getCompressedFile().toString());
+            
+            fileTransferRepository.save(record);
+            
+            logger.info("Compressed file for transfer {}: {} -> {} (ratio: {:.2f})", 
+                       id, record.getOriginalFileSize(), record.getCompressedFileSize(), 
+                       record.getCompressionRatio());
+                       
+        } catch (Exception e) {
+            logger.error("Failed to compress file for transfer {}: {}", id, e.getMessage());
+            throw new RuntimeException("File compression failed", e);
+        }
+    }
+    
+    /**
+     * Decompress a received file
+     */
+    public void decompressFile(Long id) {
+        FileTransferRecord record = fileTransferRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("File transfer record not found: " + id));
+        
+        if (!record.getCompressionEnabled() || record.getCompressionType() == CompressionType.NONE) {
+            throw new IllegalStateException("File is not compressed");
+        }
+        
+        try {
+            Path compressedFile = Paths.get(record.getCompressedFilePath() != null ? 
+                                           record.getCompressedFilePath() : record.getSourcePath());
+            String targetDirectory = record.getTargetPath();
+            
+            long startTime = System.currentTimeMillis();
+            CompressionService.DecompressionResult result = compressionService.decompressFile(
+                compressedFile, targetDirectory);
+            
+            // Update record with decompression information
+            record.setDecompressionTimeMs(result.getDecompressionTimeMs());
+            record.setTargetPath(result.getDecompressedFile().toString());
+            
+            fileTransferRepository.save(record);
+            
+            logger.info("Decompressed file for transfer {}: {} (time: {}ms)", 
+                       id, result.getDecompressedFile(), result.getDecompressionTimeMs());
+                       
+        } catch (Exception e) {
+            logger.error("Failed to decompress file for transfer {}: {}", id, e.getMessage());
+            throw new RuntimeException("File decompression failed", e);
+        }
+    }
+    
+    /**
+     * Get compression recommendations for a file
+     */
+    public Map<String, Object> getCompressionRecommendations(Long id) {
+        FileTransferRecord record = fileTransferRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("File transfer record not found: " + id));
+        
+        try {
+            Path file = Paths.get(record.getSourcePath());
+            FileType fileType = record.getFileType();
+            
+            // Get recommended compression types
+            CompressionType speedOptimized = compressionService.getRecommendedCompression(file, fileType, true);
+            CompressionType ratioOptimized = compressionService.getRecommendedCompression(file, fileType, false);
+            
+            Map<String, Object> recommendations = new HashMap<>();
+            recommendations.put("speedOptimized", speedOptimized);
+            recommendations.put("ratioOptimized", ratioOptimized);
+            recommendations.put("shouldCompress", CompressionType.shouldCompress(fileType));
+            recommendations.put("originalFileSize", Files.size(file));
+            recommendations.put("estimatedCompressedSize", Math.round(Files.size(file) * speedOptimized.getAverageCompressionRatio()));
+            
+            return recommendations;
+            
+        } catch (Exception e) {
+            logger.error("Failed to get compression recommendations for transfer {}: {}", id, e.getMessage());
+            throw new RuntimeException("Failed to get compression recommendations", e);
+        }
+    }
+    
     private FileTransferRecordDto convertToDto(FileTransferRecord record) {
         FileTransferRecordDto dto = new FileTransferRecordDto();
         dto.setId(record.getId());
         dto.setFileName(record.getFileName());
-        dto.setServiceType(record.getServiceType());
+        dto.setServiceName(record.getServiceName());
+        dto.setSubServiceName(record.getSubServiceName());
         dto.setSourcePath(record.getSourcePath());
         dto.setTargetPath(record.getTargetPath());
         dto.setStatus(record.getStatus());
@@ -123,6 +386,18 @@ public class FileTransferManagementService {
         dto.setFileSize(record.getFileSize());
         dto.setChecksum(record.getChecksum());
         dto.setBatchJobExecutionId(record.getBatchJobExecutionId());
+        
+        // Compression fields
+        dto.setCompressionEnabled(record.getCompressionEnabled());
+        dto.setCompressionType(record.getCompressionType());
+        dto.setOriginalFileSize(record.getOriginalFileSize());
+        dto.setCompressedFileSize(record.getCompressedFileSize());
+        dto.setCompressionRatio(record.getCompressionRatio());
+        dto.setCompressionTimeMs(record.getCompressionTimeMs());
+        dto.setDecompressionTimeMs(record.getDecompressionTimeMs());
+        dto.setCompressedFilePath(record.getCompressedFilePath());
+        dto.setFileExtension(record.getFileExtension());
+        
         return dto;
     }
 }

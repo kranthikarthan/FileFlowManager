@@ -1,0 +1,169 @@
+# HSM (Hardware Security Module) Configuration for File Transfer Batch Application
+hsm:
+  # Enable/disable HSM functionality globally
+  enabled: ${HSM_ENABLED:false}
+  
+  # Enable batch processing of HSM operations
+  batch-processing-enabled: ${HSM_BATCH_PROCESSING_ENABLED:true}
+  
+  # Default timeout for HSM operations (seconds)
+  default-timeout-seconds: ${HSM_DEFAULT_TIMEOUT_SECONDS:30}
+  
+  # Processing intervals for scheduled jobs (seconds)
+  processing-interval-seconds: ${HSM_PROCESSING_INTERVAL_SECONDS:60}
+  timeout-check-interval-seconds: ${HSM_TIMEOUT_CHECK_INTERVAL_SECONDS:300}
+  
+  # Batch processing settings
+  batch:
+    # Chunk size for batch HSM operations
+    chunk-size: ${HSM_BATCH_CHUNK_SIZE:5}
+    
+    # Thread pool size for parallel HSM processing
+    thread-pool-size: ${HSM_BATCH_THREAD_POOL_SIZE:3}
+    
+    # Maximum retry attempts for batch operations
+    max-retry-attempts: ${HSM_BATCH_MAX_RETRY_ATTEMPTS:3}
+    
+    # Retry delay for failed operations (seconds)
+    retry-delay-seconds: ${HSM_BATCH_RETRY_DELAY_SECONDS:60}
+    
+    # Maximum concurrent HSM operations
+    max-concurrent-operations: ${HSM_MAX_CONCURRENT_OPERATIONS:5}
+  
+  # Provider-specific configurations (same as web app)
+  providers:
+    azure-key-vault:
+      enabled: ${HSM_AZURE_KV_ENABLED:false}
+      vault-url: ${HSM_AZURE_KV_VAULT_URL:}
+      client-id: ${HSM_AZURE_KV_CLIENT_ID:}
+      client-secret: ${HSM_AZURE_KV_CLIENT_SECRET:}
+      tenant-id: ${HSM_AZURE_KV_TENANT_ID:}
+      
+    aws-cloud-hsm:
+      enabled: ${HSM_AWS_CLOUDHSM_ENABLED:false}
+      cluster-id: ${HSM_AWS_CLOUDHSM_CLUSTER_ID:}
+      region: ${HSM_AWS_CLOUDHSM_REGION:us-east-1}
+      access-key: ${HSM_AWS_CLOUDHSM_ACCESS_KEY:}
+      secret-key: ${HSM_AWS_CLOUDHSM_SECRET_KEY:}
+      
+    thales-luna:
+      enabled: ${HSM_THALES_LUNA_ENABLED:false}
+      server-host: ${HSM_THALES_LUNA_SERVER_HOST:}
+      server-port: ${HSM_THALES_LUNA_SERVER_PORT:1792}
+      client-cert-path: ${HSM_THALES_LUNA_CLIENT_CERT:}
+      client-key-path: ${HSM_THALES_LUNA_CLIENT_KEY:}
+  
+  # File processing integration
+  file-processing:
+    # Enable HSM validation during file processing
+    validation-enabled: ${HSM_FILE_VALIDATION_ENABLED:true}
+    
+    # File size threshold for async HSM processing (MB)
+    async-threshold-mb: ${HSM_ASYNC_THRESHOLD_MB:10}
+    
+    # Skip HSM validation for certain file types
+    skip-for-binary-files: ${HSM_SKIP_BINARY_FILES:true}
+    skip-for-compressed-files: ${HSM_SKIP_COMPRESSED_FILES:false}
+    
+    # Signature file handling
+    signature-file-extension: ${HSM_SIGNATURE_FILE_EXTENSION:.sig}
+    create-signature-files: ${HSM_CREATE_SIGNATURE_FILES:true}
+    verify-signature-files: ${HSM_VERIFY_SIGNATURE_FILES:true}
+  
+  # Performance optimization
+  performance:
+    # Connection pooling for HSM providers
+    connection-pool-enabled: ${HSM_CONNECTION_POOL_ENABLED:true}
+    max-pool-size: ${HSM_MAX_POOL_SIZE:10}
+    min-pool-size: ${HSM_MIN_POOL_SIZE:2}
+    pool-timeout-ms: ${HSM_POOL_TIMEOUT_MS:30000}
+    
+    # Caching settings
+    provider-cache-enabled: ${HSM_PROVIDER_CACHE_ENABLED:true}
+    keystore-cache-enabled: ${HSM_KEYSTORE_CACHE_ENABLED:true}
+    cache-ttl-minutes: ${HSM_CACHE_TTL_MINUTES:30}
+    
+    # Resource limits
+    max-memory-mb: ${HSM_MAX_MEMORY_MB:256}
+    max-cpu-percentage: ${HSM_MAX_CPU_PERCENTAGE:50}
+  
+  # Error handling and resilience
+  resilience:
+    # Circuit breaker settings
+    circuit-breaker-enabled: ${HSM_CIRCUIT_BREAKER_ENABLED:true}
+    failure-rate-threshold: ${HSM_FAILURE_RATE_THRESHOLD:50}
+    slow-call-rate-threshold: ${HSM_SLOW_CALL_RATE_THRESHOLD:50}
+    slow-call-duration-threshold-ms: ${HSM_SLOW_CALL_THRESHOLD_MS:5000}
+    
+    # Retry settings
+    retry-enabled: ${HSM_RETRY_ENABLED:true}
+    max-retry-attempts: ${HSM_MAX_RETRY_ATTEMPTS:3}
+    retry-delay-ms: ${HSM_RETRY_DELAY_MS:1000}
+    exponential-backoff: ${HSM_EXPONENTIAL_BACKOFF:true}
+    
+    # Timeout settings
+    operation-timeout-ms: ${HSM_OPERATION_TIMEOUT_MS:30000}
+    connection-timeout-ms: ${HSM_CONNECTION_TIMEOUT_MS:10000}
+    read-timeout-ms: ${HSM_READ_TIMEOUT_MS:20000}
+  
+  # Monitoring and metrics
+  monitoring:
+    enabled: ${HSM_MONITORING_ENABLED:true}
+    
+    # Performance monitoring
+    track-operation-times: ${HSM_TRACK_OPERATION_TIMES:true}
+    track-queue-depths: ${HSM_TRACK_QUEUE_DEPTHS:true}
+    track-error-rates: ${HSM_TRACK_ERROR_RATES:true}
+    
+    # Health monitoring
+    provider-health-check-enabled: ${HSM_PROVIDER_HEALTH_CHECK:true}
+    key-availability-check-enabled: ${HSM_KEY_AVAILABILITY_CHECK:true}
+    
+    # Alerting thresholds
+    high-error-rate-threshold: ${HSM_HIGH_ERROR_RATE:0.1}
+    slow-operation-threshold-ms: ${HSM_SLOW_OPERATION_THRESHOLD:10000}
+    queue-depth-threshold: ${HSM_QUEUE_DEPTH_THRESHOLD:50}
+
+# Spring Batch configuration for HSM processing
+spring:
+  batch:
+    job:
+      hsm-processing-job:
+        enabled: ${HSM_BATCH_JOB_ENABLED:true}
+        chunk-size: ${HSM_BATCH_CHUNK_SIZE:5}
+        
+  # Task scheduling for HSM operations
+  task:
+    scheduling:
+      pool:
+        hsm-pool-size: ${HSM_SCHEDULER_POOL_SIZE:5}
+    execution:
+      pool:
+        hsm-core-size: ${HSM_EXECUTOR_CORE_SIZE:3}
+        hsm-max-size: ${HSM_EXECUTOR_MAX_SIZE:10}
+        hsm-queue-capacity: ${HSM_EXECUTOR_QUEUE_CAPACITY:25}
+
+# Logging configuration for HSM operations
+logging:
+  level:
+    com.filetransfer.batch.service.HsmService: ${HSM_LOG_LEVEL:INFO}
+    com.filetransfer.batch.processor.HsmValidationProcessor: ${HSM_LOG_LEVEL:INFO}
+    
+    # HSM provider-specific logging
+    com.safenetinc.luna: ${HSM_LUNA_LOG_LEVEL:WARN}
+    com.amazon.cloudhsm: ${HSM_AWS_LOG_LEVEL:WARN}
+    com.azure.security.keyvault: ${HSM_AZURE_LOG_LEVEL:WARN}
+    
+  # HSM-specific log appender
+  appenders:
+    hsm-batch:
+      type: RollingFile
+      fileName: /app/logs/hsm-batch-operations.log
+      filePattern: /app/logs/hsm-batch-operations-%d{yyyy-MM-dd}-%i.log.gz
+      policies:
+        time:
+          interval: 1
+          modulate: true
+        size: 50MB
+      strategy:
+        max: 30
