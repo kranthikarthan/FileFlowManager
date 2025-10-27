@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fileflow
+  labels:
+    name: fileflow
+    app.kubernetes.io/name: fileflow
+    app.kubernetes.io/part-of: file-flow-management

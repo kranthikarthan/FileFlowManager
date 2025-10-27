@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fileflow-frontend
+  namespace: fileflow
+  labels:
+    app: fileflow-frontend
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fileflow-frontend
+  template:
+    metadata:
+      labels:
+        app: fileflow-frontend
+        version: v1
+    spec:
+      containers:
+      - name: frontend
+        image: fileflowregistry.azurecr.io/fileflow-frontend:latest
+        ports:
+        - containerPort: 80
+        env:
+        - name: REACT_APP_API_BASE_URL
+          value: "https://fileflow-api.yourdomain.com/api"
+        - name: REACT_APP_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: fileflow-secrets
+              key: CLIENT_ID
+        - name: REACT_APP_AUTHORITY
+          valueFrom:
+            secretKeyRef:
+              name: fileflow-secrets
+              key: JWT_ISSUER_URI
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      imagePullSecrets:
+      - name: acr-secret
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fileflow-frontend
+  namespace: fileflow
+  labels:
+    app: fileflow-frontend
+spec:
+  selector:
+    app: fileflow-frontend
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+  type: ClusterIP

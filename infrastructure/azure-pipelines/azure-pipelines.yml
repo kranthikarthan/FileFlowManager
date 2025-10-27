@@ -1,0 +1,264 @@
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    include:
+    - backend/*
+    - frontend/*
+    - infrastructure/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  # Container registry service connection established during pipeline creation
+  dockerRegistryServiceConnection: 'fileflow-acr-connection'
+  imageRepository: 'fileflow'
+  containerRegistry: 'fileflowregistry.azurecr.io'
+  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
+  tag: '$(Build.BuildId)'
+  
+  # Agent VM image name
+  vmImageName: 'ubuntu-latest'
+  
+  # Kubernetes connection
+  kubernetesServiceConnection: 'fileflow-aks-connection'
+  kubernetesNamespace: 'fileflow'
+
+stages:
+- stage: Build
+  displayName: Build and Test
+  jobs:
+  - job: BuildShared
+    displayName: Build Shared Library
+    steps:
+    - task: Maven@3
+      displayName: 'Build Shared Library'
+      inputs:
+        mavenPomFile: 'backend/shared/pom.xml'
+        goals: 'clean compile install'
+        options: '-DskipTests=true'
+        publishJUnitResults: false
+        javaHomeOption: 'JDKVersion'
+        jdkVersionOption: '1.17'
+        
+  - job: BuildAndTestBackend
+    displayName: Build and Test Backend Services
+    dependsOn: BuildShared
+    strategy:
+      matrix:
+        BatchService:
+          serviceName: 'batch-service'
+          servicePort: '8081'
+        WebApiService:
+          serviceName: 'web-api-service'
+          servicePort: '8080'
+    steps:
+    - task: Maven@3
+      displayName: 'Install Shared Library'
+      inputs:
+        mavenPomFile: 'backend/shared/pom.xml'
+        goals: 'install'
+        options: '-DskipTests=true'
+        
+    - task: Maven@3
+      displayName: 'Run Tests'
+      inputs:
+        mavenPomFile: 'backend/$(serviceName)/pom.xml'
+        goals: 'clean test'
+        publishJUnitResults: true
+        testResultsFiles: '**/surefire-reports/TEST-*.xml'
+        javaHomeOption: 'JDKVersion'
+        jdkVersionOption: '1.17'
+        
+    - task: SonarCloudPrepare@1
+      displayName: 'Prepare SonarCloud analysis'
+      inputs:
+        SonarCloud: 'sonarcloud-connection'
+        organization: 'your-sonarcloud-org'
+        scannerMode: 'Other'
+        
+    - task: Maven@3
+      displayName: 'Build and Analyze with SonarCloud'
+      inputs:
+        mavenPomFile: 'backend/$(serviceName)/pom.xml'
+        goals: 'clean verify sonar:sonar'
+        options: '-DskipTests=false'
+        publishJUnitResults: false
+        javaHomeOption: 'JDKVersion'
+        jdkVersionOption: '1.17'
+        
+    - task: SonarCloudPublish@1
+      displayName: 'Publish SonarCloud results'
+      inputs:
+        pollingTimeoutSec: '300'
+        
+    - task: Maven@3
+      displayName: 'Package Application'
+      inputs:
+        mavenPomFile: 'backend/$(serviceName)/pom.xml'
+        goals: 'clean package'
+        options: '-DskipTests=true'
+        
+    - task: CopyFiles@2
+      displayName: 'Copy Dockerfile'
+      inputs:
+        sourceFolder: 'backend/$(serviceName)'
+        contents: 'Dockerfile'
+        targetFolder: '$(Build.ArtifactStagingDirectory)/$(serviceName)'
+        
+    - task: CopyFiles@2
+      displayName: 'Copy JAR file'
+      inputs:
+        sourceFolder: 'backend/$(serviceName)/target'
+        contents: '*.jar'
+        targetFolder: '$(Build.ArtifactStagingDirectory)/$(serviceName)'
+        
+    - task: Docker@2
+      displayName: 'Build Docker Image'
+      inputs:
+        containerRegistry: '$(dockerRegistryServiceConnection)'
+        repository: '$(imageRepository)-$(serviceName)'
+        command: 'build'
+        Dockerfile: '$(Build.ArtifactStagingDirectory)/$(serviceName)/Dockerfile'
+        buildContext: '$(Build.ArtifactStagingDirectory)/$(serviceName)'
+        tags: |
+          $(tag)
+          latest
+          
+    - task: Docker@2
+      displayName: 'Push Docker Image'
+      inputs:
+        containerRegistry: '$(dockerRegistryServiceConnection)'
+        repository: '$(imageRepository)-$(serviceName)'
+        command: 'push'
+        tags: |
+          $(tag)
+          latest
+
+  - job: BuildAndTestFrontend
+    displayName: Build and Test Frontend
+    steps:
+    - task: NodeTool@0
+      displayName: 'Install Node.js'
+      inputs:
+        versionSpec: '18.x'
+        
+    - script: |
+        cd frontend
+        npm ci
+      displayName: 'Install dependencies'
+      
+    - script: |
+        cd frontend
+        npm run lint
+      displayName: 'Run ESLint'
+      
+    - script: |
+        cd frontend
+        npm test -- --coverage --ci --watchAll=false
+      displayName: 'Run tests with coverage'
+      
+    - task: PublishTestResults@2
+      displayName: 'Publish test results'
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: 'frontend/coverage/junit.xml'
+        mergeTestResults: true
+        
+    - task: PublishCodeCoverageResults@1
+      displayName: 'Publish code coverage'
+      inputs:
+        codeCoverageTool: 'Cobertura'
+        summaryFileLocation: 'frontend/coverage/cobertura-coverage.xml'
+        reportDirectory: 'frontend/coverage/lcov-report'
+        
+    - script: |
+        cd frontend
+        npm run build
+      displayName: 'Build React app'
+      
+    - task: CopyFiles@2
+      displayName: 'Copy build files'
+      inputs:
+        sourceFolder: 'frontend/build'
+        contents: '**'
+        targetFolder: '$(Build.ArtifactStagingDirectory)/frontend'
+        
+    - task: CopyFiles@2
+      displayName: 'Copy Dockerfile'
+      inputs:
+        sourceFolder: 'frontend'
+        contents: 'Dockerfile'
+        targetFolder: '$(Build.ArtifactStagingDirectory)/frontend'
+        
+    - task: Docker@2
+      displayName: 'Build Frontend Docker Image'
+      inputs:
+        containerRegistry: '$(dockerRegistryServiceConnection)'
+        repository: '$(imageRepository)-frontend'
+        command: 'build'
+        Dockerfile: '$(Build.ArtifactStagingDirectory)/frontend/Dockerfile'
+        buildContext: '$(Build.ArtifactStagingDirectory)/frontend'
+        tags: |
+          $(tag)
+          latest
+          
+    - task: Docker@2
+      displayName: 'Push Frontend Docker Image'
+      inputs:
+        containerRegistry: '$(dockerRegistryServiceConnection)'
+        repository: '$(imageRepository)-frontend'
+        command: 'push'
+        tags: |
+          $(tag)
+          latest
+
+- stage: Deploy
+  displayName: Deploy to AKS
+  dependsOn: Build
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  - deployment: DeployToAKS
+    displayName: Deploy to Azure Kubernetes Service
+    environment: 'production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: KubernetesManifest@0
+            displayName: 'Create namespace'
+            inputs:
+              action: 'deploy'
+              kubernetesServiceConnection: '$(kubernetesServiceConnection)'
+              namespace: '$(kubernetesNamespace)'
+              manifests: |
+                $(Pipeline.Workspace)/infrastructure/k8s/namespace.yaml
+                
+          - task: KubernetesManifest@0
+            displayName: 'Deploy ConfigMap and Secrets'
+            inputs:
+              action: 'deploy'
+              kubernetesServiceConnection: '$(kubernetesServiceConnection)'
+              namespace: '$(kubernetesNamespace)'
+              manifests: |
+                $(Pipeline.Workspace)/infrastructure/k8s/configmap.yaml
+                $(Pipeline.Workspace)/infrastructure/k8s/secrets.yaml
+                
+          - task: KubernetesManifest@0
+            displayName: 'Deploy Applications'
+            inputs:
+              action: 'deploy'
+              kubernetesServiceConnection: '$(kubernetesServiceConnection)'
+              namespace: '$(kubernetesNamespace)'
+              manifests: |
+                $(Pipeline.Workspace)/infrastructure/k8s/batch-service-deployment.yaml
+                $(Pipeline.Workspace)/infrastructure/k8s/web-api-deployment.yaml
+                $(Pipeline.Workspace)/infrastructure/k8s/frontend-deployment.yaml
+                $(Pipeline.Workspace)/infrastructure/k8s/ingress.yaml
+              containers: |
+                $(containerRegistry)/$(imageRepository)-batch-service:$(tag)
+                $(containerRegistry)/$(imageRepository)-web-api:$(tag)
+                $(containerRegistry)/$(imageRepository)-frontend:$(tag)
